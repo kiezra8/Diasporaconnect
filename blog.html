@@ -25,16 +25,56 @@
   <link rel="manifest" href="/site.webmanifest" />
 
   <!-- CANONICAL & ROBOTS -->
-  <link rel="canonical" href="https://diasporaconnectt.com/blog.html" />
+  <link rel="canonical" href="https://diasporaconnectt.com/blog" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 
   <!-- OPEN GRAPH -->
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="Diaspora Connect Farmers SACCO" />
   <meta property="og:image" content="https://diasporaconnectt.com/images/Diasporaconnectlogo.jpg" />
-  <meta property="og:url" content="https://diasporaconnectt.com/blog.html" />
+  <meta property="og:url" content="https://diasporaconnectt.com/blog" />
   <meta property="og:title" content="Diaspora Blogs – Inspiring Stories | Diaspora Connect Farmers SACCO" />
   <meta property="og:description" content="Inspiring stories from SACCO members across the globe investing in dairy farming." />
+
+  <!-- ══ STRUCTURED DATA (JSON-LD) ══ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": ["Blog", "CollectionPage"],
+        "@id": "https://diasporaconnectt.com/blog#webpage",
+        "url": "https://diasporaconnectt.com/blog",
+        "name": "Diaspora Blogs – Inspiring Stories | Diaspora Connect Farmers SACCO",
+        "description": "Inspiring stories and investment perspectives from Diaspora Connect Farmers SACCO members across the globe investing in Ugandan dairy farming and agricultural enterprise.",
+        "isPartOf": {
+          "@type": "WebSite",
+          "@id": "https://diasporaconnectt.com/#website",
+          "name": "Diaspora Connect Farmers SACCO",
+          "url": "https://diasporaconnectt.com/"
+        },
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://diasporaconnectt.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Blogs",
+              "item": "https://diasporaconnectt.com/blog"
+            }
+          ]
+        },
+        "inLanguage": "en-UG"
+      }
+    ]
+  }
+  </script>
 
   <!-- TYPOGRAPHY -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -224,18 +264,18 @@
 
 <!-- NAV -->
 <nav id="navbar">
-  <div class="nav-logo">
+  <a href="/" class="nav-logo" style="text-decoration:none;color:inherit;" title="Diaspora Connect Farmers SACCO Home">
     <img src="images/Diasporaconnectlogo.jpg" alt="Diaspora Connect Farmers SACCO" width="46" height="46" />
     <div class="nav-brand">
       <span class="top">Diaspora Connect</span>
       <span class="bottom">Farmers SACCO</span>
     </div>
-  </div>
+  </a>
 </nav>
 
 <!-- BLOG HERO -->
 <section class="blog-hero">
-  <a href="index.html" class="back-btn">
+  <a href="/" class="back-btn">
     <svg viewBox="0 0 24 24"><path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg>
     Back Home
   </a>
