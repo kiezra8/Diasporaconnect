@@ -28,11 +28,12 @@
 
 html {
   scroll-behavior: smooth;
+  background: #ffffff !important;
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background: var(--bg-main);
+  background: #ffffff !important;
   color: var(--text-body);
   overflow-x: hidden;
 }
