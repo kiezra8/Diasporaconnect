@@ -60,7 +60,7 @@ body {
 .bg-productivity { background-image: url('productivity_bg_1790772786489.jpg'); }
 .bg-legacy       { background-image: url('legacy_bg_1790772823843.jpg'); }
 .bg-integrity    { background-image: url('integrity_bg_1790776028154.jpg'); }
-.bg-hero         { background-image: url('hero_carousel.jpg'), url('https://i.pinimg.com/1200x/f8/40/87/f84087424ffc2eb2efd09f755adbaa9a.jpg'); }
+.bg-hero         { background-image: url('hero_carousel.jpg'); }
 
 /* ── PARTICLES CANVAS (SUBTLE ELEGANT DUST) ── */
 #particles-canvas {
@@ -146,9 +146,9 @@ nav {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background-image: url('hero_carousel.jpg'), url('https://i.pinimg.com/1200x/f8/40/87/f84087424ffc2eb2efd09f755adbaa9a.jpg');
+  background-image: url('hero_carousel.jpg');
   background-size: cover;
-  background-position: center;
+  background-position: center center;
   background-repeat: no-repeat;
   transform: none !important;
   transition: none !important;
