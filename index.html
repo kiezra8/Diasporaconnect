@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- ══ PRIMARY SEO ══ -->
-  <title>Diaspora Connect Farmers SACCO | Come Home. Invest. Grow Together.</title>
-  <meta name="description" content="Diaspora Connect Farmers SACCO – Uganda's premier farmers' savings and credit co-operative for the diaspora community. Save with purpose, invest in productive dairy farmland, and build generational wealth together." />
-  <meta name="keywords" content="Diaspora Connect, Farmers SACCO, Uganda diaspora, dairy farming Uganda, invest in farmland, diaspora investment, agricultural SACCO, Come Home Invest Grow" />
+  <title>Diaspora Connect Farmers SACCO Uganda | Come Home. Invest. Grow Together.</title>
+  <meta name="description" content="Diaspora Connect Farmers SACCO – Uganda's #1 agricultural savings co-operative for the diaspora. Invest in dairy farmland, grow generational wealth. Come Home. Invest. Grow Together." />
+  <meta name="keywords" content="Diaspora Connect, Diaspora Connect Farmers SACCO, Diaspora Connect Uganda, Diaspora Connect Farmers, Diaspora Connect SACCO, diaspora SACCO Uganda, farmers SACCO Uganda, dairy farming investment Uganda, Uganda diaspora investment, agricultural SACCO Uganda" />
   <meta name="author" content="Diaspora Connect Farmers SACCO" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="category" content="Financial Services, Agricultural Investment, SACCO" />
+  <meta name="classification" content="Business, Finance, Agriculture" />
+  <meta name="coverage" content="Uganda, East Africa, Global Diaspora" />
+  <meta name="target" content="diaspora ugandans, agricultural investors, dairy farming investors" />
 
   <!-- ══ CANONICAL URL ══ -->
   <link rel="canonical" href="https://www.diasporaconnectt.com/" />
@@ -64,42 +68,152 @@
   <!-- ══ SITEMAP DISCOVERY ══ -->
   <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 
-  <!-- ══ STRUCTURED DATA – Organization + WebSite ══ -->
+  <!-- ══ STRUCTURED DATA – 5 rich schema types for top Google ranking ══ -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@graph": [
+
+      /* ─── 1. FinancialService (richer than plain Organization) ─── */
       {
-        "@type": "Organization",
+        "@type": ["FinancialService", "Organization"],
         "@id": "https://www.diasporaconnectt.com/#organization",
         "name": "Diaspora Connect Farmers SACCO",
-        "alternateName": "DC Farmers SACCO",
+        "alternateName": [
+          "Diaspora Connect",
+          "DC Farmers SACCO",
+          "Diaspora Connect Farmers",
+          "Diaspora Connect SACCO",
+          "Diaspora Connect Uganda",
+          "Diaspora Connect Farmers Sacco Uganda"
+        ],
         "url": "https://www.diasporaconnectt.com/",
         "logo": {
           "@type": "ImageObject",
+          "@id": "https://www.diasporaconnectt.com/#logo",
           "url": "https://www.diasporaconnectt.com/logo.jpg",
+          "contentUrl": "https://www.diasporaconnectt.com/logo.jpg",
+          "caption": "Diaspora Connect Farmers SACCO Logo",
           "width": 512,
           "height": 512
         },
-        "image": "https://www.diasporaconnectt.com/logo.jpg",
-        "description": "Uganda's premier farmers' savings and credit co-operative for the diaspora community. Come Home. Invest. Grow Together.",
+        "image": {
+          "@id": "https://www.diasporaconnectt.com/#logo"
+        },
+        "description": "Diaspora Connect Farmers SACCO is Uganda's premier agricultural savings and credit co-operative for the diaspora community. We help diaspora Ugandans invest in productive dairy farmland, save with purpose, and build generational wealth together. Come Home. Invest. Grow Together.",
         "slogan": "Come Home. Invest. Grow Together.",
         "foundingDate": "2024",
-        "areaServed": "Uganda",
-        "knowsAbout": ["Dairy Farming", "Agricultural Investment", "SACCO", "Diaspora Finance"],
+        "areaServed": {
+          "@type": "Country",
+          "name": "Uganda"
+        },
+        "serviceType": ["Savings and Credit Co-operative", "Agricultural Investment", "Dairy Farming Investment", "Diaspora Financial Services"],
+        "knowsAbout": [
+          "Dairy Farming Uganda",
+          "Agricultural Investment",
+          "SACCO",
+          "Diaspora Finance",
+          "Farmland Investment",
+          "Uganda Diaspora",
+          "Savings and Credit"
+        ],
+        "keywords": "Diaspora Connect, Diaspora Connect Farmers SACCO, Diaspora Connect Uganda, diaspora SACCO Uganda, farmers SACCO Uganda, dairy farming investment Uganda",
         "sameAs": []
       },
+
+      /* ─── 2. WebSite with SearchAction (enables Google Sitelinks Searchbox) ─── */
       {
         "@type": "WebSite",
         "@id": "https://www.diasporaconnectt.com/#website",
         "url": "https://www.diasporaconnectt.com/",
         "name": "Diaspora Connect Farmers SACCO",
-        "description": "Come Home. Invest. Grow Together.",
-        "publisher": { "@id": "https://www.diasporaconnectt.com/#organization" }
+        "alternateName": ["Diaspora Connect", "DC Farmers SACCO"],
+        "description": "Uganda's premier farmers' savings and credit co-operative for the diaspora. Come Home. Invest. Grow Together.",
+        "publisher": { "@id": "https://www.diasporaconnectt.com/#organization" },
+        "inLanguage": "en-UG",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://www.diasporaconnectt.com/?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      },
+
+      /* ─── 3. WebPage (the homepage itself) ─── */
+      {
+        "@type": "WebPage",
+        "@id": "https://www.diasporaconnectt.com/#webpage",
+        "url": "https://www.diasporaconnectt.com/",
+        "name": "Diaspora Connect Farmers SACCO | Come Home. Invest. Grow Together.",
+        "isPartOf": { "@id": "https://www.diasporaconnectt.com/#website" },
+        "about": { "@id": "https://www.diasporaconnectt.com/#organization" },
+        "primaryImageOfPage": { "@id": "https://www.diasporaconnectt.com/#logo" },
+        "description": "Diaspora Connect Farmers SACCO – Uganda's premier agricultural SACCO for diaspora investors. Dairy farming, farmland investment, collective savings.",
+        "breadcrumb": { "@id": "https://www.diasporaconnectt.com/#breadcrumb" },
+        "inLanguage": "en-UG",
+        "dateModified": "2026-09-30"
+      },
+
+      /* ─── 4. BreadcrumbList ─── */
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://www.diasporaconnectt.com/#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Diaspora Connect Farmers SACCO",
+            "item": "https://www.diasporaconnectt.com/"
+          }
+        ]
+      },
+
+      /* ─── 5. FAQPage – answers common search queries directly in Google results ─── */
+      {
+        "@type": "FAQPage",
+        "@id": "https://www.diasporaconnectt.com/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Diaspora Connect Farmers SACCO?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Diaspora Connect Farmers SACCO is Uganda's premier agricultural savings and credit co-operative designed for the diaspora community. It allows diaspora Ugandans to save with purpose, invest in productive dairy farmland, and build generational wealth collectively. Our motto is: Come Home. Invest. Grow Together."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What does Diaspora Connect do?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Diaspora Connect (formally Diaspora Connect Farmers SACCO) is a trusted financial community that pools member savings to invest in high-yield Ugandan dairy farming and agricultural enterprises. Members earn returns while contributing to Uganda's agricultural growth."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How can I join Diaspora Connect Farmers SACCO?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You can join Diaspora Connect Farmers SACCO by visiting our website at diasporaconnectt.com and connecting with our team. Membership is open to diaspora Ugandans and supporters who wish to invest in Ugandan dairy farmland and agricultural growth."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Where is Diaspora Connect Farmers SACCO based?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Diaspora Connect Farmers SACCO is based in Uganda and serves diaspora Ugandans worldwide. Our investments focus on productive Ugandan agricultural land, particularly dairy farming operations."
+            }
+          }
+        ]
       }
+
     ]
   }
   </script>
+
 
   <!-- ══ EXTERNAL STYLESHEET ══ -->
   <link rel="stylesheet" href="style.css?v=3.6" />
@@ -114,7 +228,7 @@
 <!-- ─ NAV (logo only) ─ -->
 <nav id="navbar">
   <div class="nav-logo">
-    <img src="Diasporaconnectlogo.jpg" alt="Diaspora Connect Farmers SACCO" width="46" height="46" />
+    <img src="logo.jpg" alt="Diaspora Connect Farmers SACCO – Official Logo" width="46" height="46" loading="eager" />
     <div class="nav-brand">
       <span class="top">Diaspora Connect</span>
       <span class="bottom">Farmers SACCO</span>
@@ -573,7 +687,7 @@
   <div class="brand-radial"></div>
   <div class="brand-inner">
     <div class="brand-logo-ring reveal">
-      <img class="brand-logo-img" src="Diasporaconnectlogo.jpg" alt="Diaspora Connect Farmers SACCO" width="188" height="188" />
+      <img class="brand-logo-img" src="logo.jpg" alt="Diaspora Connect Farmers SACCO – Uganda's Premier Agricultural SACCO" width="188" height="188" />
     </div>
     <div class="reveal reveal-delay-1">
       <h2 class="brand-name">DIASPORA<span class="connect">CONNECT</span></h2>
@@ -588,7 +702,19 @@
 
 <!-- ─ FOOTER ─ -->
 <footer>
-  <p>&copy; 2026 <span>Diaspora Connect Farmers SACCO</span> &middot; Come Home. Invest. Grow Together.</p>
+  <div class="footer-about">
+    <img src="logo.jpg" alt="Diaspora Connect Farmers SACCO" width="48" height="48" loading="lazy" />
+    <p>
+      <strong>Diaspora Connect Farmers SACCO</strong> &ndash; Uganda's premier agricultural savings and credit co-operative
+      for the diaspora community. Also known as <em>Diaspora Connect</em>, <em>DC Farmers SACCO</em>, and
+      <em>Diaspora Connect Uganda</em>. We connect diaspora Ugandans with productive dairy farmland investment,
+      collective savings, and generational wealth-building opportunities.
+      <br /><strong>Contact:</strong> <a href="tel:+256703624155">+256 703 624 155</a>
+      &middot; <a href="https://wa.me/256703624155" rel="noopener">WhatsApp</a>
+      &middot; <a href="https://www.diasporaconnectt.com/">diasporaconnectt.com</a>
+    </p>
+  </div>
+  <p class="footer-copy">&copy; 2026 <span>Diaspora Connect Farmers SACCO</span> &middot; Come Home. Invest. Grow Together. &middot; Uganda</p>
 </footer>
 
 <!-- ─ WHATSAPP / CALL FLOATING BUTTON ─ -->
@@ -613,6 +739,21 @@
     </button>
     <span class="fab-label">Chat</span>
   </div>
+</div>
+
+<!-- ══ SEO ENTITY BLOCK – crawled by Google, visually hidden ══ -->
+<!-- This block reinforces brand entity recognition for all search variations -->
+<div aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
+  <h2>Diaspora Connect Farmers SACCO</h2>
+  <p>Diaspora Connect is a Farmers SACCO based in Uganda, serving the diaspora community worldwide. Also referred to as Diaspora Connect Farmers SACCO Uganda, DC Farmers SACCO, Diaspora Connect SACCO, and Diaspora Connect Uganda.</p>
+  <p>Diaspora Connect Farmers SACCO offers diaspora Ugandans the opportunity to invest in productive dairy farmland, participate in collective agricultural savings, and build generational wealth through a trusted cooperative model.</p>
+  <p>Search queries: "diaspora connect", "diaspora connect farmers", "diaspora connect farmers sacco", "diaspora connect sacco uganda", "diaspora connect uganda farmers sacco", "dc farmers sacco uganda", "diaspora connect dairy farming".</p>
+  <address>
+    <span itemprop="name">Diaspora Connect Farmers SACCO</span><br />
+    <span itemprop="addressCountry">Uganda</span><br />
+    <a itemprop="telephone" href="tel:+256703624155">+256 703 624 155</a><br />
+    <a itemprop="url" href="https://www.diasporaconnectt.com/">https://www.diasporaconnectt.com/</a>
+  </address>
 </div>
 
 </body>

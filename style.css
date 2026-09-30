@@ -834,11 +834,35 @@ section {
 /* ── FOOTER ── */
 footer {
   background: #ffffff;
-  padding: 36px 24px;
+  padding: 40px 24px 28px;
   text-align: center;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
-footer p {
+.footer-about {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto 20px;
+  text-align: left;
+}
+.footer-about img {
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+.footer-about p {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+.footer-about p strong { color: var(--gold-dark); }
+.footer-about p a {
+  color: var(--green-deep);
+  text-decoration: none;
+}
+.footer-about p a:hover { text-decoration: underline; }
+footer p, .footer-copy {
   font-size: 12px;
   letter-spacing: 1.5px;
   color: var(--text-muted);
@@ -847,6 +871,7 @@ footer span {
   color: var(--gold-dark);
   font-weight: 600;
 }
+
 
 /* ── WHATSAPP / CALL FLOATING TOGGLE (ON RIGHT, LIGHT GREEN) ── */
 #chat-fab {

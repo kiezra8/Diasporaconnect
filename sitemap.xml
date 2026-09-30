@@ -1,18 +1,81 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-          http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+        xsi:schemaLocation="
+          http://www.sitemaps.org/schemas/sitemap/0.9
+          http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd
+          http://www.google.com/schemas/sitemap-image/1.1
+          http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd">
+
+  <!-- ═══════════════════════════════════════════
+       HOMEPAGE  –  highest priority
+       Target queries:
+         "diaspora connect"
+         "diaspora connect farmers"
+         "diaspora connect farmers sacco"
+         "diaspora connect sacco uganda"
+         "diaspora connect uganda"
+  ═══════════════════════════════════════════ -->
   <url>
     <loc>https://www.diasporaconnectt.com/</loc>
     <lastmod>2026-09-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+
+    <!-- Logo image – helps Google show your logo in Knowledge Panel -->
+    <image:image>
+      <image:loc>https://www.diasporaconnectt.com/logo.jpg</image:loc>
+      <image:title>Diaspora Connect Farmers SACCO – Official Logo</image:title>
+      <image:caption>Diaspora Connect Farmers SACCO – Come Home. Invest. Grow Together. Uganda diaspora agricultural savings co-operative.</image:caption>
+    </image:image>
+
+    <!-- Hero carousel image 1 -->
+    <image:image>
+      <image:loc>https://www.diasporaconnectt.com/hero_slide_1.jpg</image:loc>
+      <image:title>Diaspora Connect Farmers SACCO – Ugandan Dairy Farm</image:title>
+      <image:caption>Fertile farmland managed by Diaspora Connect Farmers SACCO members in Uganda.</image:caption>
+    </image:image>
+
+    <!-- Hero carousel image 2 -->
+    <image:image>
+      <image:loc>https://www.diasporaconnectt.com/hero_slide_2.jpg</image:loc>
+      <image:title>Diaspora Connect Farmers SACCO – Dairy Cattle</image:title>
+      <image:caption>High-quality dairy cattle on a Diaspora Connect Farmers SACCO member farm in Uganda.</image:caption>
+    </image:image>
+
+    <!-- Mission card images -->
+    <image:image>
+      <image:loc>https://www.diasporaconnectt.com/card_img_1.jpg</image:loc>
+      <image:title>Diaspora Connect – Come Home</image:title>
+      <image:caption>Diaspora Connect Farmers SACCO invites diaspora Ugandans to come home and invest in their roots.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.diasporaconnectt.com/card_img_2.jpg</image:loc>
+      <image:title>Diaspora Connect – Invest in Farmland Uganda</image:title>
+      <image:caption>Invest in productive Ugandan farmland through Diaspora Connect Farmers SACCO.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.diasporaconnectt.com/card_img_3.jpg</image:loc>
+      <image:title>Diaspora Connect – Grow Together as a Community</image:title>
+      <image:caption>Diaspora Connect Farmers SACCO members growing wealth together through collective savings and investment.</image:caption>
+    </image:image>
   </url>
+
+  <!-- ═══════════════════════════════════════════
+       BLOG PAGE
+  ═══════════════════════════════════════════ -->
   <url>
     <loc>https://www.diasporaconnectt.com/blog.html</loc>
     <lastmod>2026-09-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+
+    <image:image>
+      <image:loc>https://www.diasporaconnectt.com/blog_dairy_1.jpg</image:loc>
+      <image:title>Diaspora Connect – Dairy Farming Uganda Blog</image:title>
+      <image:caption>Diaspora Connect Farmers SACCO blog on dairy farming investment opportunities in Uganda for the diaspora community.</image:caption>
+    </image:image>
   </url>
+
 </urlset>
