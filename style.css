@@ -11,32 +11,29 @@
 }
 
 :root {
-  --bg-main:           #9caf88;
-  --bg-surface:        #91a57f;
-  --bg-subtle:         #879b76;
-  --bg-sage:           #9caf88;
-  --bg-sage-dark:      #7d9171;
-  --bg-sage-deep:      #6d8061;
+  --bg-main:           #ffffff;
+  --bg-surface:        #f8fafc;
+  --bg-subtle:         #f1f5f9;
   --gold:              #b8860b;
-  --gold-dark:         #7a5800;
-  --gold-light:        #f5d166;
-  --gold-pale:         #fbf5df;
-  --card-border:       rgba(0, 0, 0, 0.10);
-  --card-border-hover: rgba(184, 134, 11, 0.55);
-  --text-heading:      #0e1e12;
-  --text-body:         #1c2b1f;
-  --text-muted:        #2d4031;
+  --gold-dark:         #946800;
+  --gold-light:        #e2b842;
+  --gold-pale:         #fef9e7;
+  --card-border:       rgba(0, 0, 0, 0.08);
+  --card-border-hover: rgba(184, 134, 11, 0.45);
+  --text-heading:      #0f172a;
+  --text-body:         #334155;
+  --text-muted:        #64748b;
   --text-light:        #ffffff;
 }
 
 html {
   scroll-behavior: smooth;
-  background: #9caf88 !important;
+  background: #ffffff !important;
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background: #9caf88 !important;
+  background: #ffffff !important;
   color: var(--text-body);
   overflow-x: hidden;
 }
@@ -48,7 +45,7 @@ body {
   background: var(--bg-subtle);
 }
 ::-webkit-scrollbar-thumb {
-  background: #7d9171;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -312,10 +309,10 @@ section {
   margin: 0 auto 14px;
 }
 
-/* ── VALUES SECTION (SAGE GREEN CANVAS, RICH ELEVATED CARDS) ── */
+/* ── VALUES SECTION (WHITE BACKGROUND, RICH ELEVATED CARDS) ── */
 #values {
   padding: 65px 0 70px;
-  background: var(--bg-main);
+  background: #ffffff;
 }
 .values-header {
   text-align: center;
@@ -553,11 +550,11 @@ section {
   width: 60px;
 }
 
-/* ── VISION SECTION (SAGE GREEN CANVAS) ── */
+/* ── VISION SECTION (WHITE CANVAS) ── */
 #vision {
   position: relative;
   padding: 68px 0 68px;
-  background: var(--bg-main);
+  background: #ffffff;
   overflow: hidden;
 }
 .vision-orb {
@@ -784,22 +781,21 @@ section {
   font-weight: 600;
 }
 
-/* ── FOOTER (DEEP SAGE) ── */
+/* ── FOOTER ── */
 footer {
-  background: var(--bg-sage-dark);
+  background: #ffffff;
   padding: 36px 24px;
   text-align: center;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 footer p {
   font-size: 12px;
   letter-spacing: 1.5px;
-  color: #17281a;
-  font-weight: 500;
+  color: var(--text-muted);
 }
 footer span {
   color: var(--gold-dark);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* ── WHATSAPP / CALL FLOATING TOGGLE (ON RIGHT, LIGHT GREEN) ── */
