@@ -44,10 +44,10 @@
   </script>
 
   <!-- ── EXTERNAL STYLESHEET (CACHE BUSTER) ── -->
-  <link rel="stylesheet" href="style.css?v=3.3" />
+  <link rel="stylesheet" href="style.css?v=3.5" />
 
   <!-- ── EXTERNAL HARDENED SCRIPT (CACHE BUSTER) ── -->
-  <script src="script.js?v=3.3" defer></script>
+  <script src="script.js?v=3.5" defer></script>
 </head>
 <body style="background-color: #ffffff !important; color: #334155;">
 
@@ -64,9 +64,12 @@
   </div>
 </nav>
 
-<!-- ─ HERO (STATIC IMAGE) ─ -->
+<!-- ─ HERO CAROUSEL ─ -->
 <section id="hero">
-  <div class="hero-bg bg-hero" id="hero-bg" style="background-image: url('hero_carousel.jpg?v=3.2');"></div>
+  <div class="hero-carousel" id="hero-carousel">
+    <div class="hero-slide active" style="background-image: url('hero_slide_2.jpg?v=3.5');"></div>
+    <div class="hero-slide" style="background-image: url('hero_slide_1.jpg?v=3.5');"></div>
+  </div>
   <div class="hero-overlay"></div>
   <div class="hero-content">
     <p class="hero-eyebrow">Diaspora Connect &middot; Uganda</p>
@@ -78,9 +81,66 @@
     <div class="hero-divider"></div>
     <p class="hero-tagline"><strong>Come Home.</strong>&nbsp; Invest.&nbsp; Grow Together.</p>
   </div>
+  <div class="hero-carousel-dots" id="hero-carousel-dots">
+    <button class="hero-dot active" aria-label="Slide 1" type="button"></button>
+    <button class="hero-dot" aria-label="Slide 2" type="button"></button>
+  </div>
   <div class="hero-scroll">
     <span>Scroll</span>
     <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ─ MISSION (STARTING SECTION) ─ -->
+<section id="mission">
+  <div class="mission-header reveal">
+    <span class="section-label">Why We Exist</span>
+    <h2 class="section-heading">OUR <span>MISSION</span></h2>
+    <div class="gold-line gold-line-center"></div>
+    <p class="mission-intro">
+      To create a <em>trusted financial community</em> where every member can save with purpose,
+      access opportunities, invest in agriculture and build a <em>more secure future</em>.
+    </p>
+  </div>
+
+  <div class="mission-cards">
+
+    <!-- COME HOME -->
+    <div class="mission-card">
+      <div class="mission-card-bg bg-pin-1" style="background-image: url('card_img_1.jpg?v=3.2');"></div>
+      <div class="mission-card-overlay"></div>
+      <div class="mission-card-content">
+        <span class="mission-card-num">01 &middot; Mission</span>
+        <h3 class="mission-card-title">COME HOME.</h3>
+        <span class="mission-card-desc">Your roots are calling &mdash; your community awaits.</span>
+        <div class="mission-card-bar"></div>
+      </div>
+    </div>
+
+    <!-- INVEST -->
+    <div class="mission-card">
+      <div class="mission-card-bg bg-pin-2" style="background-image: url('card_img_2.jpg?v=3.2');"></div>
+      <div class="mission-card-overlay"></div>
+      <div class="mission-card-content">
+        <span class="mission-card-num">02 &middot; Mission</span>
+        <h3 class="mission-card-title">INVEST.</h3>
+        <span class="mission-card-desc">Put capital into fertile, productive farmland and enterprise.</span>
+        <div class="mission-card-bar"></div>
+      </div>
+    </div>
+
+    <!-- GROW TOGETHER -->
+    <div class="mission-card">
+      <div class="mission-card-bg bg-pin-3" style="background-image: url('card_img_3.jpg?v=3.2');"></div>
+      <div class="mission-card-overlay"></div>
+      <div class="mission-card-content">
+        <span class="mission-card-num">03 &middot; Mission</span>
+        <h3 class="mission-card-title">GROW TOGETHER.</h3>
+        <span class="mission-card-desc">Unite resources to compound returns and create enduring wealth.</span>
+        <div class="mission-card-bar"></div>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -140,7 +200,7 @@
       <div class="value-card-bg bg-pin-2" style="background-image: url('card_img_2.jpg?v=3.2');"></div>
       <div class="value-card-overlay"></div>
       <div class="value-card-content">
-        <svg class="value-svg-icon" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <svg class="value-svg-icon" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="12" y2="16"/></svg>
         <span class="value-number">04 &middot; Value</span>
         <h3 class="value-title">EMPOWERMENT</h3>
         <p class="value-desc">Opportunity within reach of every member.</p>
@@ -188,59 +248,6 @@
         <h3 class="value-title">INTEGRITY</h3>
         <p class="value-desc">We do the right thing, always.</p>
         <div class="value-bar"></div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ─ MISSION ─ -->
-<section id="mission">
-  <div class="mission-header reveal">
-    <span class="section-label">Why We Exist</span>
-    <h2 class="section-heading">OUR <span>MISSION</span></h2>
-    <div class="gold-line gold-line-center"></div>
-    <p class="mission-intro">
-      To create a <em>trusted financial community</em> where every member can save with purpose,
-      access opportunities, invest in agriculture and build a <em>more secure future</em>.
-    </p>
-  </div>
-
-  <div class="mission-cards">
-
-    <!-- COME HOME -->
-    <div class="mission-card">
-      <div class="mission-card-bg bg-pin-1" style="background-image: url('card_img_1.jpg?v=3.2');"></div>
-      <div class="mission-card-overlay"></div>
-      <div class="mission-card-content">
-        <span class="mission-card-num">01 &middot; Mission</span>
-        <h3 class="mission-card-title">COME HOME.</h3>
-        <span class="mission-card-desc">Your roots are calling &mdash; your community awaits.</span>
-        <div class="mission-card-bar"></div>
-      </div>
-    </div>
-
-    <!-- INVEST -->
-    <div class="mission-card">
-      <div class="mission-card-bg bg-pin-2" style="background-image: url('card_img_2.jpg?v=3.2');"></div>
-      <div class="mission-card-overlay"></div>
-      <div class="mission-card-content">
-        <span class="mission-card-num">02 &middot; Mission</span>
-        <h3 class="mission-card-title">INVEST.</h3>
-        <span class="mission-card-desc">Put capital into fertile, productive farmland and enterprise.</span>
-        <div class="mission-card-bar"></div>
-      </div>
-    </div>
-
-    <!-- GROW TOGETHER -->
-    <div class="mission-card">
-      <div class="mission-card-bg bg-pin-3" style="background-image: url('card_img_3.jpg?v=3.2');"></div>
-      <div class="mission-card-overlay"></div>
-      <div class="mission-card-content">
-        <span class="mission-card-num">03 &middot; Mission</span>
-        <h3 class="mission-card-title">GROW TOGETHER.</h3>
-        <span class="mission-card-desc">Unite resources to compound returns and create enduring wealth.</span>
-        <div class="mission-card-bar"></div>
       </div>
     </div>
 
@@ -390,22 +397,22 @@
     <div class="gold-line gold-line-center"></div>
     <p class="blogs-sub">Inspiring stories for diaspora members in the SACCO and their view on the matter.</p>
   </div>
-  <!-- FEATURED SPOTLIGHT STORY (WITH BLOG HERO IMAGE) -->
+  <!-- FEATURED SPOTLIGHT STORY (DAIRY FARMING) -->
   <div class="blog-spotlight reveal">
     <div class="blog-spotlight-img">
-      <img src="blog_hero.jpg?v=3.2" alt="The Harvest of Collective Growth" loading="lazy" />
+      <img src="blog_dairy_1.jpg?v=3.5" alt="The White Gold Revolution - Dairy Farming" loading="lazy" />
       <span class="spotlight-badge">Spotlight &middot; 2026</span>
     </div>
     <div class="blog-spotlight-content">
       <span class="blog-card-date">Sep 28, 2026</span>
-      <span class="blog-card-cat">Agriculture &middot; Collective Impact</span>
-      <h3 class="blog-spotlight-title">From Diaspora Dreams to Fertile Fields: Transforming Agriculture Together</h3>
-      <p class="blog-spotlight-excerpt">When members pool their savings through the SACCO, individual remittances become collective agricultural powerhouses across Uganda.</p>
+      <span class="blog-card-cat">Dairy &middot; Modern Agriculture</span>
+      <h3 class="blog-spotlight-title">The White Gold Revolution: How Diaspora Capital is Modernising Dairy Farming in Uganda</h3>
+      <p class="blog-spotlight-excerpt">From automated milking parlours to cold-chain preservation, SACCO members are pooling funds to transform Uganda's milk belt into a high-yield dairy powerhouse.</p>
       <div class="blog-card-author">
         <img src="author_amara.jpg" alt="Editorial Desk" />
         <div>
-          <span class="blog-author-name">Diaspora Connect Editorial</span>
-          <span class="blog-author-loc">Kampala &middot; London &middot; Toronto</span>
+          <span class="blog-author-name">Diaspora Connect Dairy Desk</span>
+          <span class="blog-author-loc">Mbarara &middot; London &middot; Toronto</span>
         </div>
       </div>
       <a href="blog.html#article-spotlight" class="blog-read-more">Read Full Story <svg viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></a>
@@ -417,13 +424,13 @@
     <!-- BLOG 1 -->
     <article class="blog-card reveal">
       <div class="blog-card-img">
-        <img src="blog_saving_abroad.jpg" alt="Saving with Purpose from Abroad" loading="lazy" />
+        <img src="blog_dairy_1.jpg?v=3.5" alt="Investing in Dairy Cattle from London" loading="lazy" />
       </div>
       <div class="blog-card-body">
         <span class="blog-card-date">Sep 24, 2026</span>
-        <span class="blog-card-cat">Finance &middot; Diaspora</span>
-        <h3 class="blog-card-title">Saving with Purpose: How I Invest from the UK</h3>
-        <p class="blog-card-excerpt">Every shilling I transfer is now working for me on a real farm back home. Here's how the SACCO changed my entire relationship with money.</p>
+        <span class="blog-card-cat">Dairy Cattle &middot; Passive Income</span>
+        <h3 class="blog-card-title">Investing in Dairy Cattle from London: Consistent Monthly Milk Yields</h3>
+        <p class="blog-card-excerpt">I co-own a herd of 15 Friesian-cross heifers in Kiruhura through the SACCO. The daily milk collection provides dependable quarterly dividends without the stress of remote management.</p>
         <div class="blog-card-author">
           <img src="author_amara.jpg" alt="Amara Nakato" />
           <div>
@@ -438,13 +445,13 @@
     <!-- BLOG 2 -->
     <article class="blog-card reveal">
       <div class="blog-card-img">
-        <img src="blog_farmland.jpg" alt="Land is the Real Wealth" loading="lazy" />
+        <img src="blog_farmland.jpg" alt="Cold-Chain Milk Storage" loading="lazy" />
       </div>
       <div class="blog-card-body">
         <span class="blog-card-date">Sep 14, 2026</span>
-        <span class="blog-card-cat">Agriculture &middot; Investment</span>
-        <h3 class="blog-card-title">Land is the Real Wealth. Here Is Why I Came Back.</h3>
-        <p class="blog-card-excerpt">After 12 years working in finance in Toronto, I finally found an investment that matched both my intellect and my heart.</p>
+        <span class="blog-card-cat">Dairy Logistics &middot; Value Addition</span>
+        <h3 class="blog-card-title">Cold-Chain Milk Storage: Solving the Dairy Distribution Puzzle</h3>
+        <p class="blog-card-excerpt">Our cooperative investment in solar-powered milk chillers cut spoilage to zero across three collection centres, compounding member returns significantly.</p>
         <div class="blog-card-author">
           <img src="author_david.jpg" alt="David Ochieng" />
           <div>
@@ -459,13 +466,13 @@
     <!-- BLOG 3 -->
     <article class="blog-card reveal">
       <div class="blog-card-img">
-        <img src="card_img_1.jpg?v=3.2" alt="Stronger Together" loading="lazy" />
+        <img src="card_img_1.jpg?v=3.2" alt="Silage and Pasture Management" loading="lazy" />
       </div>
       <div class="blog-card-body">
         <span class="blog-card-date">Aug 28, 2026</span>
-        <span class="blog-card-cat">Community &middot; Growth</span>
-        <h3 class="blog-card-title">We Are Stronger Together: Built on Trust</h3>
-        <p class="blog-card-excerpt">I didn't just join a SACCO. I joined a family that stretches from Kampala to Stockholm — and the trust that holds us together is extraordinary.</p>
+        <span class="blog-card-cat">Livestock Feed &middot; Sustainability</span>
+        <h3 class="blog-card-title">Silage &amp; Pasture Management: Sustaining Milk Production Year-Round</h3>
+        <p class="blog-card-excerpt">During dry spells when milk prices surge, our SACCO-backed silage banks ensure uninterrupted milk yield. It's smart, resilient dairy agriculture built on shared trust.</p>
         <div class="blog-card-author">
           <img src="author_grace.jpg" alt="Grace Asiimwe" />
           <div>
@@ -480,13 +487,13 @@
     <!-- BLOG 4 -->
     <article class="blog-card reveal">
       <div class="blog-card-img">
-        <img src="card_img_3.jpg?v=3.2" alt="Legacy Planning" loading="lazy" />
+        <img src="card_img_3.jpg?v=3.2" alt="Building Generational Dairy Assets" loading="lazy" />
       </div>
       <div class="blog-card-body">
         <span class="blog-card-date">Aug 15, 2026</span>
-        <span class="blog-card-cat">Legacy &middot; Planning</span>
-        <h3 class="blog-card-title">Planting a Legacy: Agricultural Investment as Generational Wealth</h3>
-        <p class="blog-card-excerpt">My father left me nothing but wisdom. I am determined to leave my children something tangible — and the SACCO is how.</p>
+        <span class="blog-card-cat">Generational Wealth &middot; Dairy</span>
+        <h3 class="blog-card-title">Building Generational Dairy Assets: From Calves to Milk Cooperatives</h3>
+        <p class="blog-card-excerpt">A pedigree dairy cow multiplies in asset value each season. By reinvesting our milk earnings into dairy expansion, we are building enduring family security back home.</p>
         <div class="blog-card-author">
           <img src="author_joseph.jpg" alt="Joseph Mugisha" />
           <div>

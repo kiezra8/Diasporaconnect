@@ -88,6 +88,55 @@ document.addEventListener('DOMContentLoaded', () => {
     revealEls.forEach((el) => el.classList.add('visible'));
   }
 
+  /* ── 2B. HERO CAROUSEL: SMOOTH AUTO ROTATION & DOT CONTROLS ── */
+  (function initHeroCarousel() {
+    const slides = document.querySelectorAll('.hero-slide');
+    const dots = document.querySelectorAll('.hero-dot');
+    if (slides.length <= 1) return;
+
+    let currentIndex = 0;
+    let timer = null;
+
+    function goToSlide(index) {
+      slides[currentIndex].classList.remove('active');
+      if (dots[currentIndex]) dots[currentIndex].classList.remove('active');
+
+      currentIndex = (index + slides.length) % slides.length;
+
+      slides[currentIndex].classList.add('active');
+      if (dots[currentIndex]) dots[currentIndex].classList.add('active');
+    }
+
+    function startAuto() {
+      stopAuto();
+      timer = setInterval(() => {
+        goToSlide(currentIndex + 1);
+      }, 5500);
+    }
+
+    function stopAuto() {
+      if (timer) clearInterval(timer);
+    }
+
+    dots.forEach((dot, idx) => {
+      dot.addEventListener('click', (e) => {
+        e.preventDefault();
+        goToSlide(idx);
+        startAuto();
+      });
+    });
+
+    const hero = document.getElementById('hero');
+    if (hero) {
+      hero.addEventListener('mouseenter', stopAuto);
+      hero.addEventListener('mouseleave', startAuto);
+      hero.addEventListener('touchstart', stopAuto, { passive: true });
+      hero.addEventListener('touchend', startAuto, { passive: true });
+    }
+
+    startAuto();
+  })();
+
   /* ── 3. VALUE CARDS STAGGER SEQUENCE ── */
   const valueCards = document.querySelectorAll('.value-card');
   if ('IntersectionObserver' in window && valueCards.length > 0) {
