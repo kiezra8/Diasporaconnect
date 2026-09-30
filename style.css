@@ -138,9 +138,9 @@ nav {
 /* ── HERO BANNER (STATIC, NO MOVEMENT, URL SPECIFIED) ── */
 #hero {
   position: relative;
-  height: 48vh;
-  min-height: 380px;
-  max-height: 460px;
+  height: 42vh;
+  min-height: 320px;
+  max-height: 390px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -340,11 +340,11 @@ section {
 }
 .section-heading {
   font-family: 'Cinzel', serif;
-  font-size: clamp(28px, 3.5vw, 50px);
+  font-size: clamp(22px, 2.8vw, 38px);
   font-weight: 700;
   line-height: 1.08;
   color: var(--text-heading);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .section-heading span {
   color: var(--gold);
@@ -486,22 +486,22 @@ section {
 
 /* ── MISSION SECTION (SOFT SLATE CANVAS) ── */
 #mission {
-  padding: 68px 0 68px;
+  padding: 36px 0 52px;
   background: var(--bg-surface);
 }
 .mission-header {
   text-align: center;
   max-width: 680px;
-  margin: 0 auto 55px;
+  margin: 0 auto 40px;
   padding: 0 24px;
 }
 .mission-intro {
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(18px, 2vw, 23px);
+  font-size: clamp(15px, 1.6vw, 19px);
   font-weight: 300;
-  line-height: 1.75;
+  line-height: 1.7;
   color: var(--text-body);
-  margin-top: 16px;
+  margin-top: 10px;
 }
 .mission-intro em {
   color: var(--gold-dark);
