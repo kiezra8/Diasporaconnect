@@ -12,16 +12,28 @@
   <meta http-equiv="X-Frame-Options" content="DENY" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
 
+  <!-- FAVICON & GOOGLE LOGO -->
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=3.2" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=3.2" />
+  <link rel="icon" type="image/jpeg" href="Diasporaconnectlogo.jpg?v=3.2" />
+  <link rel="shortcut icon" href="favicon.ico?v=3.2" />
+  <link rel="apple-touch-icon" href="Diasporaconnectlogo.jpg?v=3.2" />
+  <meta property="og:image" content="Diasporaconnectlogo.jpg" />
+  <meta property="og:title" content="Diaspora Blogs – Inspiring Stories | Diaspora Connect Farmers SACCO" />
+  <meta property="og:description" content="Inspiring stories from SACCO members across the globe investing in agriculture." />
+
   <!-- TYPOGRAPHY -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="style.css?v=3.1" />
+  <link rel="stylesheet" href="style.css?v=3.3" />
   <style>
     /* ── BLOG PAGE SPECIFIC STYLES ── */
     .blog-hero {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.90) 0%, rgba(30, 41, 59, 0.85) 60%, rgba(15, 23, 42, 0.92) 100%), url('blog_hero.jpg?v=3.2');
+      background-size: cover;
+      background-position: center;
       padding: 130px 24px 80px;
       text-align: center;
       position: relative;
@@ -94,13 +106,16 @@
     .blog-full-article {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 60px;
-      align-items: start;
-      margin-bottom: 90px;
-      padding-bottom: 90px;
-      border-bottom: 1px solid rgba(0,0,0,0.07);
+      gap: 50px;
+      align-items: center;
+      margin-bottom: 50px;
+      padding: 42px;
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.10);
+      border: 1px solid rgba(0,0,0,0.06);
     }
-    .blog-full-article:last-child { border-bottom: none; margin-bottom: 0; }
+    .blog-full-article:last-child { margin-bottom: 0; }
     .blog-full-article.reverse { direction: rtl; }
     .blog-full-article.reverse > * { direction: ltr; }
     .blog-full-img {
@@ -191,7 +206,7 @@
     }
   </style>
 </head>
-<body style="background-color:#ffffff; color:#334155;">
+<body style="background-color:#ffffff !important; color:#334155;">
 
 <!-- NAV -->
 <nav id="navbar">
@@ -219,13 +234,38 @@
 <section class="blog-articles-section">
   <div class="blog-articles-inner">
 
+    <!-- SPOTLIGHT ARTICLE -->
+    <article class="blog-full-article" id="article-spotlight">
+      <div class="blog-full-img">
+        <img src="blog_hero.jpg?v=3.2" alt="The Harvest of Collective Growth" loading="lazy" />
+      </div>
+      <div class="blog-full-text">
+        <span class="blog-full-date">September 28, 2026</span>
+        <span class="blog-full-category">Agriculture &middot; Collective Impact</span>
+        <h2 class="blog-full-title">From Diaspora Dreams to Fertile Fields: Transforming Agriculture Together</h2>
+        <p class="blog-full-excerpt">"Remittances used to vanish into daily living costs. With Diaspora Connect, they become permanent, productive farmland."</p>
+        <div class="blog-full-author">
+          <img src="author_amara.jpg" alt="Editorial Team" />
+          <div class="blog-full-author-info">
+            <span class="blog-full-author-name">Diaspora Connect Editorial</span>
+            <span class="blog-full-author-meta">Kampala, Uganda &middot; Special Report</span>
+          </div>
+        </div>
+        <div class="blog-full-body">
+          <p>Across the diaspora, millions of Ugandans work diligently with a shared dream: to contribute meaningfully back home while preparing a dependable future. Historically, remittances were fragmented — consumed by immediate expenses without building durable capital.</p>
+          <p>Diaspora Connect Farmers SACCO was founded to rewrite that equation. By pooling resources into registered, professionally managed agricultural developments, members convert small monthly savings into shares of productive commercial farming.</p>
+          <p>From grain cultivation in the central plains to high-yield horticulture, every acre under management represents member security, local job creation, and generational stability. As 2026 unfolds, our members are demonstrating that the fastest road home is the one built on productive soil.</p>
+        </div>
+      </div>
+    </article>
+
     <!-- ARTICLE 1 -->
-    <article class="blog-full-article" id="article-1">
+    <article class="blog-full-article reverse" id="article-1">
       <div class="blog-full-img">
         <img src="blog_saving_abroad.jpg" alt="Saving with Purpose from Abroad" loading="lazy" />
       </div>
       <div class="blog-full-text">
-        <span class="blog-full-date">September 15, 2024</span>
+        <span class="blog-full-date">September 24, 2026</span>
         <span class="blog-full-category">Finance &middot; Diaspora</span>
         <h2 class="blog-full-title">Saving with Purpose: How I Invest from the UK</h2>
         <p class="blog-full-excerpt">"I used to send money home without a plan. Now every shilling I transfer is working for me on a real farm."</p>
@@ -233,7 +273,7 @@
           <img src="author_amara.jpg" alt="Amara Nakato" />
           <div class="blog-full-author-info">
             <span class="blog-full-author-name">Amara Nakato</span>
-            <span class="blog-full-author-meta">London, UK &middot; SACCO Member since 2022</span>
+            <span class="blog-full-author-meta">London, UK &middot; SACCO Founding Member</span>
           </div>
         </div>
         <div class="blog-full-body">
@@ -245,12 +285,12 @@
     </article>
 
     <!-- ARTICLE 2 -->
-    <article class="blog-full-article reverse" id="article-2">
+    <article class="blog-full-article" id="article-2">
       <div class="blog-full-img">
         <img src="blog_farmland.jpg" alt="Land is the Real Wealth" loading="lazy" />
       </div>
       <div class="blog-full-text">
-        <span class="blog-full-date">August 3, 2024</span>
+        <span class="blog-full-date">September 14, 2026</span>
         <span class="blog-full-category">Agriculture &middot; Investment</span>
         <h2 class="blog-full-title">Land is the Real Wealth. Here is Why I Came Back.</h2>
         <p class="blog-full-excerpt">"After 12 years abroad, I realised the most valuable asset I could own was still back home — waiting."</p>
@@ -258,7 +298,7 @@
           <img src="author_david.jpg" alt="David Ochieng" />
           <div class="blog-full-author-info">
             <span class="blog-full-author-name">David Ochieng</span>
-            <span class="blog-full-author-meta">Toronto, Canada &middot; SACCO Member since 2021</span>
+            <span class="blog-full-author-meta">Toronto, Canada &middot; SACCO Diaspora Representative</span>
           </div>
         </div>
         <div class="blog-full-body">
@@ -270,12 +310,12 @@
     </article>
 
     <!-- ARTICLE 3 -->
-    <article class="blog-full-article" id="article-3">
+    <article class="blog-full-article reverse" id="article-3">
       <div class="blog-full-img">
-        <img src="teamwork_bg_1790772717521.jpg" alt="Stronger Together" loading="lazy" />
+        <img src="card_img_1.jpg?v=3.2" alt="Stronger Together" loading="lazy" />
       </div>
       <div class="blog-full-text">
-        <span class="blog-full-date">June 20, 2024</span>
+        <span class="blog-full-date">August 28, 2026</span>
         <span class="blog-full-category">Community &middot; Growth</span>
         <h2 class="blog-full-title">We Are Stronger Together: A Community Built on Trust</h2>
         <p class="blog-full-excerpt">"I didn't just join a SACCO. I joined a family that stretches from Kampala to Stockholm."</p>
@@ -283,7 +323,7 @@
           <img src="author_grace.jpg" alt="Grace Asiimwe" />
           <div class="blog-full-author-info">
             <span class="blog-full-author-name">Grace Asiimwe</span>
-            <span class="blog-full-author-meta">Stockholm, Sweden &middot; SACCO Member since 2023</span>
+            <span class="blog-full-author-meta">Stockholm, Sweden &middot; SACCO Active Investor</span>
           </div>
         </div>
         <div class="blog-full-body">
@@ -295,12 +335,12 @@
     </article>
 
     <!-- ARTICLE 4 -->
-    <article class="blog-full-article reverse" id="article-4">
+    <article class="blog-full-article" id="article-4">
       <div class="blog-full-img">
-        <img src="growth_bg_1790772729409.jpg" alt="Legacy Planning Through Agriculture" loading="lazy" />
+        <img src="card_img_3.jpg?v=3.2" alt="Legacy Planning Through Agriculture" loading="lazy" />
       </div>
       <div class="blog-full-text">
-        <span class="blog-full-date">May 11, 2024</span>
+        <span class="blog-full-date">August 15, 2026</span>
         <span class="blog-full-category">Legacy &middot; Planning</span>
         <h2 class="blog-full-title">Planting a Legacy: Agricultural Investment as Generational Wealth</h2>
         <p class="blog-full-excerpt">"My father left me nothing but wisdom. I am determined to leave my children something tangible."</p>
@@ -308,7 +348,7 @@
           <img src="author_joseph.jpg" alt="Joseph Mugisha" />
           <div class="blog-full-author-info">
             <span class="blog-full-author-name">Joseph Mugisha</span>
-            <span class="blog-full-author-meta">Dubai, UAE &middot; SACCO Member since 2022</span>
+            <span class="blog-full-author-meta">Dubai, UAE &middot; SACCO Agricultural Partner</span>
           </div>
         </div>
         <div class="blog-full-body">
@@ -324,7 +364,7 @@
 
 <!-- FOOTER -->
 <footer>
-  <p>&copy; 2024 <span>Diaspora Connect Farmers SACCO</span> &middot; Come Home. Invest. Grow Together.</p>
+  <p>&copy; 2026 <span>Diaspora Connect Farmers SACCO</span> &middot; Come Home. Invest. Grow Together.</p>
 </footer>
 
 <!-- CHAT FAB -->
@@ -351,6 +391,6 @@
   </div>
 </div>
 
-<script src="script.js?v=3.1"></script>
+<script src="script.js?v=3.3"></script>
 </body>
 </html>

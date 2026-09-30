@@ -60,7 +60,11 @@ body {
 .bg-productivity { background-image: url('productivity_bg_1790772786489.jpg'); }
 .bg-legacy       { background-image: url('legacy_bg_1790772823843.jpg'); }
 .bg-integrity    { background-image: url('integrity_bg_1790776028154.jpg'); }
-.bg-hero         { background-image: url('hero_carousel.jpg'); }
+.bg-hero         { background-image: url('hero_carousel.jpg?v=3.2'); }
+.bg-pin-1        { background-image: url('card_img_1.jpg?v=3.2'); }
+.bg-pin-2        { background-image: url('card_img_2.jpg?v=3.2'); }
+.bg-pin-3        { background-image: url('card_img_3.jpg?v=3.2'); }
+.bg-blog-hero    { background-image: url('blog_hero.jpg?v=3.2'); }
 
 /* ── PARTICLES CANVAS (SUBTLE ELEGANT DUST) ── */
 #particles-canvas {
@@ -146,7 +150,7 @@ nav {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background-image: url('hero_carousel.jpg');
+  background-image: url('hero_carousel.jpg?v=3.2');
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -1221,6 +1225,89 @@ footer span {
 .blogs-view-all:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 32px rgba(184,134,11,0.4);
+}
+
+/* ── BLOG FEATURED SPOTLIGHT CARD ── */
+.blog-spotlight {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 32px;
+  background: #ffffff;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.10);
+  max-width: 1360px;
+  margin: 0 auto 36px;
+  align-items: center;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+.blog-spotlight:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15);
+}
+.blog-spotlight-img {
+  position: relative;
+  height: 100%;
+  min-height: 290px;
+  overflow: hidden;
+}
+.blog-spotlight-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.7s ease;
+}
+.blog-spotlight:hover .blog-spotlight-img img {
+  transform: scale(1.05);
+}
+.spotlight-badge {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  color: #ffffff;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.blog-spotlight-content {
+  padding: 28px 34px 28px 10px;
+  display: flex;
+  flex-direction: column;
+}
+.blog-spotlight-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(19px, 2.1vw, 26px);
+  font-weight: 700;
+  color: var(--text-heading);
+  line-height: 1.25;
+  margin: 8px 0 12px;
+}
+.blog-spotlight-excerpt {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+@media (max-width: 900px) {
+  .blog-spotlight {
+    grid-template-columns: 1fr;
+    margin: 0 20px 30px;
+  }
+  .blog-spotlight-content {
+    padding: 24px 22px 28px;
+  }
+  .blog-spotlight-img {
+    height: 220px;
+    min-height: auto;
+  }
 }
 
 /* ── RESPONSIVE DESIGN ── */
