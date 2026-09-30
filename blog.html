@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diaspora Blogs – Inspiring Stories | Diaspora Connect Farmers SACCO</title>
+  <meta name="description" content="Read inspiring stories and perspectives from Diaspora Connect Farmers SACCO members across the globe. Their journeys, investments, and visions for home." />
+
+  <!-- SECURITY HEADERS -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+  <!-- TYPOGRAPHY -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css?v=3.1" />
+  <style>
+    /* ── BLOG PAGE SPECIFIC STYLES ── */
+    .blog-hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
+      padding: 130px 24px 80px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .blog-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 60%, rgba(184,134,11,0.08) 0%, transparent 70%);
+    }
+    .blog-hero-label {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 6px;
+      color: var(--gold-light);
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 16px;
+    }
+    .blog-hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(28px, 4vw, 52px);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .blog-hero-title span { color: var(--gold-light); }
+    .blog-hero-sub {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(16px, 1.8vw, 21px);
+      font-style: italic;
+      font-weight: 300;
+      color: rgba(255,255,255,0.75);
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.7;
+      position: relative;
+    }
+    /* Back button */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      position: absolute;
+      top: 88px;
+      left: 40px;
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .back-btn:hover { color: var(--gold-light); }
+    .back-btn svg { width:16px; height:16px; fill:currentColor; }
+
+    /* Blog articles grid */
+    .blog-articles-section {
+      background: #ffffff;
+      padding: 80px 0;
+    }
+    .blog-articles-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 30px;
+    }
+    .blog-full-article {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: start;
+      margin-bottom: 90px;
+      padding-bottom: 90px;
+      border-bottom: 1px solid rgba(0,0,0,0.07);
+    }
+    .blog-full-article:last-child { border-bottom: none; margin-bottom: 0; }
+    .blog-full-article.reverse { direction: rtl; }
+    .blog-full-article.reverse > * { direction: ltr; }
+    .blog-full-img {
+      border-radius: 20px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+    }
+    .blog-full-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.8s ease;
+    }
+    .blog-full-img:hover img { transform: scale(1.04); }
+    .blog-full-text { padding: 10px 0; }
+    .blog-full-category {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .blog-full-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(22px, 2.5vw, 32px);
+      font-weight: 700;
+      color: var(--text-heading);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+    .blog-full-excerpt {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(17px, 1.6vw, 20px);
+      font-weight: 300;
+      line-height: 1.75;
+      color: var(--text-body);
+      margin-bottom: 20px;
+    }
+    .blog-full-body {
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+    .blog-full-body p { margin-bottom: 14px; }
+    .blog-full-author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .blog-full-author img {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--gold-light);
+    }
+    .blog-full-author-info { display: flex; flex-direction: column; }
+    .blog-full-author-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-heading);
+    }
+    .blog-full-author-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .blog-full-date {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      display: block;
+    }
+    @media (max-width: 768px) {
+      .blog-full-article { grid-template-columns: 1fr; gap: 28px; }
+      .blog-full-article.reverse { direction: ltr; }
+      .back-btn { top: 78px; left: 18px; }
+      .blog-articles-inner { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body style="background-color:#ffffff; color:#334155;">
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-logo">
+    <img src="Diasporaconnectlogo.jpg" alt="Diaspora Connect Farmers SACCO" width="46" height="46" />
+    <div class="nav-brand">
+      <span class="top">Diaspora Connect</span>
+      <span class="bottom">Farmers SACCO</span>
+    </div>
+  </div>
+</nav>
+
+<!-- BLOG HERO -->
+<section class="blog-hero">
+  <a href="index.html" class="back-btn">
+    <svg viewBox="0 0 24 24"><path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg>
+    Back Home
+  </a>
+  <span class="blog-hero-label">Member Stories</span>
+  <h1 class="blog-hero-title">Diaspora <span>Blogs</span></h1>
+  <p class="blog-hero-sub">Inspiring stories from members across the globe — their journeys, investments, and visions for home.</p>
+</section>
+
+<!-- FULL ARTICLES -->
+<section class="blog-articles-section">
+  <div class="blog-articles-inner">
+
+    <!-- ARTICLE 1 -->
+    <article class="blog-full-article" id="article-1">
+      <div class="blog-full-img">
+        <img src="blog_saving_abroad.jpg" alt="Saving with Purpose from Abroad" loading="lazy" />
+      </div>
+      <div class="blog-full-text">
+        <span class="blog-full-date">September 15, 2024</span>
+        <span class="blog-full-category">Finance &middot; Diaspora</span>
+        <h2 class="blog-full-title">Saving with Purpose: How I Invest from the UK</h2>
+        <p class="blog-full-excerpt">"I used to send money home without a plan. Now every shilling I transfer is working for me on a real farm."</p>
+        <div class="blog-full-author">
+          <img src="author_amara.jpg" alt="Amara Nakato" />
+          <div class="blog-full-author-info">
+            <span class="blog-full-author-name">Amara Nakato</span>
+            <span class="blog-full-author-meta">London, UK &middot; SACCO Member since 2022</span>
+          </div>
+        </div>
+        <div class="blog-full-body">
+          <p>For seven years I lived in the UK sending money home every month — school fees, hospital bills, building materials. It felt like I was always catching up. Then a friend introduced me to Diaspora Connect Farmers SACCO and the question changed from "how much can I send?" to "what am I building?"</p>
+          <p>I started with a modest monthly saving of £80. Within 18 months, my contributions had pooled with other members into a productive maize farm in Luwero. The harvest report I received last season was the proudest moment of my life since leaving Uganda.</p>
+          <p>The SACCO gave me structure, accountability, and most importantly — belonging. I am still in London, but my roots are growing stronger in Ugandan soil every single day. To every diaspora member still on the fence: your money doesn't have to sleep. Put it to work where it matters most.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- ARTICLE 2 -->
+    <article class="blog-full-article reverse" id="article-2">
+      <div class="blog-full-img">
+        <img src="blog_farmland.jpg" alt="Land is the Real Wealth" loading="lazy" />
+      </div>
+      <div class="blog-full-text">
+        <span class="blog-full-date">August 3, 2024</span>
+        <span class="blog-full-category">Agriculture &middot; Investment</span>
+        <h2 class="blog-full-title">Land is the Real Wealth. Here is Why I Came Back.</h2>
+        <p class="blog-full-excerpt">"After 12 years abroad, I realised the most valuable asset I could own was still back home — waiting."</p>
+        <div class="blog-full-author">
+          <img src="author_david.jpg" alt="David Ochieng" />
+          <div class="blog-full-author-info">
+            <span class="blog-full-author-name">David Ochieng</span>
+            <span class="blog-full-author-meta">Toronto, Canada &middot; SACCO Member since 2021</span>
+          </div>
+        </div>
+        <div class="blog-full-body">
+          <p>I spent 12 years in Canada working in finance. I understood investments, markets, and risk better than most. Yet somehow I never connected that knowledge to the most fertile land on earth — the land my grandfather farmed in Mbale, Uganda.</p>
+          <p>Joining the SACCO was the intellectual decision that finally matched my emotional one. Through the collective, I co-own farmland without needing to be physically present. Professional farm managers handle operations, and I receive quarterly updates that would impress any investor.</p>
+          <p>The yields have outperformed my Canadian RRSP contributions two years running. But beyond the numbers, there is something profound about knowing your investment feeds a real community, employs real people, and builds a legacy for your children to inherit. That is the kind of wealth no stock market can replicate.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- ARTICLE 3 -->
+    <article class="blog-full-article" id="article-3">
+      <div class="blog-full-img">
+        <img src="teamwork_bg_1790772717521.jpg" alt="Stronger Together" loading="lazy" />
+      </div>
+      <div class="blog-full-text">
+        <span class="blog-full-date">June 20, 2024</span>
+        <span class="blog-full-category">Community &middot; Growth</span>
+        <h2 class="blog-full-title">We Are Stronger Together: A Community Built on Trust</h2>
+        <p class="blog-full-excerpt">"I didn't just join a SACCO. I joined a family that stretches from Kampala to Stockholm."</p>
+        <div class="blog-full-author">
+          <img src="author_grace.jpg" alt="Grace Asiimwe" />
+          <div class="blog-full-author-info">
+            <span class="blog-full-author-name">Grace Asiimwe</span>
+            <span class="blog-full-author-meta">Stockholm, Sweden &middot; SACCO Member since 2023</span>
+          </div>
+        </div>
+        <div class="blog-full-body">
+          <p>When you move abroad you carry two worlds inside you — the one you live in and the one you left behind. For years I felt the distance as a wound. Diaspora Connect Farmers SACCO became the bridge that healed it.</p>
+          <p>What struck me first was the transparency. Every contribution is accounted for. Every farm update is documented. Every member's voice carries weight. In a world of financial uncertainty, there is something revolutionary about a savings community built entirely on trust.</p>
+          <p>I have watched my savings grow steadily, yes. But I have also watched my community grow — new members joining monthly, new farms coming under management, new dreams being planted alongside real crops. We are not just saving money. We are saving each other, and building something our grandchildren will point to with pride.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- ARTICLE 4 -->
+    <article class="blog-full-article reverse" id="article-4">
+      <div class="blog-full-img">
+        <img src="growth_bg_1790772729409.jpg" alt="Legacy Planning Through Agriculture" loading="lazy" />
+      </div>
+      <div class="blog-full-text">
+        <span class="blog-full-date">May 11, 2024</span>
+        <span class="blog-full-category">Legacy &middot; Planning</span>
+        <h2 class="blog-full-title">Planting a Legacy: Agricultural Investment as Generational Wealth</h2>
+        <p class="blog-full-excerpt">"My father left me nothing but wisdom. I am determined to leave my children something tangible."</p>
+        <div class="blog-full-author">
+          <img src="author_joseph.jpg" alt="Joseph Mugisha" />
+          <div class="blog-full-author-info">
+            <span class="blog-full-author-name">Joseph Mugisha</span>
+            <span class="blog-full-author-meta">Dubai, UAE &middot; SACCO Member since 2022</span>
+          </div>
+        </div>
+        <div class="blog-full-body">
+          <p>I grew up watching my father work tirelessly. He was wise, kind, and generous — but like many of his generation, he left no financial legacy. Not land, not savings, not investments. Just memories and lessons. I decided early on that I would do differently.</p>
+          <p>Working in Dubai gave me the income. Diaspora Connect Farmers SACCO gave me the vehicle. Through regular contributions, I have accumulated a stake in two productive farm plots. They generate income now, and by the time my children are adults, they will be substantial assets.</p>
+          <p>Agricultural land in Uganda has historically appreciated faster than most asset classes. Combined with productive farm yields and the collective strength of the SACCO, the returns are compelling. But the real return is knowing my children will have options I never had. That is the legacy I am planting, one harvest at a time.</p>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>&copy; 2024 <span>Diaspora Connect Farmers SACCO</span> &middot; Come Home. Invest. Grow Together.</p>
+</footer>
+
+<!-- CHAT FAB -->
+<div id="chat-fab">
+  <div class="fab-menu hidden" id="fab-menu">
+    <a href="https://wa.me/256703624155" target="_blank" rel="noopener noreferrer" class="fab-item fab-whatsapp">
+      <div class="fab-icon-circle">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+      </div>
+      WhatsApp Us
+    </a>
+    <a href="tel:+256703624155" class="fab-item fab-call">
+      <div class="fab-icon-circle">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+      </div>
+      Call Us
+    </a>
+  </div>
+  <div class="fab-trigger-wrap">
+    <button class="fab-trigger" id="fab-trigger" aria-label="Contact us" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+    </button>
+    <span class="fab-label">Chat</span>
+  </div>
+</div>
+
+<script src="script.js?v=3.1"></script>
+</body>
+</html>

@@ -202,4 +202,100 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  /* ── 8. FARM VIDEO CAROUSEL: DRAG-TO-SCROLL + AUTO-PLAY + DOTS ── */
+  (function initFarmCarousel() {
+    const wrap  = document.querySelector('.farm-track-wrap');
+    const track = document.getElementById('farm-track');
+    const dotsContainer = document.getElementById('farm-dots');
+    if (!wrap || !track) return;
+
+    const cards = track.querySelectorAll('.farm-vid-card');
+    const videos = track.querySelectorAll('.farm-video');
+    const total  = cards.length;
+
+    // Build dot indicators
+    if (dotsContainer) {
+      for (let i = 0; i < total; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'farm-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('role', 'button');
+        dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+        dot.addEventListener('click', () => {
+          const cardW = cards[0].offsetWidth + 20;
+          wrap.scrollTo({ left: i * cardW, behavior: 'smooth' });
+        });
+        dotsContainer.appendChild(dot);
+      }
+    }
+
+    // Update active dot on scroll
+    wrap.addEventListener('scroll', () => {
+      if (!dotsContainer) return;
+      const cardW = cards[0] ? cards[0].offsetWidth + 20 : 320;
+      const idx   = Math.round(wrap.scrollLeft / cardW);
+      dotsContainer.querySelectorAll('.farm-dot').forEach((d, i) => {
+        d.classList.toggle('active', i === idx);
+      });
+    }, { passive: true });
+
+    // Drag to scroll (desktop)
+    let isDown = false, startX = 0, scrollLeft = 0;
+    wrap.addEventListener('mousedown', (e) => {
+      isDown = true;
+      wrap.classList.add('grabbing');
+      startX = e.pageX - wrap.offsetLeft;
+      scrollLeft = wrap.scrollLeft;
+    });
+    wrap.addEventListener('mouseleave', () => { isDown = false; wrap.classList.remove('grabbing'); });
+    wrap.addEventListener('mouseup',    () => { isDown = false; wrap.classList.remove('grabbing'); });
+    wrap.addEventListener('mousemove',  (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - wrap.offsetLeft;
+      wrap.scrollLeft = scrollLeft - (x - startX) * 1.5;
+    });
+
+    // Auto-play video when card enters viewport
+    if ('IntersectionObserver' in window) {
+      const vidObs = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const vid = entry.target.querySelector('.farm-video');
+          if (!vid) return;
+          if (entry.isIntersecting) {
+            vid.play().catch(() => {});
+          } else {
+            vid.pause();
+          }
+        });
+      }, { threshold: 0.4 });
+
+      cards.forEach((card) => vidObs.observe(card));
+    }
+  })();
+
+  /* ── 9. BLOG CARDS STAGGER ── */
+  const blogCards = document.querySelectorAll('.blog-card');
+  if ('IntersectionObserver' in window && blogCards.length > 0) {
+    const blogObs = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const idx = parseInt(entry.target.dataset.bidx || '0', 10);
+          setTimeout(() => {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+          }, 80 * idx);
+          blogObs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08 });
+
+    blogCards.forEach((c, i) => {
+      c.dataset.bidx = String(i);
+      c.style.opacity = '0';
+      c.style.transform = 'translateY(24px)';
+      c.style.transition = 'opacity 0.65s ease, transform 0.65s ease';
+      blogObs.observe(c);
+    });
+  }
+
 });
