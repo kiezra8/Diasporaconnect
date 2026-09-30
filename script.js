@@ -1,19 +1,19 @@
 /**
  * Diaspora Connect Farmers SACCO - Interactive & Visual Engine
- * Secure, modular, and optimized for performance & protection.
+ * Clean, lightweight, and static hero layout.
  */
 'use strict';
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  /* ── 1. PARTICLES BACKGROUND ── */
+  /* ── 1. SUBTLE PARTICLES BACKGROUND ── */
   (function initParticles() {
     const canvas = document.getElementById('particles-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const count = 52;
+    const count = 40;
     const particles = [];
 
     function resize() {
@@ -34,13 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
       reset() {
         this.x = rnd(0, canvas.width);
         this.y = rnd(0, canvas.height);
-        this.r = rnd(0.8, 3);
-        this.vx = rnd(-0.22, 0.22);
-        this.vy = rnd(-0.45, -0.08);
-        this.alpha = rnd(0.08, 0.50);
-        this.color = Math.random() > 0.55
-          ? `rgba(212,175,55,${this.alpha})`
-          : `rgba(240,243,250,${this.alpha * 0.65})`;
+        this.r = rnd(0.8, 2.6);
+        this.vx = rnd(-0.18, 0.18);
+        this.vy = rnd(-0.35, -0.06);
+        this.alpha = rnd(0.08, 0.40);
+        this.color = Math.random() > 0.5
+          ? `rgba(184,134,11,${this.alpha})`
+          : `rgba(148,163,184,${this.alpha * 0.7})`;
       }
       update() {
         this.x += this.vx;
@@ -72,20 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     animate();
   })();
 
-  /* ── 2. HERO ZOOM & PARALLAX EFFECT ── */
-  const heroBg = document.getElementById('hero-bg');
-  if (heroBg) {
-    setTimeout(() => {
-      heroBg.classList.add('zoomed');
-    }, 80);
-
-    window.addEventListener('scroll', () => {
-      const y = window.pageYOffset;
-      heroBg.style.transform = `scale(1) translateY(${y * 0.28}px)`;
-    }, { passive: true });
-  }
-
-  /* ── 3. SCROLL REVEAL OBSERVER ── */
+  /* ── 2. SCROLL REVEAL OBSERVER ── */
   const revealEls = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
   if ('IntersectionObserver' in window && revealEls.length > 0) {
     const observer = new IntersectionObserver((entries) => {
@@ -94,14 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
           e.target.classList.add('visible');
         }
       });
-    }, { threshold: 0.10, rootMargin: '0px 0px -50px 0px' });
+    }, { threshold: 0.10, rootMargin: '0px 0px -40px 0px' });
 
     revealEls.forEach((el) => observer.observe(el));
   } else {
     revealEls.forEach((el) => el.classList.add('visible'));
   }
 
-  /* ── 4. VALUE CARDS STAGGER SEQUENCE ── */
+  /* ── 3. VALUE CARDS STAGGER SEQUENCE ── */
   const valueCards = document.querySelectorAll('.value-card');
   if ('IntersectionObserver' in window && valueCards.length > 0) {
     const cardObs = new IntersectionObserver((entries) => {
@@ -111,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
           setTimeout(() => {
             entry.target.style.opacity = '1';
             entry.target.style.transform = 'translateY(0)';
-          }, 70 * idx);
+          }, 65 * idx);
           cardObs.unobserve(entry.target);
         }
       });
@@ -120,13 +107,13 @@ document.addEventListener('DOMContentLoaded', () => {
     valueCards.forEach((c, i) => {
       c.dataset.index = String(i);
       c.style.opacity = '0';
-      c.style.transform = 'translateY(28px)';
-      c.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
+      c.style.transform = 'translateY(24px)';
+      c.style.transition = 'opacity 0.65s ease, transform 0.65s ease';
       cardObs.observe(c);
     });
   }
 
-  /* ── 5. MISSION CARDS STAGGER SEQUENCE ── */
+  /* ── 4. MISSION CARDS STAGGER SEQUENCE ── */
   const missionCards = document.querySelectorAll('.mission-card');
   if ('IntersectionObserver' in window && missionCards.length > 0) {
     const missionObs = new IntersectionObserver((entries) => {
@@ -136,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
           setTimeout(() => {
             entry.target.style.opacity = '1';
             entry.target.style.transform = 'translateY(0)';
-          }, 120 * idx);
+          }, 100 * idx);
           missionObs.unobserve(entry.target);
         }
       });
@@ -145,13 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
     missionCards.forEach((c, i) => {
       c.dataset.mindex = String(i);
       c.style.opacity = '0';
-      c.style.transform = 'translateY(32px)';
-      c.style.transition = 'opacity 0.75s ease, transform 0.75s ease';
+      c.style.transform = 'translateY(28px)';
+      c.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
       missionObs.observe(c);
     });
   }
 
-  /* ── 6. VISION CARDS STAGGER SEQUENCE ── */
+  /* ── 5. VISION CARDS STAGGER SEQUENCE ── */
   const visionCards = document.querySelectorAll('.vision-card');
   if ('IntersectionObserver' in window && visionCards.length > 0) {
     const visionObs = new IntersectionObserver((entries) => {
@@ -161,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
           setTimeout(() => {
             entry.target.style.opacity = '1';
             entry.target.style.transform = 'translateY(0)';
-          }, 110 * idx);
+          }, 100 * idx);
           visionObs.unobserve(entry.target);
         }
       });
@@ -170,23 +157,27 @@ document.addEventListener('DOMContentLoaded', () => {
     visionCards.forEach((c, i) => {
       c.dataset.vindex = String(i);
       c.style.opacity = '0';
-      c.style.transform = 'translateY(32px)';
-      c.style.transition = 'opacity 0.75s ease, transform 0.75s ease';
+      c.style.transform = 'translateY(28px)';
+      c.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
       visionObs.observe(c);
     });
   }
 
-  /* ── 7. NAVBAR ADAPTIVE SCROLL EFFECT ── */
+  /* ── 6. NAVBAR SCROLL EFFECT (WHITE THEME) ── */
   const navbar = document.getElementById('navbar');
   if (navbar) {
     window.addEventListener('scroll', () => {
-      navbar.style.background = window.scrollY > 70
-        ? 'rgba(4,12,7,0.94)'
-        : 'rgba(8,22,14,0.72)';
+      if (window.scrollY > 30) {
+        navbar.style.background = 'rgba(255, 255, 255, 0.98)';
+        navbar.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.07)';
+      } else {
+        navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+        navbar.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)';
+      }
     }, { passive: true });
   }
 
-  /* ── 8. FLOATING WHATSAPP / CALL TOGGLE ── */
+  /* ── 7. FLOATING WHATSAPP / CALL TOGGLE (ON RIGHT) ── */
   const fabTrigger = document.getElementById('fab-trigger');
   const fabMenu    = document.getElementById('fab-menu');
   if (fabTrigger && fabMenu) {
@@ -207,17 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!fabMenu.classList.contains('hidden') && !e.target.closest('#chat-fab')) {
         fabMenu.classList.add('hidden');
         fabTrigger.classList.remove('open');
-      }
-    });
-  }
-
-  /* ── 9. NAV CTA BUTTON (NO INLINE JS) ── */
-  const joinBtn = document.getElementById('join-cta-btn');
-  if (joinBtn) {
-    joinBtn.addEventListener('click', () => {
-      const missionSection = document.getElementById('mission');
-      if (missionSection) {
-        missionSection.scrollIntoView({ behavior: 'smooth' });
       }
     });
   }
