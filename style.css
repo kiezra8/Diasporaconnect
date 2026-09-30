@@ -60,11 +60,7 @@ body {
 .bg-productivity { background-image: url('productivity_bg_1790772786489.jpg'); }
 .bg-legacy       { background-image: url('legacy_bg_1790772823843.jpg'); }
 .bg-integrity    { background-image: url('integrity_bg_1790776028154.jpg'); }
-.bg-hero         { background-image: url('hero_carousel.jpg?v=3.2'); }
-.bg-pin-1        { background-image: url('card_img_1.jpg?v=3.2'); }
-.bg-pin-2        { background-image: url('card_img_2.jpg?v=3.2'); }
-.bg-pin-3        { background-image: url('card_img_3.jpg?v=3.2'); }
-.bg-blog-hero    { background-image: url('blog_hero.jpg?v=3.2'); }
+.bg-hero         { background-image: url('hero_carousel.jpg'); }
 
 /* ── PARTICLES CANVAS (SUBTLE ELEGANT DUST) ── */
 #particles-canvas {
@@ -135,46 +131,44 @@ nav {
   gap: 20px;
 }
 
-/* ── HERO BANNER (STATIC, CLEAR BRIGHT IMAGE, NO DARK BACKGROUND) ── */
+/* ── HERO BANNER (STATIC, NO MOVEMENT, URL SPECIFIED) ── */
 #hero {
   position: relative;
-  height: 46vh;
-  min-height: 350px;
-  max-height: 430px;
+  height: 48vh;
+  min-height: 380px;
+  max-height: 460px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   margin-top: 74px; /* offset fixed nav */
-  margin-bottom: 0;
 }
 .hero-bg {
   position: absolute;
   inset: 0;
-  background-image: url('hero_carousel.jpg?v=3.4');
+  background-image: url('hero_carousel.jpg');
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
   transform: none !important;
   transition: none !important;
-  filter: none !important;
-  opacity: 1 !important;
 }
 .hero-overlay {
-  display: none !important;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.70) 0%,
+    rgba(15, 23, 42, 0.50) 50%,
+    rgba(15, 23, 42, 0.78) 100%
+  );
 }
 .hero-content {
   position: relative;
   z-index: 2;
   text-align: center;
-  padding: 20px 32px;
-  max-width: 760px;
-  background: rgba(15, 23, 42, 0.40);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.25);
+  padding: 0 24px;
+  max-width: 820px;
 }
 .hero-eyebrow {
   font-family: 'Cinzel', serif;
@@ -313,13 +307,13 @@ section {
 
 /* ── VALUES SECTION (WHITE BACKGROUND, RICH ELEVATED CARDS) ── */
 #values {
-  padding: 38px 0 46px;
+  padding: 65px 0 70px;
   background: #ffffff;
 }
 .values-header {
   text-align: center;
   max-width: 640px;
-  margin: 0 auto 28px;
+  margin: 0 auto 60px;
   padding: 0 24px;
 }
 .values-sub {
@@ -436,24 +430,24 @@ section {
   width: 50px;
 }
 
-/* ── MISSION SECTION (FIRST SECTION, TIGHT SPACING) ── */
+/* ── MISSION SECTION (SOFT SLATE CANVAS) ── */
 #mission {
-  padding: 30px 0 42px;
+  padding: 68px 0 68px;
   background: var(--bg-surface);
 }
 .mission-header {
   text-align: center;
   max-width: 680px;
-  margin: 0 auto 24px;
+  margin: 0 auto 55px;
   padding: 0 24px;
 }
 .mission-intro {
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(17px, 1.8vw, 21px);
+  font-size: clamp(18px, 2vw, 23px);
   font-weight: 300;
-  line-height: 1.65;
+  line-height: 1.75;
   color: var(--text-body);
-  margin-top: 10px;
+  margin-top: 16px;
 }
 .mission-intro em {
   color: var(--gold-dark);
@@ -1227,89 +1221,6 @@ footer span {
 .blogs-view-all:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 32px rgba(184,134,11,0.4);
-}
-
-/* ── BLOG FEATURED SPOTLIGHT CARD ── */
-.blog-spotlight {
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  gap: 32px;
-  background: #ffffff;
-  border-radius: 24px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.10);
-  max-width: 1360px;
-  margin: 0 auto 36px;
-  align-items: center;
-  transition: transform 0.35s ease, box-shadow 0.35s ease;
-}
-.blog-spotlight:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15);
-}
-.blog-spotlight-img {
-  position: relative;
-  height: 100%;
-  min-height: 290px;
-  overflow: hidden;
-}
-.blog-spotlight-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.7s ease;
-}
-.blog-spotlight:hover .blog-spotlight-img img {
-  transform: scale(1.05);
-}
-.spotlight-badge {
-  position: absolute;
-  top: 18px;
-  left: 18px;
-  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-  color: #ffffff;
-  font-family: 'Cinzel', serif;
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-}
-.blog-spotlight-content {
-  padding: 28px 34px 28px 10px;
-  display: flex;
-  flex-direction: column;
-}
-.blog-spotlight-title {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(19px, 2.1vw, 26px);
-  font-weight: 700;
-  color: var(--text-heading);
-  line-height: 1.25;
-  margin: 8px 0 12px;
-}
-.blog-spotlight-excerpt {
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--text-muted);
-  margin-bottom: 20px;
-}
-@media (max-width: 900px) {
-  .blog-spotlight {
-    grid-template-columns: 1fr;
-    margin: 0 20px 30px;
-  }
-  .blog-spotlight-content {
-    padding: 24px 22px 28px;
-  }
-  .blog-spotlight-img {
-    height: 220px;
-    min-height: auto;
-  }
 }
 
 /* ── RESPONSIVE DESIGN ── */
