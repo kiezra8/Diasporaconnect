@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- ══ PRIMARY SEO ══ -->
+  <title>About Us | Diaspora Connect Farmers SACCO Uganda</title>
+  <meta name="description" content="Learn about Diaspora Connect Farmers SACCO: our board members, our cooperative heritage, dairy farmland operations, and collective financial mission for Ugandans worldwide." />
+  <meta name="keywords" content="About Diaspora Connect, Diaspora Connect founders, Diaspora Connect board members, Nyanzi Edrine, Namulindwa Mary Flavia, Helera John Bahati, Miriam Halera, Ssanyu Phiona, Uganda farmers SACCO leadership, diaspora SACCO Uganda" />
+  <meta name="author" content="Diaspora Connect Farmers SACCO" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- ══ CANONICAL ══ -->
+  <link rel="canonical" href="https://diasporaconnectt.com/about" />
+
+  <!-- ══ OPEN GRAPH ══ -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Diaspora Connect Farmers SACCO" />
+  <meta property="og:title" content="About Us – Founders &amp; SACCO Heritage | Diaspora Connect" />
+  <meta property="og:description" content="Meet our 5 founders and discover Uganda's premier agricultural savings and credit cooperative for the diaspora." />
+  <meta property="og:url" content="https://diasporaconnectt.com/about" />
+  <meta property="og:image" content="https://diasporaconnectt.com/images/card_img_3.jpg" />
+  <meta property="og:locale" content="en_UG" />
+
+  <!-- ══ SECURITY HEADERS ══ -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+  <!-- ══ FAVICON (Single File) ══ -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+  <!-- ══ STRUCTURED DATA (JSON-LD) ══ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "AboutPage",
+        "@id": "https://diasporaconnectt.com/about#webpage",
+        "url": "https://diasporaconnectt.com/about",
+        "name": "About Diaspora Connect Farmers SACCO & Our Founders",
+        "description": "Background, history, and founders of Diaspora Connect Farmers SACCO Uganda.",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://diasporaconnectt.com/" },
+            { "@type": "ListItem", "position": 2, "name": "About Us", "item": "https://diasporaconnectt.com/about" }
+          ]
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- ══ TYPOGRAPHY & STYLES ══ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=4.2" />
+
+  <style>
+    .page-hero {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.88) 60%, rgba(15, 23, 42, 0.95) 100%), url('images/card_img_3.jpg');
+      background-size: cover;
+      background-position: center;
+      padding: 130px 24px 70px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin-top: 74px;
+    }
+    .page-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 60%, rgba(184, 134, 11, 0.12) 0%, transparent 70%);
+    }
+    .page-hero-label {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 5px;
+      color: var(--gold-light);
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 14px;
+    }
+    .page-hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .page-hero-title span { color: var(--gold-light); }
+    .page-hero-sub {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(17px, 1.8vw, 22px);
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.82);
+      max-width: 660px;
+      margin: 0 auto;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .about-content-wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* About Section */
+    .about-intro-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 48px;
+      align-items: center;
+      margin-bottom: 70px;
+    }
+    .about-intro-text h2 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(24px, 2.5vw, 34px);
+      color: var(--text-heading);
+      margin-bottom: 16px;
+      line-height: 1.25;
+    }
+    .about-intro-text p {
+      font-size: 15px;
+      color: var(--text-body);
+      line-height: 1.8;
+      margin-bottom: 18px;
+    }
+
+    .about-card-badge {
+      background: var(--bg-surface);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+    }
+    .badge-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .badge-item:last-child { margin-bottom: 0; }
+    .badge-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--gold-pale);
+      color: var(--gold-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .badge-icon svg { width: 20px; height: 20px; fill: currentColor; }
+    .badge-desc h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      color: var(--text-heading);
+      margin-bottom: 4px;
+    }
+    .badge-desc p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Founders Section */
+    .founders-header {
+      text-align: center;
+      margin-bottom: 44px;
+    }
+    .founders-header h2 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(26px, 3vw, 38px);
+      color: var(--text-heading);
+      margin-bottom: 10px;
+    }
+    .founders-header p {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18px;
+      font-style: italic;
+      color: var(--text-muted);
+    }
+
+    .founders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 24px;
+      margin-bottom: 60px;
+    }
+    .founder-card {
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .founder-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 30px rgba(184, 134, 11, 0.15);
+      border-color: rgba(184, 134, 11, 0.4);
+    }
+    .founder-img-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      background: #0f172a;
+    }
+    .founder-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.5s ease;
+    }
+    .founder-card:hover .founder-img-wrap img {
+      transform: scale(1.05);
+    }
+    .founder-info {
+      padding: 20px 16px 22px;
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+    .founder-name {
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-bottom: 4px;
+    }
+    .founder-role {
+      font-size: 11.5px;
+      color: var(--gold-dark);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .founder-bio {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    @media (max-width: 900px) {
+      .about-intro-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+      .founders-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+      .page-hero {
+        padding: 110px 18px 50px;
+        margin-top: 68px;
+      }
+      .about-content-wrap {
+        padding: 40px 18px 60px;
+      }
+    }
+    @media (max-width: 480px) {
+      .founders-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body style="background-color: #ffffff !important; color: #334155;">
+
+<!-- ─ NAVIGATION ─ -->
+<nav id="navbar">
+  <a href="index.html" class="nav-logo" style="text-decoration:none;color:inherit;" title="Diaspora Connect Farmers SACCO Home">
+    <img src="images/logo.jpg" alt="Diaspora Connect Farmers SACCO – Official Logo" width="46" height="46" loading="eager" />
+    <div class="nav-brand">
+      <span class="top">Diaspora Connect</span>
+      <span class="bottom">Farmers SACCO</span>
+    </div>
+  </a>
+
+  <div class="nav-menu-wrap" id="nav-menu-wrap">
+    <ul class="nav-menu">
+      <li><a href="index.html" class="nav-link">Home</a></li>
+      <li><a href="about.html" class="nav-link active">About Us</a></li>
+      <li><a href="mission.html" class="nav-link">Mission</a></li>
+      <li><a href="values.html" class="nav-link">Values</a></li>
+      <li><a href="farmlife.html" class="nav-link">Farm Life</a></li>
+      <li><a href="blog.html" class="nav-link">Blog</a></li>
+      <li><a href="contact.html" class="nav-link">Contact</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="signin.html" class="nav-signin-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+        Sign In
+      </a>
+    </div>
+  </div>
+
+  <button class="nav-hamburger" id="nav-hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+</nav>
+
+<!-- ─ PAGE HERO ─ -->
+<header class="page-hero">
+  <span class="page-hero-label">Who We Are</span>
+  <h1 class="page-hero-title">ABOUT <span>DIASPORA CONNECT</span></h1>
+  <p class="page-hero-sub">Uganda's premier farmers' savings and credit co-operative founded by diaspora professionals dedicated to generational agricultural wealth.</p>
+</header>
+
+<main class="about-content-wrap">
+
+  <!-- Overview Section -->
+  <section class="about-intro-grid">
+    <div class="about-intro-text">
+      <h2>Building Uganda&rsquo;s Agricultural Future Together</h2>
+      <p>
+        Diaspora Connect Farmers SACCO was established by Ugandan professionals living across the United Kingdom, North America, the Middle East, and Uganda who recognized a historic gap: diaspora remittances were sustaining families, but failing to build lasting sovereign wealth.
+      </p>
+      <p>
+        By uniting under a legally registered Savings and Credit Co-operative (SACCO), our members pool monthly capital into commercial dairy farmland, high-yielding cattle herds, and modern agro-processing infrastructure across Uganda&rsquo;s most fertile agricultural corridors.
+      </p>
+      <p>
+        Every member is a direct co-owner with equal voting rights, audited financial transparency, and titled freehold land security.
+      </p>
+    </div>
+
+    <div class="about-card-badge">
+      <div class="badge-item">
+        <div class="badge-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        </div>
+        <div class="badge-desc">
+          <h3>Statutory Co-operative</h3>
+          <p>Fully compliant with the Co-operative Societies Act of Uganda.</p>
+        </div>
+      </div>
+      <div class="badge-item">
+        <div class="badge-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+        </div>
+        <div class="badge-desc">
+          <h3>Titled Farmland In Trust</h3>
+          <p>All land is deeded freehold in trust for SACCO shareholders.</p>
+        </div>
+      </div>
+      <div class="badge-item">
+        <div class="badge-icon">
+          <svg viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+        </div>
+        <div class="badge-desc">
+          <h3>Compound Dividends</h3>
+          <p>Annual surplus dividends and regular commercial dairy milk yields.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Founders Section -->
+  <section class="founders-section">
+    <div class="founders-header">
+      <h2>OUR <span>FOUNDERS &amp; BOARD MEMBERS</span></h2>
+      <p>The visionary board and founding leadership team guiding Diaspora Connect Farmers SACCO.</p>
+    </div>
+
+    <div class="founders-grid">
+
+      <!-- Founder 1 -->
+      <article class="founder-card">
+        <div class="founder-img-wrap">
+          <img src="images/author_samuel.jpg" alt="Mr. Nyanzi Edrine – Chairperson" loading="lazy" />
+        </div>
+        <div class="founder-info">
+          <h3 class="founder-name">Mr. Nyanzi Edrine</h3>
+          <span class="founder-role">Chairperson</span>
+          <p class="founder-bio">Visionary leader providing executive direction, strategic oversight, and cooperative governance for the SACCO.</p>
+        </div>
+      </article>
+
+      <!-- Founder 2 -->
+      <article class="founder-card">
+        <div class="founder-img-wrap">
+          <img src="images/author_grace.jpg" alt="Ms. Namulindwa Mary Flavia – Vise chairperson" loading="lazy" />
+        </div>
+        <div class="founder-info">
+          <h3 class="founder-name">Ms. Namulindwa Mary Flavia</h3>
+          <span class="founder-role">Vise Chairperson</span>
+          <p class="founder-bio">Leading operational strategy, member alignment, and agricultural development initiatives across our farm networks.</p>
+        </div>
+      </article>
+
+      <!-- Founder 3 -->
+      <article class="founder-card">
+        <div class="founder-img-wrap">
+          <img src="images/author_david.jpg" alt="Mr. Helera John Bahati – Secretary" loading="lazy" />
+        </div>
+        <div class="founder-info">
+          <h3 class="founder-name">Mr. Helera John Bahati</h3>
+          <span class="founder-role">Secretary</span>
+          <p class="founder-bio">Directing institutional records, statutory compliance, board resolutions, and member correspondence.</p>
+        </div>
+      </article>
+
+      <!-- Founder 4 -->
+      <article class="founder-card">
+        <div class="founder-img-wrap">
+          <img src="images/author_amara.jpg" alt="Mrs. Miriam Halera – Treasurer" loading="lazy" />
+        </div>
+        <div class="founder-info">
+          <h3 class="founder-name">Mrs. Miriam Halera</h3>
+          <span class="founder-role">Treasurer</span>
+          <p class="founder-bio">Managing financial stewardship, capital allocation, member dividend distribution, and statutory audits.</p>
+        </div>
+      </article>
+
+      <!-- Founder 5 -->
+      <article class="founder-card">
+        <div class="founder-img-wrap">
+          <img src="images/author_joseph.jpg" alt="Ms. Ssanyu Phiona – Member Representative" loading="lazy" />
+        </div>
+        <div class="founder-info">
+          <h3 class="founder-name">Ms. Ssanyu Phiona</h3>
+          <span class="founder-role">Member Representative</span>
+          <p class="founder-bio">Championing diaspora member interests, community engagement, and ensuring every member voice is heard.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- ─ FLOATING CHAT BUTTON ─ -->
+<div id="chat-fab">
+  <div class="fab-menu hidden" id="fab-menu">
+    <a href="https://wa.me/256747325565" target="_blank" rel="noopener noreferrer" class="fab-item fab-whatsapp">
+      <div class="fab-icon-circle">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+      </div>
+      WhatsApp Us
+    </a>
+    <a href="tel:+256747325565" class="fab-item fab-call">
+      <div class="fab-icon-circle">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+      </div>
+      Call Us
+    </a>
+  </div>
+  <div class="fab-trigger-wrap">
+    <button class="fab-trigger" id="fab-trigger" aria-label="Contact us" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+    </button>
+    <span class="fab-label">Chat</span>
+  </div>
+</div>
+
+<script src="script.js?v=4.2"></script>
+</body>
+</html>
