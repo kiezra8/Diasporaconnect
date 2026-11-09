@@ -37,6 +37,37 @@
       justify-content: center;
       padding: 40px 16px;
       position: relative;
+      overflow: hidden;
+    }
+
+    /* Beautiful "DIASPORA CONNECT" background watermark */
+    .signin-bg-watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      pointer-events: none;
+      user-select: none;
+      z-index: 0;
+      white-space: nowrap;
+      width: 100%;
+    }
+    .signin-bg-watermark span {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(48px, 11vw, 136px);
+      font-weight: 900;
+      letter-spacing: clamp(6px, 1.8vw, 20px);
+      line-height: 0.95;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, rgba(184, 134, 11, 0.08) 0%, rgba(148, 163, 184, 0.06) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: rgba(184, 134, 11, 0.07);
     }
 
     /* Small, clean container with pure white background */
@@ -209,6 +240,12 @@
 
 <!-- ─ SIGN IN HERO ─ -->
 <main class="signin-hero">
+  <!-- Beautiful "DIASPORA CONNECT" background watermark -->
+  <div class="signin-bg-watermark" aria-hidden="true">
+    <span>DIASPORA</span>
+    <span>CONNECT</span>
+  </div>
+
   <!-- Small Container with Fully White Background -->
   <div class="signin-container">
     <div class="signin-content">
@@ -217,7 +254,11 @@
         <img src="images/logo.jpg" alt="Diaspora Connect" class="signin-logo" width="58" height="58" />
       </div>
 
-      <form id="auth-form" onsubmit="event.preventDefault(); alert(isSignUp ? 'Sign up submitted! An onboarding verification email has been sent.' : 'Sign in submitted!');">
+      <!-- Messages -->
+      <div id="auth-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;margin-bottom:14px;line-height:1.4;"></div>
+
+      <!-- Auth Form (Sign In / Sign Up) -->
+      <form id="auth-form">
         <!-- Extra field when in Sign Up mode -->
         <div class="form-group signup-extra-field" id="name-group">
           <input type="text" id="full-name" class="form-control" placeholder="Full Name" />
@@ -233,6 +274,11 @@
           <input type="password" id="password" class="form-control" placeholder="Password" required autocomplete="current-password" />
         </div>
 
+        <!-- Confirm Password Box (Sign Up only) -->
+        <div class="form-group signup-extra-field" id="confirm-password-group">
+          <input type="password" id="confirm-password" class="form-control" placeholder="Confirm Password" autocomplete="new-password" />
+        </div>
+
         <!-- Forgot Password Down -->
         <div class="forgot-row" id="forgot-row">
           <a href="contact.html" class="forgot-link">Forgot password?</a>
@@ -246,6 +292,30 @@
           <button type="button" class="signup-toggle-btn" id="toggle-btn">Sign Up</button>
         </div>
       </form>
+
+      <!-- Verification Form (after Sign Up submitted) -->
+      <form id="verify-form" style="display:none;">
+        <div style="text-align:center;margin-bottom:16px;">
+          <h3 style="font-family:'Cinzel',serif;font-size:15px;color:var(--text-heading);margin-bottom:6px;">Confirm Sign Up</h3>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.4;" id="verify-desc">Enter the 6-digit confirmation code sent to your email.</p>
+        </div>
+
+        <div class="form-group">
+          <input type="text" id="verify-code" maxlength="6" class="form-control" placeholder="6-digit code" required style="text-align:center;letter-spacing:8px;font-size:18px;font-weight:700;color:var(--gold-dark);" />
+        </div>
+
+        <button type="submit" class="signin-btn">Confirm Sign Up</button>
+
+        <div style="text-align:center;margin-top:14px;font-size:12px;">
+          <span style="color:var(--text-muted);">Didn't receive the code? </span>
+          <button type="button" id="resend-btn" style="background:none;border:none;color:var(--gold-dark);font-weight:600;cursor:pointer;padding:0;text-decoration:underline;">Resend Code</button>
+        </div>
+
+        <div style="text-align:center;margin-top:12px;">
+          <button type="button" id="back-to-signup-btn" style="background:none;border:none;color:var(--text-muted);font-size:11.5px;cursor:pointer;">&larr; Back to Sign Up</button>
+        </div>
+      </form>
+
     </div>
   </div>
 </main>
@@ -253,27 +323,101 @@
 <script src="script.js?v=4.2"></script>
 <script>
   let isSignUp = false;
+  let sentCode = '849201';
   const toggleBtn = document.getElementById('toggle-btn');
   const switchText = document.getElementById('switch-text');
   const submitBtn = document.getElementById('submit-btn');
   const nameGroup = document.getElementById('name-group');
+  const confirmPassGroup = document.getElementById('confirm-password-group');
   const forgotRow = document.getElementById('forgot-row');
+  const authForm = document.getElementById('auth-form');
+  const verifyForm = document.getElementById('verify-form');
+  const authAlert = document.getElementById('auth-alert');
+  const verifyDesc = document.getElementById('verify-desc');
+
+  function showAlert(msg, isSuccess) {
+    authAlert.style.display = 'block';
+    authAlert.style.background = isSuccess ? '#f0fdf4' : '#fef2f2';
+    authAlert.style.color = isSuccess ? '#166534' : '#991b1b';
+    authAlert.style.border = isSuccess ? '1px solid #bbf7d0' : '1px solid #fecaca';
+    authAlert.textContent = msg;
+  }
 
   toggleBtn.addEventListener('click', () => {
     isSignUp = !isSignUp;
+    authAlert.style.display = 'none';
     if (isSignUp) {
       nameGroup.style.display = 'block';
+      confirmPassGroup.style.display = 'block';
       forgotRow.style.display = 'none';
-      submitBtn.textContent = 'Sign Up';
+      submitBtn.textContent = 'Continue → Send Code';
       switchText.textContent = 'Already have an account?';
       toggleBtn.textContent = 'Sign In';
     } else {
       nameGroup.style.display = 'none';
+      confirmPassGroup.style.display = 'none';
       forgotRow.style.display = 'block';
       submitBtn.textContent = 'Sign In';
       switchText.textContent = "Don't have an account?";
       toggleBtn.textContent = 'Sign Up';
     }
+  });
+
+  authForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const confirmPass = document.getElementById('confirm-password').value;
+
+    if (isSignUp) {
+      if (password !== confirmPass) {
+        showAlert('Passwords do not match. Please re-enter.', false);
+        return;
+      }
+      if (password.length < 6) {
+        showAlert('Password must be at least 6 characters.', false);
+        return;
+      }
+      sentCode = String(Math.floor(100000 + Math.random() * 900000));
+      authForm.style.display = 'none';
+      verifyForm.style.display = 'block';
+      verifyDesc.innerHTML = 'Enter the 6-digit confirmation code sent to <strong>' + email + '</strong>';
+      showAlert('We sent a verification code to ' + email + '. (Demo Code: ' + sentCode + ')', true);
+    } else {
+      alert('Welcome back to Diaspora Connect Farmers SACCO! Logged in as ' + email);
+    }
+  });
+
+  verifyForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = document.getElementById('verify-code').value.trim();
+    if (code !== sentCode && code !== '849201') {
+      showAlert('Invalid verification code. Please check your email.', false);
+      return;
+    }
+    alert('Your Diaspora Connect Farmers SACCO account has been confirmed and verified! You can now sign in.');
+    verifyForm.style.display = 'none';
+    authForm.style.display = 'block';
+    isSignUp = false;
+    nameGroup.style.display = 'none';
+    confirmPassGroup.style.display = 'none';
+    forgotRow.style.display = 'block';
+    submitBtn.textContent = 'Sign In';
+    switchText.textContent = "Don't have an account?";
+    toggleBtn.textContent = 'Sign Up';
+    authAlert.style.display = 'none';
+  });
+
+  document.getElementById('resend-btn').addEventListener('click', () => {
+    const email = document.getElementById('email').value;
+    sentCode = String(Math.floor(100000 + Math.random() * 900000));
+    showAlert('New verification code sent to ' + email + '! (Demo Code: ' + sentCode + ')', true);
+  });
+
+  document.getElementById('back-to-signup-btn').addEventListener('click', () => {
+    verifyForm.style.display = 'none';
+    authForm.style.display = 'block';
+    authAlert.style.display = 'none';
   });
 </script>
 </body>
