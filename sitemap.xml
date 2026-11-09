@@ -48,28 +48,28 @@
 
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/author_samuel.jpg</image:loc>
-      <image:title>Samuel Kigozi – Founding Chairman</image:title>
-      <image:caption>Leadership and founding governance of Diaspora Connect Farmers SACCO.</image:caption>
+      <image:title>Mr. Nyanzi Edrine – Chairperson</image:title>
+      <image:caption>Board leadership and governance of Diaspora Connect Farmers SACCO.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/author_grace.jpg</image:loc>
-      <image:title>Grace Nakato – Head of Farm Operations</image:title>
-      <image:caption>Veterinary care and dairy management leadership.</image:caption>
+      <image:title>Ms. Namulindwa Mary Flavia – Vise Chairperson</image:title>
+      <image:caption>Vise Chairperson and strategic leadership at Diaspora Connect Farmers SACCO.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/author_david.jpg</image:loc>
-      <image:title>David Mukasa – UK Chapter Lead</image:title>
-      <image:caption>European member coordination and audit compliance.</image:caption>
+      <image:title>Mr. Helera John Bahati – Secretary</image:title>
+      <image:caption>Board Secretary and institutional compliance.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/author_amara.jpg</image:loc>
-      <image:title>Amara Okello – North America Liaison</image:title>
-      <image:caption>Diaspora strategy and community engagement.</image:caption>
+      <image:title>Mrs. Miriam Halera – Treasurer</image:title>
+      <image:caption>Treasurer and financial stewardship for the SACCO.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/author_joseph.jpg</image:loc>
-      <image:title>Joseph Ssenyonga – Agronomy Director</image:title>
-      <image:caption>Farm mechanization and pasture nutrition engineering.</image:caption>
+      <image:title>Ms. Ssanyu Phiona – Member Representative</image:title>
+      <image:caption>Member representation and diaspora community engagement.</image:caption>
     </image:image>
   </url>
 
@@ -195,10 +195,10 @@
   </url>
 
   <!-- ═══════════════════════════════════════════
-       5. VIDEOS SHOWCASE PAGE (ONE FILE FOR VIDEOS)
+       5. FARM LIFE VIDEOS SHOWCASE PAGE
   ═══════════════════════════════════════════ -->
   <url>
-    <loc>https://diasporaconnectt.com/videos</loc>
+    <loc>https://diasporaconnectt.com/farmlife</loc>
     <lastmod>2026-09-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
