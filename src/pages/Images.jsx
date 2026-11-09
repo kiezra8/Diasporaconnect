@@ -118,11 +118,12 @@ export default function Images() {
 
   return (
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
-      {/* ─ PAGE HERO ─ */}
-      <header className="page-hero">
-        <span className="page-hero-label">Official Visual Archive</span>
-        <h1 className="page-hero-title">FARMLAND &amp; LIVESTOCK <span>GALLERY</span></h1>
-        <p className="page-hero-sub">Explore our lush pastures, premium dairy cattle, and the thriving co-operative community built by Ugandans across the globe.</p>
+      {/* ─ PAGE HEADER ─ */}
+      <header className="page-header-clean">
+        <span className="page-header-badge">Official Visual Archive</span>
+        <h1 className="page-header-title">FARMLAND &amp; LIVESTOCK <span>GALLERY</span></h1>
+        <p className="page-header-sub">Explore our lush pastures, premium dairy cattle, and the thriving co-operative community built by Ugandans across the globe.</p>
+        <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 
       {/* ─ FILTER CONTROLS ─ */}
@@ -190,4 +191,3 @@ export default function Images() {
     </div>
   );
 }
-

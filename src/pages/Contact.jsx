@@ -26,11 +26,12 @@ export default function Contact() {
 
   return (
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
-      {/* ─ PAGE HERO ─ */}
-      <header className="page-hero">
-        <span className="page-hero-label">We Are Here For You</span>
-        <h1 className="page-hero-title">CONNECT WITH <span>OUR TEAM</span></h1>
-        <p className="page-hero-sub">Whether you are in London, Toronto, Dubai, or Kampala — our member liaison officers are ready to answer your questions and guide your membership.</p>
+      {/* ─ PAGE HEADER ─ */}
+      <header className="page-header-clean">
+        <span className="page-header-badge">We Are Here For You</span>
+        <h1 className="page-header-title">CONNECT WITH <span>OUR TEAM</span></h1>
+        <p className="page-header-sub">Whether you are in London, Toronto, Dubai, or Kampala — our member liaison officers are ready to answer your questions and guide your membership.</p>
+        <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 
       <main className="contact-container">
@@ -186,4 +187,3 @@ export default function Contact() {
     </div>
   );
 }
-

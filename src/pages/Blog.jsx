@@ -1,21 +1,15 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 
 export default function Blog() {
   return (
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
-      {/* BLOG HERO */}
-      <section className="blog-hero">
-        <Link to="/" className="back-btn">
-          <svg viewBox="0 0 24 24">
-            <path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z" />
-          </svg>
-          Back Home
-        </Link>
-        <span className="blog-hero-label">Member Stories</span>
-        <h1 className="blog-hero-title">Diaspora <span>Blogs</span></h1>
-        <p className="blog-hero-sub">Inspiring stories from members across the globe — their journeys, investments, and visions for home.</p>
-      </section>
+      {/* ─ PAGE HEADER ─ */}
+      <header className="page-header-clean">
+        <span className="page-header-badge">Member Insights &amp; Stories</span>
+        <h1 className="page-header-title">DIASPORA <span>BLOGS</span></h1>
+        <p className="page-header-sub">Inspiring stories from members across the globe — their journeys, investments, and visions for generational wealth in Uganda.</p>
+        <div className="page-header-divider" aria-hidden="true"></div>
+      </header>
 
       {/* FULL ARTICLES */}
       <section className="blog-articles-section">
@@ -151,4 +145,3 @@ export default function Blog() {
     </div>
   );
 }
-

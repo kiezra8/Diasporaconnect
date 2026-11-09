@@ -3,11 +3,12 @@ import React from 'react';
 export default function About() {
   return (
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
-      {/* ─ PAGE HERO ─ */}
-      <header className="page-hero">
-        <span className="page-hero-label">Who We Are</span>
-        <h1 className="page-hero-title">ABOUT <span>DIASPORA CONNECT</span></h1>
-        <p className="page-hero-sub">Uganda's premier farmers' savings and credit co-operative founded by diaspora professionals dedicated to generational agricultural wealth.</p>
+      {/* ─ PAGE HEADER ─ */}
+      <header className="page-header-clean">
+        <span className="page-header-badge">Who We Are</span>
+        <h1 className="page-header-title">ABOUT <span>DIASPORA CONNECT</span></h1>
+        <p className="page-header-sub">Uganda&rsquo;s premier farmers&rsquo; savings and credit co-operative founded by diaspora professionals dedicated to generational agricultural wealth.</p>
+        <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 
       <main className="about-content-wrap">
@@ -130,4 +131,3 @@ export default function About() {
     </div>
   );
 }
-

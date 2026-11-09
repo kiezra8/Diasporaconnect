@@ -3,11 +3,12 @@ import React from 'react';
 export default function Mission() {
   return (
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
-      {/* ─ PAGE HERO ─ */}
-      <header className="page-hero">
-        <span className="page-hero-label">Purpose &amp; Co-operative Vision</span>
-        <h1 className="page-hero-title">OUR <span>MISSION</span></h1>
-        <p className="page-hero-sub">&ldquo;To create a trusted financial community where every member can save with purpose, access opportunities, invest in agriculture and build a more secure future.&rdquo;</p>
+      {/* ─ PAGE HEADER ─ */}
+      <header className="page-header-clean">
+        <span className="page-header-badge">Purpose &amp; Co-operative Vision</span>
+        <h1 className="page-header-title">OUR <span>MISSION</span></h1>
+        <p className="page-header-sub">&ldquo;To create a trusted financial community where every member can save with purpose, access opportunities, invest in agriculture and build a more secure future.&rdquo;</p>
+        <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 
       <main className="mission-page-content">
@@ -122,4 +123,3 @@ export default function Mission() {
     </div>
   );
 }
-

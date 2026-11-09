@@ -3,11 +3,12 @@ import React from 'react';
 export default function Values() {
   return (
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
-      {/* ─ PAGE HERO ─ */}
-      <header className="page-hero">
-        <span className="page-hero-label">Guiding Principles</span>
-        <h1 className="page-hero-title">OUR CORE <span>VALUES</span></h1>
-        <p className="page-hero-sub">The bedrock of Diaspora Connect Farmers SACCO. Six unwavering pillars ensuring security, transparency, and sustainable prosperity for every member.</p>
+      {/* ─ PAGE HEADER ─ */}
+      <header className="page-header-clean">
+        <span className="page-header-badge">Guiding Principles</span>
+        <h1 className="page-header-title">OUR CORE <span>VALUES</span></h1>
+        <p className="page-header-sub">The bedrock of Diaspora Connect Farmers SACCO. Six unwavering pillars ensuring security, transparency, and sustainable prosperity for every member.</p>
+        <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 
       <main className="values-page-content">
@@ -128,4 +129,3 @@ export default function Values() {
     </div>
   );
 }
-
