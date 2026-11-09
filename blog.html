@@ -12,17 +12,8 @@
   <meta http-equiv="X-Frame-Options" content="DENY" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
 
-  <!-- FAVICON – strict Google Search & browser standards -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="shortcut icon" href="/favicon.ico" />
-  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
-  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
-  <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512x512.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <link rel="manifest" href="/site.webmanifest" />
+  <!-- FAVICON (Single File) -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
   <!-- CANONICAL & ROBOTS -->
   <link rel="canonical" href="https://diasporaconnectt.com/blog" />
@@ -264,13 +255,37 @@
 
 <!-- NAV -->
 <nav id="navbar">
-  <a href="/" class="nav-logo" style="text-decoration:none;color:inherit;" title="Diaspora Connect Farmers SACCO Home">
+  <a href="index.html" class="nav-logo" style="text-decoration:none;color:inherit;" title="Diaspora Connect Farmers SACCO Home">
     <img src="images/Diasporaconnectlogo.jpg" alt="Diaspora Connect Farmers SACCO" width="46" height="46" />
     <div class="nav-brand">
       <span class="top">Diaspora Connect</span>
       <span class="bottom">Farmers SACCO</span>
     </div>
   </a>
+
+  <div class="nav-menu-wrap" id="nav-menu-wrap">
+    <ul class="nav-menu">
+      <li><a href="index.html" class="nav-link">Home</a></li>
+      <li><a href="mission.html" class="nav-link">Mission</a></li>
+      <li><a href="values.html" class="nav-link">Values</a></li>
+      <li><a href="images.html" class="nav-link">Images</a></li>
+      <li><a href="videos.html" class="nav-link">Videos</a></li>
+      <li><a href="blog.html" class="nav-link active">Blog</a></li>
+      <li><a href="contact.html" class="nav-link">Contact</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="signin.html" class="nav-signin-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+        Sign In
+      </a>
+    </div>
+  </div>
+
+  <button class="nav-hamburger" id="nav-hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
 </nav>
 
 <!-- BLOG HERO -->

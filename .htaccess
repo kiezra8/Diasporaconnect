@@ -43,9 +43,15 @@ Options -Indexes
     Header always set Cross-Origin-Resource-Policy "same-origin"
 </IfModule>
 
-# 4. BLOCK MALICIOUS URL QUERY INJECTIONS
+# 4. URL ROUTING & SECURITY
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Route clean extensionless URLs (e.g., /images -> images.html)
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME}.html -f
+    RewriteRule ^([^\.]+)$ $1.html [NC,L]
 
     # Block query strings containing script tags or common SQL/PHP injection strings
     RewriteCond %{QUERY_STRING} (<|%3C).*script.*(>|%3E) [NC,OR]

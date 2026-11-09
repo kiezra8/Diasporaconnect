@@ -226,6 +226,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: true });
   }
 
+  /* ── 6B. MOBILE NAVBAR TOGGLE ── */
+  const navHamburger = document.getElementById('nav-hamburger');
+  const navMenuWrap = document.getElementById('nav-menu-wrap');
+  if (navHamburger && navMenuWrap) {
+    navHamburger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = navMenuWrap.classList.contains('open');
+      if (isOpen) {
+        navMenuWrap.classList.remove('open');
+        navHamburger.classList.remove('open');
+        navHamburger.setAttribute('aria-expanded', 'false');
+      } else {
+        navMenuWrap.classList.add('open');
+        navHamburger.classList.add('open');
+        navHamburger.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    // Close menu when clicking a link
+    navMenuWrap.querySelectorAll('.nav-link, .nav-signin-btn').forEach((link) => {
+      link.addEventListener('click', () => {
+        navMenuWrap.classList.remove('open');
+        navHamburger.classList.remove('open');
+        navHamburger.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!navMenuWrap.contains(e.target) && !navHamburger.contains(e.target)) {
+        navMenuWrap.classList.remove('open');
+        navHamburger.classList.remove('open');
+        navHamburger.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
   /* ── 7. FLOATING WHATSAPP / CALL TOGGLE (ON RIGHT) ── */
   const fabTrigger = document.getElementById('fab-trigger');
   const fabMenu    = document.getElementById('fab-menu');

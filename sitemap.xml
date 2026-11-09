@@ -1,81 +1,257 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="
           http://www.sitemaps.org/schemas/sitemap/0.9
           http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd
           http://www.google.com/schemas/sitemap-image/1.1
-          http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd">
+          http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd
+          http://www.google.com/schemas/sitemap-video/1.1
+          http://www.google.com/schemas/sitemap-video/1.1/sitemap-video.xsd">
 
   <!-- ═══════════════════════════════════════════
-       HOMEPAGE  –  highest priority
-       Target queries:
-         "diaspora connect"
-         "diaspora connect farmers"
-         "diaspora connect farmers sacco"
-         "diaspora connect sacco uganda"
-         "diaspora connect uganda"
+       1. HOMEPAGE
   ═══════════════════════════════════════════ -->
   <url>
     <loc>https://diasporaconnectt.com/</loc>
     <lastmod>2026-09-30</lastmod>
-    <changefreq>weekly</changefreq>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
 
-    <!-- Logo image – helps Google show your logo in Knowledge Panel -->
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/logo.jpg</image:loc>
       <image:title>Diaspora Connect Farmers SACCO – Official Logo</image:title>
-      <image:caption>Diaspora Connect Farmers SACCO – Come Home. Invest. Grow Together. Uganda diaspora agricultural savings co-operative.</image:caption>
+      <image:caption>Diaspora Connect Farmers SACCO – Come Home. Invest. Grow Together.</image:caption>
     </image:image>
-
-    <!-- Hero carousel image 1 -->
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/hero_slide_1.jpg</image:loc>
-      <image:title>Diaspora Connect Farmers SACCO – Ugandan Dairy Farm</image:title>
-      <image:caption>Fertile farmland managed by Diaspora Connect Farmers SACCO members in Uganda.</image:caption>
+      <image:title>Ugandan Dairy Farmland</image:title>
+      <image:caption>Fertile agricultural land in Uganda managed by Diaspora Connect Farmers SACCO.</image:caption>
     </image:image>
-
-    <!-- Hero carousel image 2 -->
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/hero_slide_2.jpg</image:loc>
-      <image:title>Diaspora Connect Farmers SACCO – Dairy Cattle</image:title>
-      <image:caption>High-quality dairy cattle on a Diaspora Connect Farmers SACCO member farm in Uganda.</image:caption>
-    </image:image>
-
-    <!-- Mission card images -->
-    <image:image>
-      <image:loc>https://diasporaconnectt.com/images/card_img_1.jpg</image:loc>
-      <image:title>Diaspora Connect – Come Home</image:title>
-      <image:caption>Diaspora Connect Farmers SACCO invites diaspora Ugandans to come home and invest in their roots.</image:caption>
-    </image:image>
-    <image:image>
-      <image:loc>https://diasporaconnectt.com/images/card_img_2.jpg</image:loc>
-      <image:title>Diaspora Connect – Invest in Farmland Uganda</image:title>
-      <image:caption>Invest in productive Ugandan farmland through Diaspora Connect Farmers SACCO.</image:caption>
-    </image:image>
-    <image:image>
-      <image:loc>https://diasporaconnectt.com/images/card_img_3.jpg</image:loc>
-      <image:title>Diaspora Connect – Grow Together as a Community</image:title>
-      <image:caption>Diaspora Connect Farmers SACCO members growing wealth together through collective savings and investment.</image:caption>
+      <image:title>Dairy Cattle Herd Uganda</image:title>
+      <image:caption>High-grade commercial dairy livestock on member farms.</image:caption>
     </image:image>
   </url>
 
   <!-- ═══════════════════════════════════════════
-       BLOG PAGE
+       2. MISSION PAGE
+  ═══════════════════════════════════════════ -->
+  <url>
+    <loc>https://diasporaconnectt.com/mission</loc>
+    <lastmod>2026-09-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/card_img_1.jpg</image:loc>
+      <image:title>Come Home – Diaspora Connect Farmers SACCO</image:title>
+      <image:caption>Empowering diaspora Ugandans to connect back to their roots and agricultural enterprise.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/card_img_2.jpg</image:loc>
+      <image:title>Invest in Dairy Farmland</image:title>
+      <image:caption>Putting capital into titled, fertile Ugandan farmland.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/card_img_3.jpg</image:loc>
+      <image:title>Grow Together Community</image:title>
+      <image:caption>Collective wealth generation through cooperative pooling.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════
+       3. VALUES PAGE
+  ═══════════════════════════════════════════ -->
+  <url>
+    <loc>https://diasporaconnectt.com/values</loc>
+    <lastmod>2026-09-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/trust_bg_1790772762297.jpg</image:loc>
+      <image:title>Trust – Diaspora Connect Farmers SACCO</image:title>
+      <image:caption>Transparency and audited financial stewardship.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/teamwork_bg_1790772717521.jpg</image:loc>
+      <image:title>Teamwork – Co-operative Strength</image:title>
+      <image:caption>Pooling diaspora resources for collective scale.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/legacy_bg_1790772823843.jpg</image:loc>
+      <image:title>Generational Legacy</image:title>
+      <image:caption>Enduring agricultural wealth for future generations.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════
+       4. IMAGES / GALLERY PAGE (ONE FILE FOR IMAGES)
+  ═══════════════════════════════════════════ -->
+  <url>
+    <loc>https://diasporaconnectt.com/images</loc>
+    <lastmod>2026-09-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+
+    <!-- Favicon & Brand Assets -->
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/favicon.ico</image:loc>
+      <image:title>Official Favicon – Diaspora Connect Farmers SACCO</image:title>
+      <image:caption>The single multi-resolution icon file powering browser tabs and mobile bookmarks.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/logo.png</image:loc>
+      <image:title>Diaspora Connect Farmers SACCO – Master Brand Emblem</image:title>
+      <image:caption>Official 512x512 high-resolution logo emblem for manifests, touch icons, and documents.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/Diasporaconnectlogo.jpg</image:loc>
+      <image:title>Co-operative Crest &amp; Seal</image:title>
+      <image:caption>Founding golden agricultural insignia of Diaspora Connect Farmers SACCO.</image:caption>
+    </image:image>
+
+    <!-- Farmland & Livestock -->
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/hero_slide_1.jpg</image:loc>
+      <image:title>Diaspora Connect Farmland Landscape</image:title>
+      <image:caption>Panoramic view of lush grazing pastures in Uganda.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/hero_slide_2.jpg</image:loc>
+      <image:title>High-Yield Dairy Cattle Herd</image:title>
+      <image:caption>Friesian and Jersey cross dairy livestock in Uganda.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/hero_carousel.jpg</image:loc>
+      <image:title>Lush Agricultural Acreage Uganda</image:title>
+      <image:caption>Farmland under cooperative management by Diaspora Connect Farmers SACCO.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/blog_dairy_1.jpg</image:loc>
+      <image:title>Modern Dairy Operations Uganda</image:title>
+      <image:caption>Rotational pasture grazing and veterinary supervision.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_grace.jpg</image:loc>
+      <image:title>Grace Nakato – Head of Operations</image:title>
+      <image:caption>Operational leadership at Diaspora Connect Farmers SACCO.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_david.jpg</image:loc>
+      <image:title>David Mukasa – UK Chapter</image:title>
+      <image:caption>Diaspora investor based in the United Kingdom.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_amara.jpg</image:loc>
+      <image:title>Amara Okello – North America Chapter</image:title>
+      <image:caption>Diaspora member investing from Canada.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_joseph.jpg</image:loc>
+      <image:title>Joseph Ssenyonga – Middle East Chapter</image:title>
+      <image:caption>Diaspora member investing from Dubai, UAE.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════
+       5. VIDEOS SHOWCASE PAGE (ONE FILE FOR VIDEOS)
+  ═══════════════════════════════════════════ -->
+  <url>
+    <loc>https://diasporaconnectt.com/videos</loc>
+    <lastmod>2026-09-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+
+    <video:video>
+      <video:thumbnail_loc>https://diasporaconnectt.com/images/hero_carousel.jpg</video:thumbnail_loc>
+      <video:title>The Farm: Where It All Begins</video:title>
+      <video:description>Initial establishment, pasture planning, and perimeter fencing of Diaspora Connect farm.</video:description>
+      <video:content_loc>https://diasporaconnectt.com/videos/farmvideo4starting.mp4</video:content_loc>
+      <video:publication_date>2026-09-30T18:30:00+03:00</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+
+    <video:video>
+      <video:thumbnail_loc>https://diasporaconnectt.com/images/hero_slide_1.jpg</video:thumbnail_loc>
+      <video:title>Growing Strong: Crops in Full Season</video:title>
+      <video:description>Lush forage pastures and crops in active season under sustainable co-operative management.</video:description>
+      <video:content_loc>https://diasporaconnectt.com/videos/farm%20video1.mp4</video:content_loc>
+      <video:publication_date>2026-09-30T18:28:00+03:00</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+
+    <video:video>
+      <video:thumbnail_loc>https://diasporaconnectt.com/images/hero_slide_2.jpg</video:thumbnail_loc>
+      <video:title>Daily Operations: Hands-On Management</video:title>
+      <video:description>Daily routines on the dairy farm with herdsmen, veterinary care, and feeding.</video:description>
+      <video:content_loc>https://diasporaconnectt.com/videos/farmvideo2.mp4</video:content_loc>
+      <video:publication_date>2026-09-30T18:29:00+03:00</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+
+    <video:video>
+      <video:thumbnail_loc>https://diasporaconnectt.com/images/card_img_2.jpg</video:thumbnail_loc>
+      <video:title>Harvest Season: The Compound Reward</video:title>
+      <video:description>Harvesting crops and commercial milk processing delivering returns to SACCO members.</video:description>
+      <video:content_loc>https://diasporaconnectt.com/videos/farmvideo3.mp4</video:content_loc>
+      <video:publication_date>2026-09-30T18:30:00+03:00</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+
+    <video:video>
+      <video:thumbnail_loc>https://diasporaconnectt.com/images/blog_farmland.jpg</video:thumbnail_loc>
+      <video:title>Fertile Land: Uganda's Agricultural Foundation</video:title>
+      <video:description>Acreage expansion, fertile soils, and natural water sources across Ugandan farmland.</video:description>
+      <video:content_loc>https://diasporaconnectt.com/videos/farm%20video5.mp4</video:content_loc>
+      <video:publication_date>2026-09-30T18:31:00+03:00</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+  </url>
+
+  <!-- ═══════════════════════════════════════════
+       6. BLOG ARTICLES & STORIES
   ═══════════════════════════════════════════ -->
   <url>
     <loc>https://diasporaconnectt.com/blog</loc>
     <lastmod>2026-09-30</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.85</priority>
 
     <image:image>
       <image:loc>https://diasporaconnectt.com/images/blog_dairy_1.jpg</image:loc>
-      <image:title>Diaspora Connect – Dairy Farming Uganda Blog</image:title>
-      <image:caption>Diaspora Connect Farmers SACCO blog on dairy farming investment opportunities in Uganda for the diaspora community.</image:caption>
+      <image:title>Diaspora Connect Dairy Farming Blog</image:title>
+      <image:caption>Stories and investment perspectives from diaspora members.</image:caption>
     </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/blog_saving_abroad.jpg</image:loc>
+      <image:title>Diaspora Wealth and Savings</image:title>
+      <image:caption>Practical insights on creating enduring financial roots at home.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════
+       7. CONTACT US PAGE
+  ═══════════════════════════════════════════ -->
+  <url>
+    <loc>https://diasporaconnectt.com/contact</loc>
+    <lastmod>2026-09-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- ═══════════════════════════════════════════
+       8. MEMBER SIGN IN PORTAL
+  ═══════════════════════════════════════════ -->
+  <url>
+    <loc>https://diasporaconnectt.com/signin</loc>
+    <lastmod>2026-09-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 
 </urlset>
