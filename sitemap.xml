@@ -38,7 +38,43 @@
   </url>
 
   <!-- ═══════════════════════════════════════════
-       2. MISSION PAGE
+       2. ABOUT US & FOUNDERS PAGE
+  ═══════════════════════════════════════════ -->
+  <url>
+    <loc>https://diasporaconnectt.com/about</loc>
+    <lastmod>2026-09-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_samuel.jpg</image:loc>
+      <image:title>Samuel Kigozi – Founding Chairman</image:title>
+      <image:caption>Leadership and founding governance of Diaspora Connect Farmers SACCO.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_grace.jpg</image:loc>
+      <image:title>Grace Nakato – Head of Farm Operations</image:title>
+      <image:caption>Veterinary care and dairy management leadership.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_david.jpg</image:loc>
+      <image:title>David Mukasa – UK Chapter Lead</image:title>
+      <image:caption>European member coordination and audit compliance.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_amara.jpg</image:loc>
+      <image:title>Amara Okello – North America Liaison</image:title>
+      <image:caption>Diaspora strategy and community engagement.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://diasporaconnectt.com/images/author_joseph.jpg</image:loc>
+      <image:title>Joseph Ssenyonga – Agronomy Director</image:title>
+      <image:caption>Farm mechanization and pasture nutrition engineering.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════
+       3. MISSION PAGE
   ═══════════════════════════════════════════ -->
   <url>
     <loc>https://diasporaconnectt.com/mission</loc>
