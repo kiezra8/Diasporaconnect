@@ -69,7 +69,7 @@ export default function About() {
             {/* Founder 1 */}
             <article className="founder-card">
               <div className="founder-img-wrap">
-                <img src="/images/author_samuel.jpg" alt="Mr. Nyanzi Edrine – Chairperson" loading="lazy" />
+                <img src="/images/author_samuel.jpg" alt="Mr. Nyanzi Edrine – Chairperson" width="300" height="300" decoding="async" />
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Mr. Nyanzi Edrine</h3>
@@ -81,7 +81,7 @@ export default function About() {
             {/* Founder 2 */}
             <article className="founder-card">
               <div className="founder-img-wrap">
-                <img src="/images/author_grace.jpg" alt="Ms. Namulindwa Mary Flavia – Vise chairperson" loading="lazy" />
+                <img src="/images/author_grace.jpg" alt="Ms. Namulindwa Mary Flavia – Vise chairperson" width="300" height="300" decoding="async" />
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Ms. Namulindwa Mary Flavia</h3>
@@ -93,7 +93,7 @@ export default function About() {
             {/* Founder 3 */}
             <article className="founder-card">
               <div className="founder-img-wrap">
-                <img src="/images/author_david.jpg" alt="Mr. Helera John Bahati – Secretary" loading="lazy" />
+                <img src="/images/author_david.jpg" alt="Mr. Helera John Bahati – Secretary" width="300" height="300" decoding="async" />
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Mr. Helera John Bahati</h3>
@@ -105,7 +105,7 @@ export default function About() {
             {/* Founder 4 */}
             <article className="founder-card">
               <div className="founder-img-wrap">
-                <img src="/images/author_amara.jpg" alt="Mrs. Miriam Halera – Treasurer" loading="lazy" />
+                <img src="/images/author_amara.jpg" alt="Mrs. Miriam Halera – Treasurer" width="300" height="300" decoding="async" />
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Mrs. Miriam Halera</h3>
@@ -117,7 +117,7 @@ export default function About() {
             {/* Founder 5 */}
             <article className="founder-card">
               <div className="founder-img-wrap">
-                <img src="/images/author_joseph.jpg" alt="Ms. Ssanyu Phiona – Member Representative" loading="lazy" />
+                <img src="/images/author_joseph.jpg" alt="Ms. Ssanyu Phiona – Member Representative" width="300" height="300" decoding="async" />
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Ms. Ssanyu Phiona</h3>

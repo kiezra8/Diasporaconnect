@@ -164,7 +164,7 @@ export default function Images() {
             style={{ cursor: 'pointer' }}
           >
             <div className="gallery-img-wrap">
-              <img src={item.img} alt={item.title} loading="lazy" />
+              <img src={item.img} alt={item.title} width="600" height="400" decoding="async" />
               <span className="gallery-badge">{item.badge}</span>
             </div>
             <div className="gallery-caption-wrap">

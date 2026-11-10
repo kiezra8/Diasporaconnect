@@ -17,7 +17,7 @@ export default function Values() {
           {/* Value 1: Trust */}
           <article className="value-full-card">
             <div className="value-full-img">
-              <img src="/images/trust_bg_1790772762297.jpg" alt="Trust – Diaspora Connect Farmers SACCO" loading="lazy" />
+              <img src="/images/trust_bg_1790772762297.jpg" alt="Trust – Diaspora Connect Farmers SACCO" width="540" height="340" decoding="async" />
               <span className="value-full-num">Value 01</span>
             </div>
             <div className="value-full-body">
@@ -36,7 +36,7 @@ export default function Values() {
           {/* Value 2: Teamwork */}
           <article className="value-full-card">
             <div className="value-full-img">
-              <img src="/images/teamwork_bg_1790772717521.jpg" alt="Teamwork – Diaspora Connect Farmers SACCO" loading="lazy" />
+              <img src="/images/teamwork_bg_1790772717521.jpg" alt="Teamwork – Diaspora Connect Farmers SACCO" width="540" height="340" decoding="async" />
               <span className="value-full-num">Value 02</span>
             </div>
             <div className="value-full-body">
@@ -55,7 +55,7 @@ export default function Values() {
           {/* Value 3: Empowerment */}
           <article className="value-full-card">
             <div className="value-full-img">
-              <img src="/images/empowerment_bg_1790772773271.jpg" alt="Empowerment – Diaspora Connect Farmers SACCO" loading="lazy" />
+              <img src="/images/empowerment_bg_1790772773271.jpg" alt="Empowerment – Diaspora Connect Farmers SACCO" width="540" height="340" decoding="async" />
               <span className="value-full-num">Value 03</span>
             </div>
             <div className="value-full-body">
@@ -73,7 +73,7 @@ export default function Values() {
           {/* Value 4: Productivity */}
           <article className="value-full-card">
             <div className="value-full-img">
-              <img src="/images/productivity_bg_1790772786489.jpg" alt="Productivity – Diaspora Connect Farmers SACCO" loading="lazy" />
+              <img src="/images/productivity_bg_1790772786489.jpg" alt="Productivity – Diaspora Connect Farmers SACCO" width="540" height="340" decoding="async" />
               <span className="value-full-num">Value 04</span>
             </div>
             <div className="value-full-body">
@@ -91,7 +91,7 @@ export default function Values() {
           {/* Value 5: Integrity */}
           <article className="value-full-card">
             <div className="value-full-img">
-              <img src="/images/integrity_bg_1790776028154.jpg" alt="Integrity – Diaspora Connect Farmers SACCO" loading="lazy" />
+              <img src="/images/integrity_bg_1790776028154.jpg" alt="Integrity – Diaspora Connect Farmers SACCO" width="540" height="340" decoding="async" />
               <span className="value-full-num">Value 05</span>
             </div>
             <div className="value-full-body">
@@ -109,7 +109,7 @@ export default function Values() {
           {/* Value 6: Legacy */}
           <article className="value-full-card">
             <div className="value-full-img">
-              <img src="/images/legacy_bg_1790772823843.jpg" alt="Legacy – Diaspora Connect Farmers SACCO" loading="lazy" />
+              <img src="/images/legacy_bg_1790772823843.jpg" alt="Legacy – Diaspora Connect Farmers SACCO" width="540" height="340" decoding="async" />
               <span className="value-full-num">Value 06</span>
             </div>
             <div className="value-full-body">

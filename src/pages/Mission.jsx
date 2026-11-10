@@ -15,7 +15,7 @@ export default function Mission() {
         {/* Pillar 1: Come Home */}
         <section className="pillar-row">
           <div className="pillar-img-wrap">
-            <img src="/images/card_img_1.jpg" alt="Come Home to Uganda – Diaspora Connect" loading="lazy" />
+            <img src="/images/card_img_1.jpg" alt="Come Home to Uganda – Diaspora Connect" width="540" height="380" decoding="async" />
           </div>
           <div className="pillar-text">
             <span className="pillar-tag">Pillar 01</span>
@@ -43,7 +43,7 @@ export default function Mission() {
         {/* Pillar 2: Invest */}
         <section className="pillar-row reverse">
           <div className="pillar-img-wrap">
-            <img src="/images/card_img_2.jpg" alt="Invest in Uganda Farmland – Diaspora Connect" loading="lazy" />
+            <img src="/images/card_img_2.jpg" alt="Invest in Uganda Farmland – Diaspora Connect" width="540" height="380" decoding="async" />
           </div>
           <div className="pillar-text">
             <span className="pillar-tag">Pillar 02</span>
@@ -71,7 +71,7 @@ export default function Mission() {
         {/* Pillar 3: Grow Together */}
         <section className="pillar-row">
           <div className="pillar-img-wrap">
-            <img src="/images/card_img_3.jpg" alt="Grow Together Co-operative Community – Diaspora Connect" loading="lazy" />
+            <img src="/images/card_img_3.jpg" alt="Grow Together Co-operative Community – Diaspora Connect" width="540" height="380" decoding="async" />
           </div>
           <div className="pillar-text">
             <span className="pillar-tag">Pillar 03</span>

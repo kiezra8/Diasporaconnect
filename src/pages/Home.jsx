@@ -582,7 +582,7 @@ export default function Home() {
         {/* FEATURED SPOTLIGHT STORY (DAIRY FARMING) */}
         <div className="blog-spotlight reveal">
           <div className="blog-spotlight-img">
-            <img src="/images/blog_dairy_1.jpg?v=3.5" alt="The White Gold Revolution - Dairy Farming" loading="lazy" />
+            <img src="/images/blog_dairy_1.jpg?v=3.5" alt="The White Gold Revolution - Dairy Farming" width="600" height="360" decoding="async" />
             <span className="spotlight-badge">Spotlight &middot; 2026</span>
           </div>
           <div className="blog-spotlight-content">
@@ -591,7 +591,7 @@ export default function Home() {
             <h3 className="blog-spotlight-title">The White Gold Revolution: How Diaspora Capital is Modernising Dairy Farming in Uganda</h3>
             <p className="blog-spotlight-excerpt">From automated milking parlours to cold-chain preservation, SACCO members are pooling funds to transform Uganda's milk belt into a high-yield dairy powerhouse.</p>
             <div className="blog-card-author">
-              <img src="/images/author_amara.jpg" alt="Editorial Desk" />
+              <img src="/images/author_amara.jpg" alt="Editorial Desk" width="40" height="40" decoding="async" />
               <div>
                 <span className="blog-author-name">Diaspora Connect Dairy Desk</span>
                 <span className="blog-author-loc">Mbarara &middot; London &middot; Toronto</span>
@@ -610,7 +610,7 @@ export default function Home() {
           {/* BLOG 1 */}
           <article className="blog-card reveal">
             <div className="blog-card-img">
-              <img src="/images/blog_dairy_1.jpg?v=3.5" alt="Investing in Dairy Cattle from London" loading="lazy" />
+              <img src="/images/blog_dairy_1.jpg?v=3.5" alt="Investing in Dairy Cattle from London" width="400" height="240" decoding="async" />
             </div>
             <div className="blog-card-body">
               <span className="blog-card-date">Sep 24, 2026</span>
@@ -618,7 +618,7 @@ export default function Home() {
               <h3 className="blog-card-title">Investing in Dairy Cattle from London: Consistent Monthly Milk Yields</h3>
               <p className="blog-card-excerpt">I co-own a herd of 15 Friesian-cross heifers in Kiruhura through the SACCO. The daily milk collection provides dependable quarterly dividends without the stress of remote management.</p>
               <div className="blog-card-author">
-                <img src="/images/author_amara.jpg" alt="Amara Nakato" />
+                <img src="/images/author_amara.jpg" alt="Amara Nakato" width="36" height="36" decoding="async" />
                 <div>
                   <span className="blog-author-name">Amara Nakato</span>
                   <span className="blog-author-loc">London, UK</span>
@@ -636,7 +636,7 @@ export default function Home() {
           {/* BLOG 2 */}
           <article className="blog-card reveal">
             <div className="blog-card-img">
-              <img src="/images/blog_farmland.jpg" alt="Cold-Chain Milk Storage" loading="lazy" />
+              <img src="/images/blog_farmland.jpg" alt="Cold-Chain Milk Storage" width="400" height="240" decoding="async" />
             </div>
             <div className="blog-card-body">
               <span className="blog-card-date">Sep 14, 2026</span>
@@ -644,7 +644,7 @@ export default function Home() {
               <h3 className="blog-card-title">Cold-Chain Milk Storage: Solving the Dairy Distribution Puzzle</h3>
               <p className="blog-card-excerpt">Our cooperative investment in solar-powered milk chillers cut spoilage to zero across three collection centres, compounding member returns significantly.</p>
               <div className="blog-card-author">
-                <img src="/images/author_david.jpg" alt="David Ochieng" />
+                <img src="/images/author_david.jpg" alt="David Ochieng" width="36" height="36" decoding="async" />
                 <div>
                   <span className="blog-author-name">David Ochieng</span>
                   <span className="blog-author-loc">Toronto, Canada</span>
@@ -662,7 +662,7 @@ export default function Home() {
           {/* BLOG 3 */}
           <article className="blog-card reveal">
             <div className="blog-card-img">
-              <img src="/images/card_img_1.jpg?v=3.2" alt="Silage and Pasture Management" loading="lazy" />
+              <img src="/images/card_img_1.jpg?v=3.2" alt="Silage and Pasture Management" width="400" height="240" decoding="async" />
             </div>
             <div className="blog-card-body">
               <span className="blog-card-date">Aug 28, 2026</span>
@@ -670,7 +670,7 @@ export default function Home() {
               <h3 className="blog-card-title">Silage &amp; Pasture Management: Sustaining Milk Production Year-Round</h3>
               <p className="blog-card-excerpt">During dry spells when milk prices surge, our SACCO-backed silage banks ensure uninterrupted milk yield. It's smart, resilient dairy agriculture built on shared trust.</p>
               <div className="blog-card-author">
-                <img src="/images/author_grace.jpg" alt="Grace Asiimwe" />
+                <img src="/images/author_grace.jpg" alt="Grace Asiimwe" width="36" height="36" decoding="async" />
                 <div>
                   <span className="blog-author-name">Grace Asiimwe</span>
                   <span className="blog-author-loc">Stockholm, Sweden</span>
@@ -688,7 +688,7 @@ export default function Home() {
           {/* BLOG 4 */}
           <article className="blog-card reveal">
             <div className="blog-card-img">
-              <img src="/images/card_img_3.jpg?v=3.2" alt="Building Generational Dairy Assets" loading="lazy" />
+              <img src="/images/card_img_3.jpg?v=3.2" alt="Building Generational Dairy Assets" width="400" height="240" decoding="async" />
             </div>
             <div className="blog-card-body">
               <span className="blog-card-date">Aug 15, 2026</span>
@@ -696,7 +696,7 @@ export default function Home() {
               <h3 className="blog-card-title">Building Generational Dairy Assets: From Calves to Milk Cooperatives</h3>
               <p className="blog-card-excerpt">A pedigree dairy cow multiplies in asset value each season. By reinvesting our milk earnings into dairy expansion, we are building enduring family security back home.</p>
               <div className="blog-card-author">
-                <img src="/images/author_joseph.jpg" alt="Joseph Mugisha" />
+                <img src="/images/author_joseph.jpg" alt="Joseph Mugisha" width="36" height="36" decoding="async" />
                 <div>
                   <span className="blog-author-name">Joseph Mugisha</span>
                   <span className="blog-author-loc">Dubai, UAE</span>
