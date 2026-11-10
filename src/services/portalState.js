@@ -1,5 +1,7 @@
 // Centralized State & Persistence Service for Diaspora Connect Portals & Management Systems
-const STORAGE_KEY = 'diaspora_connect_portal_state_v1';
+// Reverse engineered from enterprise SACCO & Farm management specifications (JBS Farm Enterprise Model)
+
+const STORAGE_KEY = 'diaspora_connect_portal_state_v2';
 const AUTH_KEY = 'diaspora_connect_auth_session';
 
 export const AUTHORIZED_TESTER = {
@@ -11,28 +13,31 @@ export const AUTHORIZED_TESTER = {
 };
 
 const INITIAL_DATA = {
+  // ── 1. CLIENT / MEMBER PROFILE ──
   client: {
     name: 'Israel Ezra Kisakye',
     email: 'israelezrakisakye@gmail.com',
     memberNo: 'DCF-8492-UG',
     chapter: 'Diaspora Uganda Chapter',
     sharesCount: 150,
-    shareUnitPrice: 100000, // 100,000 UGX per share
-    totalShareValue: 15000000, // 15,000,000 UGX
-    savingsBalance: 4850000, // 4,850,000 UGX
+    shareUnitPrice: 100000, // 100,000 UGX
+    totalShareValue: 15000000,
+    savingsBalance: 4850000,
     totalPortfolio: 19850000,
     dividendsYTD: 1420000,
-    heifersAllocated: 5, // Co-owned dairy heifers
+    heifersAllocated: 5,
     coffeeAcreageAllocated: '2.5 Acres',
-    ownershipPercentage: '1.25%',
+    ownershipPercentage: '1.25%'
   },
+
+  // ── 2. AUDITED FINANCIAL LEDGER ──
   financialStatement: [
     {
       id: 'TX-901',
       date: '2026-11-08',
-      description: 'Coffee Export Trading Surplus Dividend (Italian Shipment #CS-501)',
+      description: 'Coffee Export Trading Surplus Dividend (Shipment #CS-501)',
       type: 'coffee_dividend',
-      category: 'Coffee Management Sync',
+      category: 'Coffee Trading Sync',
       amount: 450000,
       balance: 19850000,
       status: 'Completed',
@@ -41,7 +46,7 @@ const INITIAL_DATA = {
     {
       id: 'TX-892',
       date: '2026-11-02',
-      description: 'Commercial Dairy Milk Off-take Dividend – Luwero & Mbarara Depots',
+      description: 'Commercial Dairy Milk Off-take Dividend (Mbarara & Luwero Depots)',
       type: 'farm_dividend',
       category: 'Farm System Sync',
       amount: 380000,
@@ -83,6 +88,7 @@ const INITIAL_DATA = {
       ref: 'LAND-ASSET-04'
     }
   ],
+
   depositRequests: [
     {
       id: 'REQ-DEP-01',
@@ -94,7 +100,9 @@ const INITIAL_DATA = {
       notes: 'Monthly contribution for 20 additional dairy shares'
     }
   ],
+
   withdrawalRequests: [],
+
   supportTickets: [
     {
       id: 'TCK-201',
@@ -105,30 +113,164 @@ const INITIAL_DATA = {
       reply: 'Liaison desk confirmed your itinerary for Luwero Dairy Farm on Dec 18, 2026.'
     }
   ],
-  // Farm Management Software Data
-  farmManagement: {
+
+  // ── 3. REVERSE ENGINEERED SACCO MANAGEMENT SYSTEM (JBS FARM SPEC) ──
+  saccoSystem: {
+    selectedYear: 'Year 2 (2026)',
+    activeTab: 'year2', // 'year1' | 'year2' | 'investors' | 'pettyCash'
+    adminFeePerMember: 50000,
+    // Year 2 12-Month Contribution Grid
+    membersYear2: [
+      {
+        id: 'MB-001',
+        name: 'Israel Ezra Kisakye',
+        phone: '+256 747 325 565',
+        nin: 'CM92019482UG',
+        category: 'Saving Member & Investor',
+        jan: 500000, feb: 500000, mar: 500000, apr: 500000, may: 500000, jun: 500000,
+        jul: 500000, aug: 500000, sep: 500000, oct: 500000, nov: 500000, dec: 0,
+        total: 5500000,
+        admin: 50000,
+        savings: 5450000,
+        noOfShares: 54,
+        status: 'CLEARED'
+      },
+      {
+        id: 'MB-002',
+        name: 'Grace Nakato Asiimwe (London UK)',
+        phone: '+44 7123 456789',
+        nin: 'CF89201934UG',
+        category: 'Money Maker Investor',
+        jan: 800000, feb: 800000, mar: 800000, apr: 800000, may: 800000, jun: 800000,
+        jul: 800000, aug: 800000, sep: 800000, oct: 800000, nov: 800000, dec: 0,
+        total: 8800000,
+        admin: 50000,
+        savings: 8750000,
+        noOfShares: 87,
+        status: 'CLEARED'
+      },
+      {
+        id: 'MB-003',
+        name: 'David Ochieng (Toronto Canada)',
+        phone: '+1 416 555 0192',
+        nin: 'CM84019283UG',
+        category: 'Saving Member',
+        jan: 600000, feb: 600000, mar: 600000, apr: 600000, may: 600000, jun: 600000,
+        jul: 600000, aug: 600000, sep: 600000, oct: 600000, nov: 0, dec: 0,
+        total: 6000000,
+        admin: 50000,
+        savings: 5950000,
+        noOfShares: 59,
+        status: 'PENDING'
+      },
+      {
+        id: 'MB-004',
+        name: 'Joseph Mugisha (Dubai UAE)',
+        phone: '+971 50 123 4567',
+        nin: 'CM91029384UG',
+        category: 'Investor Phase 3',
+        jan: 1000000, feb: 1000000, mar: 1000000, apr: 1000000, may: 1000000, jun: 1000000,
+        jul: 1000000, aug: 1000000, sep: 1000000, oct: 1000000, nov: 1000000, dec: 0,
+        total: 11000000,
+        admin: 50000,
+        savings: 10950000,
+        noOfShares: 109,
+        status: 'CLEARED'
+      }
+    ],
+    // Investor & Cattle Programs (JBS Farm Model)
+    investorPrograms: [
+      {
+        id: 'INV-01',
+        name: 'Israel Ezra Kisakye',
+        category: 'Money Maker',
+        programAmount: 8000000,
+        investmentAmount: 8000000,
+        balance: 0,
+        status: 'CLEARED',
+        cowsPerYear: 2,
+        assignedHeifers: ['JBS-001 (Friesian)', 'JBS-004 (Jersey)']
+      },
+      {
+        id: 'INV-02',
+        name: 'Grace Nakato Asiimwe',
+        category: 'Money Maker',
+        programAmount: 8000000,
+        investmentAmount: 8000000,
+        balance: 0,
+        status: 'CLEARED',
+        cowsPerYear: 2,
+        assignedHeifers: ['JBS-002 (Friesian)', 'JBS-005 (Ayrshire)']
+      },
+      {
+        id: 'INV-03',
+        name: 'David Mukasa',
+        category: 'Phase 3 Dairy Club',
+        programAmount: 12000000,
+        investmentAmount: 9000000,
+        balance: 3000000,
+        status: 'PENDING',
+        cowsPerYear: 3,
+        assignedHeifers: ['JBS-003 (Friesian Cross)']
+      }
+    ],
+    // Petty Cash & Cashier Transactions
+    pettyCash: [
+      { id: 'PC-101', date: '2026-11-09', type: 'Income', category: 'Member Deposit', amount: 1000000, method: 'MTN MM', isBanked: true, description: 'Direct MM contribution by MB-001' },
+      { id: 'PC-102', date: '2026-11-08', type: 'Income', category: 'Airtel MM', amount: 650000, method: 'Airtel MM', isBanked: false, description: 'Monthly share purchase' },
+      { id: 'PC-103', date: '2026-11-06', type: 'Expense', category: 'Farm Silage Freight', amount: 480000, method: 'Cash', isBanked: true, description: 'Silage transport to Luwero depot' },
+      { id: 'PC-104', date: '2026-11-04', type: 'Income', category: 'Cash', amount: 2500000, method: 'Cash', isBanked: true, description: 'Dairy milk off-take cash settlement' }
+    ]
+  },
+
+  // ── 4. REVERSE ENGINEERED ENTERPRISE FARM MANAGEMENT SYSTEM (JBS FARM SPEC) ──
+  farmSystem: {
+    activeTab: 'animals', // 'animals' | 'milk' | 'health' | 'breeding' | 'feed'
     totalHerdCount: 105,
     lactatingCows: 58,
     dailyMilkAvgLiters: 2120,
     totalSilageTons: 159,
-    herds: [
-      { id: 'H-01', breed: 'Friesian Cross (High-Yield Pedigree)', count: 48, status: 'Lactating', location: 'Luwero Unit', avgYield: '22.4 L/day' },
-      { id: 'H-02', breed: 'Jersey Cross (High Butterfat)', count: 32, status: 'In-Calf / Milking', location: 'Mbarara Unit', avgYield: '18.5 L/day' },
-      { id: 'H-03', breed: 'Ankole Dairy Genetics (Hardy)', count: 25, status: 'Breeding / Heifers', location: 'Kiruhura Unit', avgYield: '12.8 L/day' }
+    // Cattle / Animals Directory
+    animals: [
+      { tagId: 'JBS-001', name: 'Queen Esther', breed: 'Friesian Purebred', gender: 'Female', stage: 'Money Maker / Milking', health: 'Healthy', dailyYield: '24.5 L', sire: 'Semex Bull 409', dam: 'JBS-Dam-12', paddock: 'Paddock 2 (Luwero)' },
+      { tagId: 'JBS-002', name: 'Victoria Pride', breed: 'Friesian Cross', gender: 'Female', stage: 'Money Maker / Milking', health: 'Healthy', dailyYield: '22.8 L', sire: 'Alta genetics 301', dam: 'JBS-Dam-08', paddock: 'Paddock 2 (Luwero)' },
+      { tagId: 'JBS-003', name: 'Kampala Star', breed: 'Jersey High-Butterfat', gender: 'Female', stage: 'In-Calf / Milking', health: 'Healthy', dailyYield: '19.2 L', sire: 'Jersey Bull 808', dam: 'JBS-Dam-15', paddock: 'Paddock 1 (Mbarara)' },
+      { tagId: 'JBS-004', name: 'Rwenzori Belle', breed: 'Ayrshire Cross', gender: 'Female', stage: 'Money Maker / Milking', health: 'Healthy', dailyYield: '21.0 L', sire: 'Semex 410', dam: 'JBS-Dam-04', paddock: 'Paddock 3 (Luwero)' },
+      { tagId: 'JBS-005', name: 'Ankole Gold', breed: 'Ankole Dairy Cross', gender: 'Female', stage: 'Breeding Heifer', health: 'Healthy', dailyYield: '14.0 L', sire: 'Boran Bull B-12', dam: 'JBS-Dam-01', paddock: 'Paddock 4 (Kiruhura)' },
+      { tagId: 'JBS-006', name: 'Thunder Boy', breed: 'Pedigree Friesian Bull', gender: 'Male', stage: 'Breeding Bull', health: 'Healthy', dailyYield: 'N/A', sire: 'Alta genetics 101', dam: 'JBS-Dam-02', paddock: 'Bull Pen (Luwero)' }
     ],
-    recentMilkLogs: [
-      { date: '2026-11-09', morning: 1140, evening: 980, total: 2120, temp: '3.8°C', offTaker: 'Brookside / Fresh Diary' },
-      { date: '2026-11-08', morning: 1110, evening: 960, total: 2070, temp: '3.9°C', offTaker: 'Brookside / Fresh Diary' },
-      { date: '2026-11-07', morning: 1150, evening: 990, total: 2140, temp: '3.7°C', offTaker: 'Brookside / Fresh Diary' }
+    // Milk Production Tracker (Morning / Afternoon / Evening sessions)
+    milkLogs: [
+      { date: '2026-11-09', morning: 1140, afternoon: 0, evening: 980, total: 2120, chillingTemp: '3.8°C', offTaker: 'Brookside Dairy Uganda', ratePerL: 1650, totalRevenueUGX: 3498000 },
+      { date: '2026-11-08', morning: 1110, afternoon: 0, evening: 960, total: 2070, chillingTemp: '3.9°C', offTaker: 'Brookside Dairy Uganda', ratePerL: 1650, totalRevenueUGX: 3415500 },
+      { date: '2026-11-07', morning: 1150, afternoon: 0, evening: 990, total: 2140, chillingTemp: '3.7°C', offTaker: 'Brookside Dairy Uganda', ratePerL: 1650, totalRevenueUGX: 3531000 },
+      { date: '2026-11-06', morning: 1120, afternoon: 0, evening: 950, total: 2070, chillingTemp: '3.9°C', offTaker: 'Brookside Dairy Uganda', ratePerL: 1650, totalRevenueUGX: 3415500 }
+    ],
+    // Health & Vaccination Records
+    healthLogs: [
+      { id: 'HL-01', tagId: 'JBS-001', date: '2026-11-04', condition: 'Routine Booster', treatment: 'Foot & Mouth Disease (FMD) Vaccination', vet: 'Dr. Mugabe Peter DVM', status: 'Cleared' },
+      { id: 'HL-02', tagId: 'JBS-003', date: '2026-10-28', condition: 'Deworming Cycle', treatment: 'Albendazole 10% Oral Drench', vet: 'Dr. Mugabe Peter DVM', status: 'Cleared' },
+      { id: 'HL-03', tagId: 'JBS-004', date: '2026-10-20', condition: 'Tick-borne Prevention', treatment: 'East Coast Fever (ECF) ITM Immunization', vet: 'Dr. Mugabe Peter DVM', status: 'Cleared' }
+    ],
+    // Breeding & In-Calf Schedules
+    breedingLogs: [
+      { id: 'BR-01', tagId: 'JBS-003', cowName: 'Kampala Star', aiDate: '2026-05-14', sireSemen: 'Semex Friesian Straw #409', expectedCalving: '2027-02-20', status: 'In-Calf Confirmed (Month 6)' },
+      { id: 'BR-02', tagId: 'JBS-005', cowName: 'Ankole Gold', aiDate: '2026-07-10', sireSemen: 'Jersey High-Yield Straw #808', expectedCalving: '2027-04-18', status: 'In-Calf Confirmed (Month 4)' }
+    ],
+    // Feed & Nutrition Inventory
+    feedStock: [
+      { id: 'F-01', name: 'Maize & Napier Grass Anaerobic Silage', type: 'Roughage / Fodder', capacityTons: 120, inStockTons: 95, dailyIntakeKg: 1200 },
+      { id: 'F-02', name: 'Alfalfa & Desmodium Legume Hay', type: 'High Protein Fodder', capacityTons: 80, inStockTons: 64, dailyIntakeKg: 450 },
+      { id: 'F-03', name: 'Dairy Meal 18% Crude Protein Concentrate', type: 'Concentrate', capacityTons: 30, inStockTons: 18, dailyIntakeKg: 280 },
+      { id: 'F-04', name: 'Mineral Salt Lick Blocks', type: 'Supplements', capacityTons: 10, inStockTons: 7, dailyIntakeKg: 40 }
     ]
   },
-  // Coffee Management Software Data (Buying & Selling)
+
+  // ── 5. COFFEE MANAGEMENT SYSTEM (BUYING & SELLING COFFEE) ──
   coffeeManagement: {
-    stockInWarehouseKg: 42700, // 42.7 MT
-    totalBoughtKgMonth: 11400,
-    totalSoldKgMonth: 27000,
-    totalRevenueUGX: 378510000,
+    stockInWarehouseKg: 42700,
     totalPurchasesUGX: 127920000,
+    totalRevenueUGX: 378510000,
     netTradingSurplusUGX: 73700000,
     buyingLogs: [
       {
@@ -200,7 +342,8 @@ const INITIAL_DATA = {
       }
     ]
   },
-  // Secretary Data
+
+  // ── 6. SECRETARY REGISTRY ──
   secretary: {
     minutes: [
       {
@@ -219,7 +362,8 @@ const INITIAL_DATA = {
       }
     ]
   },
-  // Board Data
+
+  // ── 7. BOARD OF DIRECTORS GOVERNANCE ──
   board: {
     kpis: {
       totalAssetsUGX: '2,840,000,000 UGX',
@@ -231,7 +375,6 @@ const INITIAL_DATA = {
   }
 };
 
-// Retrieve State
 export function getPortalState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -246,7 +389,6 @@ export function getPortalState() {
   }
 }
 
-// Save State
 export function savePortalState(state) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -256,7 +398,6 @@ export function savePortalState(state) {
   }
 }
 
-// Auth Helpers
 export function getAuthSession() {
   try {
     const raw = localStorage.getItem(AUTH_KEY);
@@ -275,7 +416,7 @@ export function clearAuthSession() {
   localStorage.removeItem(AUTH_KEY);
 }
 
-// Business Logic: Member submits deposit request
+// ── CLIENT / MEMBER REQUESTS ──
 export function submitDepositRequest(amount, method, reference, notes) {
   const state = getPortalState();
   const newReq = {
@@ -292,7 +433,6 @@ export function submitDepositRequest(amount, method, reference, notes) {
   return newReq;
 }
 
-// Business Logic: Member submits withdrawal request
 export function submitWithdrawalRequest(amount, destination, reason) {
   const state = getPortalState();
   const newReq = {
@@ -308,7 +448,6 @@ export function submitWithdrawalRequest(amount, destination, reason) {
   return newReq;
 }
 
-// Business Logic: Member submits support ticket
 export function submitSupportTicket(subject, category, message) {
   const state = getPortalState();
   const newTicket = {
@@ -324,7 +463,7 @@ export function submitSupportTicket(subject, category, message) {
   return newTicket;
 }
 
-// Business Logic: Accountant / Admin approves deposit -> AUTO-UPDATES CLIENT SHARES & STATEMENT!
+// ── AUTO-SYNC: APPROVE MEMBER DEPOSIT ──
 export function approveDeposit(requestId) {
   const state = getPortalState();
   const req = state.depositRequests.find((r) => r.id === requestId);
@@ -333,14 +472,13 @@ export function approveDeposit(requestId) {
   req.status = 'Approved';
   const addedAmount = req.amount;
 
-  // Update client shares/savings
   const additionalShares = Math.floor(addedAmount / state.client.shareUnitPrice);
   state.client.sharesCount += additionalShares;
   state.client.totalShareValue = state.client.sharesCount * state.client.shareUnitPrice;
   state.client.savingsBalance += (addedAmount % state.client.shareUnitPrice);
   state.client.totalPortfolio = state.client.totalShareValue + state.client.savingsBalance;
 
-  // Insert into Financial Statement
+  // Sync to Financial Statement
   const newTx = {
     id: `TX-${Date.now().toString().slice(-4)}`,
     date: new Date().toISOString().split('T')[0],
@@ -354,13 +492,24 @@ export function approveDeposit(requestId) {
   };
   state.financialStatement.unshift(newTx);
 
+  // Sync to Petty Cash
+  state.saccoSystem.pettyCash.unshift({
+    id: `PC-${Date.now().toString().slice(-4)}`,
+    date: new Date().toISOString().split('T')[0],
+    type: 'Income',
+    category: 'Member Share Capital',
+    amount: addedAmount,
+    method: req.method.includes('MTN') ? 'MTN MM' : req.method.includes('Airtel') ? 'Airtel MM' : 'Bank',
+    isBanked: true,
+    description: `Reconciled deposit by ${state.client.name} (${req.id})`
+  });
+
   savePortalState(state);
 }
 
-// Business Logic: Farm System distributes dairy dividend -> AUTO-UPDATES CLIENT SHARES & STATEMENT!
+// ── AUTO-SYNC: DISTRIBUTE FARM PROCEEDS ──
 export function distributeFarmDividend(totalPoolUGX = 25000000) {
   const state = getPortalState();
-  // Member's 1.25% share of the dividend pool
   const memberDividend = Math.round(totalPoolUGX * 0.0125);
 
   state.client.dividendsYTD += memberDividend;
@@ -370,7 +519,7 @@ export function distributeFarmDividend(totalPoolUGX = 25000000) {
   const newTx = {
     id: `TX-FARM-${Date.now().toString().slice(-4)}`,
     date: new Date().toISOString().split('T')[0],
-    description: `Automated Commercial Dairy Surplus Dividend Distribution`,
+    description: `Commercial Dairy Milk Surplus Dividend Distribution`,
     type: 'farm_dividend',
     category: 'Farm System Sync',
     amount: memberDividend,
@@ -384,7 +533,60 @@ export function distributeFarmDividend(totalPoolUGX = 25000000) {
   return memberDividend;
 }
 
-// Business Logic: Coffee System adds buying record
+// ── SACCO MANAGEMENT ACTIONS (JBS FARM SPEC) ──
+export function addSaccoMemberYear2(member) {
+  const state = getPortalState();
+  const newMember = {
+    id: `MB-${String(state.saccoSystem.membersYear2.length + 1).padStart(3, '0')}`,
+    ...member,
+    admin: state.saccoSystem.adminFeePerMember,
+    status: 'CLEARED'
+  };
+  state.saccoSystem.membersYear2.push(newMember);
+  savePortalState(state);
+  return newMember;
+}
+
+export function togglePettyCashBanked(txId) {
+  const state = getPortalState();
+  const tx = state.saccoSystem.pettyCash.find((t) => t.id === txId);
+  if (tx) {
+    tx.isBanked = !tx.isBanked;
+    savePortalState(state);
+  }
+}
+
+// ── FARM MANAGEMENT ACTIONS (JBS FARM SPEC) ──
+export function addCattleAnimal(animal) {
+  const state = getPortalState();
+  state.farmSystem.animals.unshift(animal);
+  state.farmSystem.totalHerdCount += 1;
+  savePortalState(state);
+  return animal;
+}
+
+export function logDailyMilkSession(session) {
+  const state = getPortalState();
+  const total = Number(session.morning) + Number(session.afternoon || 0) + Number(session.evening);
+  const revenue = total * Number(session.ratePerL);
+  const log = {
+    date: session.date || new Date().toISOString().split('T')[0],
+    morning: Number(session.morning),
+    afternoon: Number(session.afternoon || 0),
+    evening: Number(session.evening),
+    total,
+    chillingTemp: session.chillingTemp || '3.8°C',
+    offTaker: session.offTaker || 'Brookside Dairy Uganda',
+    ratePerL: Number(session.ratePerL),
+    totalRevenueUGX: revenue
+  };
+  state.farmSystem.milkLogs.unshift(log);
+  state.farmSystem.dailyMilkAvgLiters = total;
+  savePortalState(state);
+  return log;
+}
+
+// ── COFFEE MANAGEMENT ACTIONS ──
 export function addCoffeePurchase(purchase) {
   const state = getPortalState();
   const newLog = {
@@ -400,7 +602,6 @@ export function addCoffeePurchase(purchase) {
   return newLog;
 }
 
-// Business Logic: Coffee System records a sale & distributes dividend -> AUTO-UPDATES CLIENT SHARES & STATEMENT!
 export function addCoffeeSaleAndDistribute(sale, dividendAllocationUGX = 15000000) {
   const state = getPortalState();
   const newSale = {
@@ -426,7 +627,7 @@ export function addCoffeeSaleAndDistribute(sale, dividendAllocationUGX = 1500000
     date: new Date().toISOString().split('T')[0],
     description: `Coffee Export Profit Dividend (${sale.buyerName} - ${sale.coffeeType})`,
     type: 'coffee_dividend',
-    category: 'Coffee Management Sync',
+    category: 'Coffee Trading Sync',
     amount: clientShare,
     balance: state.client.totalPortfolio,
     status: 'Completed',
