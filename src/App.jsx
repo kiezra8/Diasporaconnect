@@ -14,7 +14,6 @@ import Blog from './pages/Blog';
 import Contact from './pages/Contact';
 import SignIn from './pages/SignIn';
 import Images from './pages/Images';
-import Portal from './pages/Portal';
 
 export default function App() {
   return (
@@ -38,7 +37,6 @@ export default function App() {
         <Route path="/contact.html" element={<Contact />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signin.html" element={<SignIn />} />
-        <Route path="/portal" element={<Portal />} />
         <Route path="/images" element={<Images />} />
         <Route path="/images.html" element={<Images />} />
         <Route path="*" element={<Navigate to="/" replace />} />
