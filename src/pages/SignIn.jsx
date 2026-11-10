@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { setAuthSession, AUTHORIZED_TESTER } from '../services/portalState';
 
 export default function SignIn() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'verify'
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -12,11 +14,30 @@ export default function SignIn() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Handle Login Submit
+  // Handle Login Submit - Restricted to authorized tester
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     setErrorMessage('');
-    alert(`Welcome back to Diaspora Connect Farmers SACCO! Logged in as ${email}.`);
+
+    const trimmedEmail = email.trim().toLowerCase();
+    if (trimmedEmail !== AUTHORIZED_TESTER.email.toLowerCase() || password !== AUTHORIZED_TESTER.password) {
+      setErrorMessage('Access Denied: Testing mode is restricted to authorized tester credentials (israelezrakisakye@gmail.com / 88888888).');
+      return;
+    }
+
+    setAuthSession({
+      email: AUTHORIZED_TESTER.email,
+      name: AUTHORIZED_TESTER.name,
+      loginTime: new Date().toISOString()
+    });
+
+    navigate('/portal');
+  };
+
+  const handleFillTesterCredentials = () => {
+    setEmail(AUTHORIZED_TESTER.email);
+    setPassword(AUTHORIZED_TESTER.password);
+    setErrorMessage('');
   };
 
   // Handle Sign Up Submit -> sends email code and moves to verification step
@@ -145,7 +166,14 @@ export default function SignIn() {
                   />
                 </div>
 
-                <div className="forgot-row" id="forgot-row">
+                <div className="forgot-row" id="forgot-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={handleFillTesterCredentials}
+                    style={{ background: 'none', border: 'none', color: '#b8860b', fontSize: '11.5px', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontWeight: '600' }}
+                  >
+                    Use Authorized Test Credentials
+                  </button>
                   <Link to="/contact" className="forgot-link">
                     Forgot password?
                   </Link>

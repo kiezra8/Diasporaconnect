@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
+import { getAuthSession, clearAuthSession } from '../services/portalState';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [session, setSession] = useState(getAuthSession());
   const navWrapRef = useRef(null);
   const hamburgerRef = useRef(null);
   const location = useLocation();
+
+  useEffect(() => {
+    setSession(getAuthSession());
+  }, [location]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -92,13 +98,29 @@ export default function Navbar() {
             </NavLink>
           </li>
         </ul>
-        <div className="nav-right">
-          <Link to="/signin" className="nav-signin-btn">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-            </svg>
-            Sign In
-          </Link>
+        <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {session ? (
+            <>
+              <Link
+                to="/portal"
+                className="nav-signin-btn"
+                style={{
+                  background: 'linear-gradient(135deg, #b8860b 0%, #d4af37 100%)',
+                  color: '#0f172a',
+                  fontWeight: '700'
+                }}
+              >
+                🏛️ Portal
+              </Link>
+            </>
+          ) : (
+            <Link to="/signin" className="nav-signin-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+              </svg>
+              Sign In
+            </Link>
+          )}
         </div>
       </div>
 
