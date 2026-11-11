@@ -69,7 +69,7 @@ export default function About() {
             {/* Founder 1 */}
             <article className="founder-card">
               <div className="founder-img-wrap">
-                <img src="/images/author_samuel.jpg" alt="Mr. Nyanzi Edrine – Chairperson" width="300" height="300" decoding="async" />
+                <img src="/images/nyanzi_edrine.jpg" alt="Mr. Nyanzi Edrine – Chairperson" width="300" height="300" decoding="async" />
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Mr. Nyanzi Edrine</h3>
@@ -81,31 +81,7 @@ export default function About() {
             {/* Founder 2 */}
             <article className="founder-card">
               <div className="founder-img-wrap">
-                <img src="/images/author_grace.jpg" alt="Ms. Namulindwa Mary Flavia – Vise chairperson" width="300" height="300" decoding="async" />
-              </div>
-              <div className="founder-info">
-                <h3 className="founder-name">Ms. Namulindwa Mary Flavia</h3>
-                <span className="founder-role">Vise Chairperson</span>
-                <p className="founder-bio">Leading operational strategy, member alignment, and agricultural development initiatives across our farm networks.</p>
-              </div>
-            </article>
-
-            {/* Founder 3 */}
-            <article className="founder-card">
-              <div className="founder-img-wrap">
-                <img src="/images/author_david.jpg" alt="Mr. Helera John Bahati – Secretary" width="300" height="300" decoding="async" />
-              </div>
-              <div className="founder-info">
-                <h3 className="founder-name">Mr. Helera John Bahati</h3>
-                <span className="founder-role">Secretary</span>
-                <p className="founder-bio">Directing institutional records, statutory compliance, board resolutions, and member correspondence.</p>
-              </div>
-            </article>
-
-            {/* Founder 4 */}
-            <article className="founder-card">
-              <div className="founder-img-wrap">
-                <img src="/images/author_amara.jpg" alt="Mrs. Miriam Halera – Treasurer" width="300" height="300" decoding="async" />
+                <img src="/images/miriam_halera.jpg" alt="Mrs. Miriam Halera – Treasurer" width="300" height="300" decoding="async" />
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Mrs. Miriam Halera</h3>
@@ -114,10 +90,37 @@ export default function About() {
               </div>
             </article>
 
-            {/* Founder 5 */}
+            {/* Founder 3 */}
             <article className="founder-card">
               <div className="founder-img-wrap">
-                <img src="/images/author_joseph.jpg" alt="Ms. Ssanyu Phiona – Member Representative" width="300" height="300" decoding="async" />
+                <img src="/images/namulindwa_mary_flavia.jpg" alt="Ms. Namulindwa Mary Flavia – Vice Chairperson" width="300" height="300" decoding="async" />
+              </div>
+              <div className="founder-info">
+                <h3 className="founder-name">Ms. Namulindwa Mary Flavia</h3>
+                <span className="founder-role">Vice Chairperson</span>
+                <p className="founder-bio">Leading operational strategy, member alignment, and agricultural development initiatives across our farm networks.</p>
+              </div>
+            </article>
+
+            {/* Founder 4 */}
+            <article className="founder-card">
+              <div className="founder-img-wrap">
+                <img src="/images/halera_john_bahati.jpg" alt="Mr. Halera John Bahati – Secretary" width="300" height="300" decoding="async" />
+              </div>
+              <div className="founder-info">
+                <h3 className="founder-name">Mr. Halera John Bahati</h3>
+                <span className="founder-role">Secretary</span>
+                <p className="founder-bio">Directing institutional records, statutory compliance, board resolutions, and member correspondence.</p>
+              </div>
+            </article>
+
+            {/* Founder 5 */}
+            <article className="founder-card">
+              <div className="founder-img-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '84px', height: '84px', opacity: 0.5 }} aria-label="No photo available">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Ms. Ssanyu Phiona</h3>

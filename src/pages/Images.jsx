@@ -87,24 +87,31 @@ const galleryItems = [
   },
   {
     category: 'members',
-    img: '/images/author_grace.jpg',
-    badge: 'Leadership',
-    title: 'Grace Nakato',
-    desc: 'Head of Operations & Member Relations – coordinating farm ground audits and community outreach.'
+    img: '/images/nyanzi_edrine.jpg',
+    badge: 'Chairperson',
+    title: 'Mr. Nyanzi Edrine',
+    desc: 'Chairperson & Founder – providing executive direction and cooperative governance for the SACCO.'
   },
   {
     category: 'members',
-    img: '/images/author_david.jpg',
-    badge: 'Diaspora Member',
-    title: 'David Mukasa (UK Chapter)',
-    desc: 'Active dairy unit investor sharing insights on building passive agricultural cashflow from London.'
+    img: '/images/miriam_halera.jpg',
+    badge: 'Treasurer',
+    title: 'Mrs. Miriam Halera',
+    desc: 'Treasurer & Founder – managing financial stewardship, capital allocation, and statutory audits.'
   },
   {
     category: 'members',
-    img: '/images/author_amara.jpg',
-    badge: 'Diaspora Member',
-    title: 'Amara Okello (Canada Chapter)',
-    desc: 'Diaspora investor investing in sustainable acreage and compound SACCO interest models.'
+    img: '/images/namulindwa_mary_flavia.jpg',
+    badge: 'Vice Chairperson',
+    title: 'Ms. Namulindwa Mary Flavia',
+    desc: 'Vice Chairperson & Founder – leading operational strategy and farm agricultural development.'
+  },
+  {
+    category: 'members',
+    img: '/images/halera_john_bahati.jpg',
+    badge: 'Secretary',
+    title: 'Mr. Halera John Bahati',
+    desc: 'Secretary & Founder – directing institutional records, statutory compliance, and member correspondence.'
   }
 ];
 
