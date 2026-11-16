@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
+import { getSession } from '../services/api';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [session, setSession] = useState(getSession());
   const navWrapRef = useRef(null);
   const hamburgerRef = useRef(null);
   const location = useLocation();
+
+  useEffect(() => {
+    setSession(getSession());
+  }, [location]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -91,14 +97,62 @@ export default function Navbar() {
               Contact
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/signin" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ color: '#10b981', fontWeight: '700' }}>
+              Portals
+            </NavLink>
+          </li>
         </ul>
-        <div className="nav-right">
-          <Link to="/signin" className="nav-signin-btn">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-            </svg>
-            Sign In
+        <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Link
+            to="/signin"
+            className="nav-signin-btn"
+            style={{
+              background: '#059669',
+              color: '#ffffff',
+              border: '1px solid #10b981',
+              fontWeight: '700',
+              padding: '6px 14px',
+              fontSize: '12px'
+            }}
+          >
+            Portals
           </Link>
+          {session ? (
+            <Link
+              to={
+                session.role === 'ADMIN'
+                  ? '/admin'
+                  : session.role === 'BOARD_MEMBER'
+                  ? '/board'
+                  : session.role === 'SECRETARY'
+                  ? '/secretary'
+                  : session.role === 'ACCOUNTANT'
+                  ? '/accountant'
+                  : session.role === 'FARM_WORKER'
+                  ? '/farm'
+                  : '/member'
+              }
+              className="nav-signin-btn"
+              style={{
+                background: '#0f172a',
+                color: '#34d399',
+                border: '1px solid #059669',
+                fontWeight: '700',
+                padding: '6px 14px',
+                fontSize: '12px'
+              }}
+            >
+              {session.role.replace('_', ' ')}
+            </Link>
+          ) : (
+            <Link to="/signin" className="nav-signin-btn" style={{ padding: '6px 14px', fontSize: '12px' }}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+              </svg>
+              Sign In
+            </Link>
+          )}
         </div>
       </div>
 

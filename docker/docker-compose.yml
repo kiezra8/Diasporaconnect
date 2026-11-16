@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Caddy Reverse Proxy with Automatic HTTPS
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+      - ../dist:/var/www/html
+    depends_on:
+      - backend
+
+  # NestJS Enterprise API
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=postgresql://dc_admin:SecureDiasporaPass2026!@postgres:5432/diaspora_connect_db?schema=public
+      - JWT_SECRET=diaspora-connect-super-secure-production-jwt-token-key-2026
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # PostgreSQL 16 Enterprise Database
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: dc_admin
+      POSTGRES_PASSWORD: SecureDiasporaPass2026!
+      POSTGRES_DB: diaspora_connect_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dc_admin -d diaspora_connect_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis 7 Cache & BullMQ Queue
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  redis_data:
+

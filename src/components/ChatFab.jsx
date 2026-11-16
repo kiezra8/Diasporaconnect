@@ -10,8 +10,13 @@ export default function ChatFab() {
         setIsOpen(false);
       }
     };
+    const handleToggleEvent = () => setIsOpen(prev => !prev);
     document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    window.addEventListener('dc_toggle_chat', handleToggleEvent);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('dc_toggle_chat', handleToggleEvent);
+    };
   }, [isOpen]);
 
   return (

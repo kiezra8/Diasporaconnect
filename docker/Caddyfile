@@ -1,0 +1,38 @@
+# Diaspora Connect - Caddy Reverse Proxy Configuration
+
+# 1. Public Website & SPA Portals
+diasporaconnectt.com {
+    root * /var/www/html
+    encode gzip zstd
+    file_server
+
+    # Fallback all client routes to SPA index.html
+    try_files {path} /index.html
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# 2. NestJS REST API & WebSockets
+api.diasporaconnectt.com {
+    encode gzip zstd
+
+    reverse_proxy backend:4000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Security Headers
+    header {
+        Access-Control-Allow-Origin "https://diasporaconnectt.com"
+        Access-Control-Allow-Credentials "true"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+}
+

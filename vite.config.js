@@ -5,7 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    open: true
+    open: false,
+    host: true
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'lucide-react', 'recharts', 'clsx', 'tailwind-merge']
   }
 });
-

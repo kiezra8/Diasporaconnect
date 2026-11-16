@@ -1,9 +1,10 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import BrandSection from './components/BrandSection';
 import ChatFab from './components/ChatFab';
 import ScrollToTop from './components/ScrollToTop';
+import GlobalBottomNav from './components/GlobalBottomNav';
 
 import Home from './pages/Home';
 import About from './pages/About';
@@ -15,13 +16,61 @@ import Contact from './pages/Contact';
 import SignIn from './pages/SignIn';
 import Images from './pages/Images';
 
+// Enterprise Category Portals & Systems
+import MemberPortal from './pages/portals/MemberPortal';
+import AdminPortal from './pages/portals/AdminPortal';
+import BoardPortal from './pages/portals/BoardPortal';
+import SecretaryPortal from './pages/portals/SecretaryPortal';
+import AccountantPortal from './pages/portals/AccountantPortal';
+import FarmPortal from './pages/portals/FarmPortal';
+import AccessDenied from './components/AccessDenied';
+import { getSession } from './services/api';
+
+function RequireAuth({ allowedRoles, children }) {
+  const session = getSession();
+  if (session && !allowedRoles.includes(session.role)) {
+    return <AccessDenied message="You have no access to this field." backPath="/member" />;
+  }
+  return children;
+}
+
 export default function App() {
+  const location = useLocation();
+
+  // Determine if currently in an enterprise dashboard/portal route
+  const portalPaths = [
+    '/admin',
+    '/sacco',
+    '/farm-system',
+    '/coffee-system',
+    '/cattle',
+    '/animals',
+    '/milk',
+    '/health',
+    '/breeding',
+    '/feed',
+    '/accounting',
+    '/portal',
+    '/member',
+    '/board',
+    '/secretary',
+    '/accountant',
+    '/farm'
+  ];
+
+  const isPortalRoute = portalPaths.some(path =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
+
   return (
     <>
       <ScrollToTop />
-      <Navbar />
+
+      {/* Render Public Navbar ONLY on marketing/public pages */}
+      {!isPortalRoute && <Navbar />}
 
       <Routes>
+        {/* Public Website Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/about.html" element={<About />} />
@@ -39,12 +88,36 @@ export default function App() {
         <Route path="/signin.html" element={<SignIn />} />
         <Route path="/images" element={<Images />} />
         <Route path="/images.html" element={<Images />} />
+
+        {/* 6 Category Portals & Dedicated JBS Farm Systems */}
+        <Route path="/admin" element={<RequireAuth allowedRoles={['ADMIN']}><AdminPortal /></RequireAuth>} />
+        <Route path="/sacco" element={<RequireAuth allowedRoles={['ADMIN']}><AdminPortal /></RequireAuth>} />
+        <Route path="/farm-system" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
+        <Route path="/coffee-system" element={<RequireAuth allowedRoles={['ADMIN']}><AdminPortal /></RequireAuth>} />
+        <Route path="/cattle" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
+        <Route path="/animals" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
+        <Route path="/milk" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
+        <Route path="/health" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
+        <Route path="/breeding" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
+        <Route path="/feed" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
+        <Route path="/portal" element={<MemberPortal />} />
+
+        <Route path="/member" element={<MemberPortal />} />
+        <Route path="/board" element={<RequireAuth allowedRoles={['BOARD_MEMBER', 'ADMIN']}><BoardPortal /></RequireAuth>} />
+        <Route path="/secretary" element={<RequireAuth allowedRoles={['SECRETARY', 'ADMIN']}><SecretaryPortal /></RequireAuth>} />
+        <Route path="/accountant" element={<RequireAuth allowedRoles={['ACCOUNTANT', 'ADMIN']}><AccountantPortal /></RequireAuth>} />
+        <Route path="/accounting" element={<RequireAuth allowedRoles={['ACCOUNTANT', 'ADMIN']}><AccountantPortal /></RequireAuth>} />
+        <Route path="/farm" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      <BrandSection />
-      <ChatFab />
+      {/* Render Public BrandSection and ChatFab ONLY on marketing/public pages */}
+      {!isPortalRoute && <BrandSection />}
+      {!isPortalRoute && <ChatFab />}
+
+      {/* Universal Bottom Navigation Bar for the Whole Website */}
+      <GlobalBottomNav />
     </>
   );
 }
-
