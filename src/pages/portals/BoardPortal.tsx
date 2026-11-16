@@ -44,7 +44,7 @@ export default function BoardPortal() {
 
   // -- Theme State ------------------------------------------------------------
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('dc_portal_theme') as 'dark' | 'light') || 'dark';
+    return getTheme();
   });
   const isDark = themeMode === 'dark';
   const toggleTheme = () => {

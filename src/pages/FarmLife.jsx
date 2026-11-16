@@ -7,7 +7,6 @@ export default function FarmLife() {
       <header className="page-header-clean">
         <span className="page-header-badge">Ground Level Footage</span>
         <h1 className="page-header-title">FARM <span>LIFE</span></h1>
-        <p className="page-header-sub">Ground-level farm videos from our operational commercial dairy and agricultural acreage in Uganda.</p>
         <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 

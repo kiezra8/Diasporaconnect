@@ -164,6 +164,7 @@ nav#navbar {
   text-transform: uppercase;
   position: relative;
   padding: 6px 0;
+  cursor: pointer;
   transition: color 0.25s ease;
 }
 .nav-link:hover,
@@ -274,6 +275,7 @@ nav#navbar {
     transform: translateY(0);
     opacity: 1;
     pointer-events: auto;
+    z-index: 1050;
   }
   .nav-menu {
     flex-direction: column;

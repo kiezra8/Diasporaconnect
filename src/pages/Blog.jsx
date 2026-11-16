@@ -18,7 +18,6 @@ export default function Blog() {
       <header className="page-header-clean">
         <span className="page-header-badge">Member Insights &amp; Stories</span>
         <h1 className="page-header-title">DIASPORA <span>BLOGS</span></h1>
-        <p className="page-header-sub">Inspiring stories from members across the globe — their journeys, investments, and visions for generational wealth in Uganda.</p>
         <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 

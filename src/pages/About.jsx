@@ -7,7 +7,6 @@ export default function About() {
       <header className="page-header-clean">
         <span className="page-header-badge">Who We Are</span>
         <h1 className="page-header-title">ABOUT <span>DIASPORA CONNECT</span></h1>
-        <p className="page-header-sub">Uganda&rsquo;s premier farmers&rsquo; savings and credit co-operative founded by diaspora professionals dedicated to generational agricultural wealth.</p>
         <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 

@@ -30,7 +30,6 @@ export default function Contact() {
       <header className="page-header-clean">
         <span className="page-header-badge">We Are Here For You</span>
         <h1 className="page-header-title">CONNECT WITH <span>OUR TEAM</span></h1>
-        <p className="page-header-sub">Whether you are in London, Toronto, Dubai, or Kampala — our member liaison officers are ready to answer your questions and guide your membership.</p>
         <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 

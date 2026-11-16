@@ -2,11 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Home() {
-  const [heroSlide, setHeroSlide] = useState(0);
   const [activeFarmDot, setActiveFarmDot] = useState(0);
   const canvasRef = useRef(null);
   const farmTrackWrapRef = useRef(null);
-  const heroTimerRef = useRef(null);
 
   // 1. PARTICLES CANVAS
   useEffect(() => {
@@ -79,23 +77,7 @@ export default function Home() {
     };
   }, []);
 
-  // 2. HERO CAROUSEL ROTATION
-  useEffect(() => {
-    const startTimer = () => {
-      stopTimer();
-      heroTimerRef.current = setInterval(() => {
-        setHeroSlide((prev) => (prev === 0 ? 1 : 0));
-      }, 5500);
-    };
-    const stopTimer = () => {
-      if (heroTimerRef.current) clearInterval(heroTimerRef.current);
-    };
-
-    startTimer();
-    return () => stopTimer();
-  }, []);
-
-  // 3. SCROLL REVEALS
+  // 2. SCROLL REVEALS
   useEffect(() => {
     const revealEls = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
     if ('IntersectionObserver' in window && revealEls.length > 0) {
@@ -208,16 +190,12 @@ export default function Home() {
       {/* ─ CANVAS PARTICLES ─ */}
       <canvas id="particles-canvas" ref={canvasRef}></canvas>
 
-      {/* ─ HERO CAROUSEL ─ */}
+      {/* ─ HERO IMAGE ─ */}
       <section id="hero">
         <div className="hero-carousel" id="hero-carousel">
           <div
-            className={`hero-slide ${heroSlide === 0 ? 'active' : ''}`}
+            className="hero-slide active"
             style={{ backgroundImage: "url('/images/hero_slide_2.jpg?v=3.5')" }}
-          ></div>
-          <div
-            className={`hero-slide ${heroSlide === 1 ? 'active' : ''}`}
-            style={{ backgroundImage: "url('/images/hero_slide_1.jpg?v=3.5')" }}
           ></div>
         </div>
         <div className="hero-overlay"></div>
@@ -236,20 +214,6 @@ export default function Home() {
             <strong>Come Home.</strong>&nbsp; Invest.&nbsp; Grow Together.
           </p>
         </div>
-        <div className="hero-carousel-dots" id="hero-carousel-dots">
-          <button
-            className={`hero-dot ${heroSlide === 0 ? 'active' : ''}`}
-            aria-label="Slide 1"
-            type="button"
-            onClick={() => setHeroSlide(0)}
-          ></button>
-          <button
-            className={`hero-dot ${heroSlide === 1 ? 'active' : ''}`}
-            aria-label="Slide 2"
-            type="button"
-            onClick={() => setHeroSlide(1)}
-          ></button>
-        </div>
         <div className="hero-scroll">
           <span>Scroll</span>
           <div className="scroll-line"></div>
@@ -261,10 +225,6 @@ export default function Home() {
         <div className="mission-header reveal">
           <h2 className="section-heading">OUR <span>MISSION</span></h2>
           <div className="gold-line gold-line-center"></div>
-          <p className="mission-intro">
-            To create a <em>trusted financial community</em> where every member can save with purpose,
-            access opportunities, invest in agriculture and build a <em>more secure future</em>.
-          </p>
         </div>
 
         <div className="mission-cards">
@@ -312,7 +272,6 @@ export default function Home() {
           <span className="section-label">What We Stand For</span>
           <h2 className="section-heading">OUR <span>VALUES</span></h2>
           <div className="gold-line gold-line-center"></div>
-          <p className="values-sub">The Foundation of Our Growth</p>
         </div>
 
         {/* Row 1: 4 cards */}
@@ -436,10 +395,6 @@ export default function Home() {
           <span className="section-label">Where We Are Headed</span>
           <h2 className="section-heading">OUR <span>VISION</span></h2>
           <div className="gold-line gold-line-center"></div>
-          <p className="vision-intro">
-            To build a <strong>financially empowered community</strong> turning savings into{' '}
-            <strong>productive assets</strong> and <strong>lasting generational wealth</strong>.
-          </p>
         </div>
 
         <div className="vision-cards">
@@ -495,7 +450,6 @@ export default function Home() {
           <span className="section-label">Ground Level</span>
           <h2 className="section-heading">At the <span>Farm</span></h2>
           <div className="gold-line gold-line-center"></div>
-          <p className="farm-sub">Real land. Real produce. Real returns — see what your investment looks like on the ground.</p>
         </div>
         <div className="farm-track-wrap" ref={farmTrackWrapRef}>
           <div className="farm-track" id="farm-track">
@@ -576,7 +530,6 @@ export default function Home() {
           <span className="section-label">Member Stories</span>
           <h2 className="section-heading">Diaspora <span>Blogs</span></h2>
           <div className="gold-line gold-line-center"></div>
-          <p className="blogs-sub">Inspiring stories for diaspora members in the SACCO and their view on the matter.</p>
         </div>
 
         {/* FEATURED SPOTLIGHT STORY (DAIRY FARMING) */}

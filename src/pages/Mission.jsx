@@ -7,7 +7,6 @@ export default function Mission() {
       <header className="page-header-clean">
         <span className="page-header-badge">Purpose &amp; Co-operative Vision</span>
         <h1 className="page-header-title">OUR <span>MISSION</span></h1>
-        <p className="page-header-sub">&ldquo;To create a trusted financial community where every member can save with purpose, access opportunities, invest in agriculture and build a more secure future.&rdquo;</p>
         <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 
