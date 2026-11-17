@@ -275,6 +275,8 @@ export default function AdminPortal() {
     },
   ]);
 
+  const [memberApps, setMemberApps] = useState<any[]>([]);
+
   // ── New member form ────────────────────────────────────────────────────────
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberPhone, setNewMemberPhone] = useState('');
@@ -653,6 +655,12 @@ export default function AdminPortal() {
     setCoffeeInventory(SaccoFarmStore.getCoffeeInventory());
     if (SaccoFarmStore.getFeedInventory) setFeedsList(SaccoFarmStore.getFeedInventory());
     if (SaccoFarmStore.getAllHealthRecords) setHealthRecords(SaccoFarmStore.getAllHealthRecords());
+    try {
+      const stored = JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+      setMemberApps(stored);
+    } catch {
+      setMemberApps([]);
+    }
   };
 
   useEffect(() => {
@@ -751,6 +759,75 @@ export default function AdminPortal() {
       if (confirm('Reject this transaction? It will be returned to the accountant.')) {
         setPendingApprovals(prev => prev.filter(a => a.id !== id));
         notify('Transaction rejected and returned to Accountant queue.');
+      }
+    });
+  };
+
+  const handleAdminApproveMember = (id: string) => {
+    checkPermission(['ADMIN'], 'Authorizing new member registration', () => {
+      try {
+        const stored: any[] = JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+        let appName = '';
+        let isFinal = false;
+        const updated = stored.map(app => {
+          if (app.id === id) {
+            appName = app.fullName;
+            const newAdminApproved = true;
+            const isFullyApproved = app.secretaryApproved && newAdminApproved;
+            isFinal = isFullyApproved;
+            const approvedMemberId = app.memberId || `DC-00${Math.floor(7 + Math.random() * 20)}`;
+            if (isFullyApproved) {
+              SaccoFarmStore.addMember({
+                memberId: approvedMemberId,
+                name: app.fullName,
+                phone: app.phone,
+                category: app.chapter ? `Diaspora (${app.chapter})` : 'Ordinary Member',
+                shares: 4,
+                adminFee: 50000,
+                email: app.email,
+                nin: `CM${Math.floor(10000000 + Math.random() * 90000000)}Z`,
+                joinDate: new Date().toISOString().split('T')[0],
+                status: 'ACTIVE',
+                jan: 2050000, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
+                jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
+              });
+            }
+            return {
+              ...app,
+              adminApproved: newAdminApproved,
+              status: isFullyApproved ? 'APPROVED' : 'PENDING_APPROVAL',
+              memberId: isFullyApproved ? approvedMemberId : app.memberId
+            };
+          }
+          return app;
+        });
+        localStorage.setItem('dc_member_registrations', JSON.stringify(updated));
+        window.dispatchEvent(new Event('dc_storage_update'));
+        setMemberApps(updated);
+        notify(`Admin authorization granted for ${appName}. ${isFinal ? 'Member account is now ACTIVE and can sign in.' : 'Pending Secretary recommendation.'}`);
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  };
+
+  const handleAdminRejectMember = (id: string) => {
+    checkPermission(['ADMIN'], 'Rejecting new member registration', () => {
+      if (!confirm('Reject this new member application?')) return;
+      try {
+        const stored: any[] = JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+        const updated = stored.map(app => {
+          if (app.id === id) {
+            return { ...app, status: 'REJECTED' };
+          }
+          return app;
+        });
+        localStorage.setItem('dc_member_registrations', JSON.stringify(updated));
+        window.dispatchEvent(new Event('dc_storage_update'));
+        setMemberApps(updated);
+        notify('Member registration marked as rejected.');
+      } catch (err) {
+        console.error(err);
       }
     });
   };
@@ -1836,6 +1913,9 @@ export default function AdminPortal() {
     reloadData();
   };
 
+    const pendingMemberRegCount = memberApps.filter(a => !a.adminApproved && a.status === 'PENDING_APPROVAL').length;
+    const totalPendingApprovals = pendingApprovals.length + pendingMemberRegCount;
+
   // ── Nav items ────────────────────────────────────────────────────────────────
   const navItems: { id: TabId; label: string; icon: React.ReactNode; badge?: string | number }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -1847,7 +1927,7 @@ export default function AdminPortal() {
     { id: 'farm', label: 'Farm', icon: <Milk className="w-4 h-4" /> },
     { id: 'coffee', label: 'Coffee Trading', icon: <Coffee className="w-4 h-4" />, badge: `${(totalCoffeeInvKg / 1000).toFixed(0)}T` },
     { id: 'reports', label: 'Reports', icon: <BarChart3 className="w-4 h-4" /> },
-    { id: 'approvals', label: 'Approvals', icon: <CheckCircle2 className="w-4 h-4" />, badge: pendingApprovals.length || undefined },
+    { id: 'approvals', label: 'Approvals', icon: <CheckCircle2 className="w-4 h-4" />, badge: totalPendingApprovals || undefined },
     { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
@@ -4163,11 +4243,127 @@ export default function AdminPortal() {
 
           {/* ── APPROVALS TAB ───────────────────────────────────────────── */}
           {activeTab === 'approvals' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Transaction Approvals</h3>
-                <p className="text-xs text-slate-400">Dual-control final authorization — verified by Accountant, requires Admin authorization</p>
+            <div className="space-y-8">
+              {/* SECTION 1: Member Registrations Dual-Control Approval */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">New Member Registrations (Dual-Approval)</h3>
+                  <p className="text-xs text-slate-400">
+                    Dual-control authorization: Secretariat recommends after reviewing KYC intake, Admin provides final binding approval to activate portal access.
+                  </p>
+                </div>
+
+                {memberApps.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                    <p className="text-slate-900 dark:text-white font-bold text-sm">No Pending Member Registrations</p>
+                    <p className="text-slate-400 text-xs">All self-registered applicant records are cleared.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {memberApps.map(app => (
+                      <div key={app.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono font-bold text-slate-500">{app.id}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                app.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
+                                app.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-500' :
+                                'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                              }`}>
+                                {app.status.replace(/_/g, ' ')}
+                              </span>
+                              <span className="text-[11px] text-slate-400">Submitted: {app.submittedAt}</span>
+                            </div>
+
+                            <p className="text-base font-extrabold text-slate-900 dark:text-white">
+                              {app.fullName}
+                            </p>
+
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+                              <span><span className="text-slate-400">Email:</span> {app.email}</span>
+                              <span><span className="text-slate-400">Phone:</span> {app.phone}</span>
+                              <span><span className="text-slate-400">Chapter:</span> {app.chapter}</span>
+                            </div>
+
+                            {app.reason && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">Motivation:</span> {app.reason}
+                              </p>
+                            )}
+
+                            {/* Dual status badges */}
+                            <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-400 font-semibold">1. Secretariat Recommendation:</span>
+                                {app.secretaryApproved ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                                    <CheckCircle2 className="w-3 h-3" /> Recommended
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-[11px]">
+                                    <Clock className="w-3 h-3" /> Awaiting Secretariat Review
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-400 font-semibold">2. Admin Authorization:</span>
+                                {app.adminApproved ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                                    <CheckCircle2 className="w-3 h-3" /> Authorized
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-500 dark:text-slate-400 font-bold text-[11px]">
+                                    <Clock className="w-3 h-3" /> Pending Admin
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {app.status === 'PENDING_APPROVAL' && (
+                              <>
+                                <button
+                                  onClick={() => handleAdminRejectMember(app.id)}
+                                  className="px-4 py-2 rounded-xl bg-rose-900/30 hover:bg-rose-900/50 text-rose-400 border border-rose-500/30 font-bold text-xs transition"
+                                >
+                                  REJECT
+                                </button>
+                                <button
+                                  onClick={() => handleAdminApproveMember(app.id)}
+                                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg transition"
+                                >
+                                  {app.adminApproved ? 'AUTHORIZED' : 'AUTHORIZE MEMBERSHIP'}
+                                </button>
+                              </>
+                            )}
+                            {app.status === 'APPROVED' && (
+                              <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/30">
+                                Active ({app.memberId})
+                              </span>
+                            )}
+                            {app.status === 'REJECTED' && (
+                              <span className="px-3 py-1.5 rounded-xl bg-rose-500/15 text-rose-500 font-bold text-xs border border-rose-500/30">
+                                Rejected
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* SECTION 2: Transaction Approvals */}
+              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Financial Transaction Approvals</h3>
+                  <p className="text-xs text-slate-400">Dual-control final authorization — verified by Accountant, requires Admin authorization</p>
+                </div>
 
               {pendingApprovals.length === 0 ? (
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 text-center">
@@ -4223,6 +4419,7 @@ export default function AdminPortal() {
                   ))}
                 </div>
               )}
+              </div>
             </div>
           )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Home, MessageSquare, LogIn, LayoutDashboard, Settings, Phone, X, ExternalLink } from 'lucide-react';
+import { Home, MessageSquare, LogIn, LayoutDashboard, Settings, Phone, X, ExternalLink, Target } from 'lucide-react';
 import { getSession } from '../services/api';
 
 export default function GlobalBottomNav() {
@@ -13,13 +13,16 @@ export default function GlobalBottomNav() {
   // Listen for login/logout and session updates
   useEffect(() => {
     const checkSession = () => setSession(getSession());
+    const openChat = () => setShowChatOptions(true);
     window.addEventListener('storage', checkSession);
     window.addEventListener('dc_storage_update', checkSession);
     window.addEventListener('dc_auth_change', checkSession);
+    window.addEventListener('dc_open_chat', openChat);
     return () => {
       window.removeEventListener('storage', checkSession);
       window.removeEventListener('dc_storage_update', checkSession);
       window.removeEventListener('dc_auth_change', checkSession);
+      window.removeEventListener('dc_open_chat', openChat);
     };
   }, []);
 
@@ -64,7 +67,20 @@ export default function GlobalBottomNav() {
   );
 
   const isHomeActive = location.pathname === '/';
+  const isPlanningActive = location.pathname === '/planning' || (isPortalActive && location.search.includes('tab=planning'));
   const isSignInActive = !session && location.pathname.startsWith('/signin');
+
+  // Handle Planning Click
+  const handlePlanningClick = () => {
+    setShowChatOptions(false);
+    if (session && isPortalActive) {
+      window.dispatchEvent(new CustomEvent('dc_portal_tab_switch', { detail: 'planning' }));
+    } else if (session) {
+      navigate('/member?tab=planning');
+    } else {
+      navigate('/planning');
+    }
+  };
 
   // Handle Chat Click -> Show WhatsApp & Call Options
   const handleChatClick = () => {
@@ -144,7 +160,7 @@ export default function GlobalBottomNav() {
               </div>
               <div className="flex-1 text-left">
                 <div className="font-extrabold">Chat on WhatsApp</div>
-                <div className="text-xs text-white/90 font-mono">+256 747 325 565</div>
+                <div className="text-xs text-white/80">Available anytime</div>
               </div>
               <ExternalLink className="w-4 h-4 text-white/80" />
             </a>
@@ -159,8 +175,8 @@ export default function GlobalBottomNav() {
                 <Phone className="w-4 h-4" />
               </div>
               <div className="flex-1 text-left">
-                <div className="font-extrabold">Call Directly</div>
-                <div className="text-xs text-slate-300 font-mono">+256 747 325 565</div>
+                <div className="font-extrabold">Call Us</div>
+                <div className="text-xs text-slate-400">Speak to our team</div>
               </div>
               <Phone className="w-4 h-4 text-slate-400" />
             </a>
@@ -206,7 +222,23 @@ export default function GlobalBottomNav() {
           <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">Home</span>
         </Link>
 
-        {/* 2. CHAT — WhatsApp / Call Action Sheet */}
+        {/* 2. PLANNING — Savings Goals & Expenses Breakdown */}
+        <button
+          type="button"
+          onClick={handlePlanningClick}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer group ${
+            isPlanningActive
+              ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400'
+          }`}
+        >
+          <div className={`p-1 rounded-xl transition ${isPlanningActive ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : 'group-hover:bg-slate-100 dark:group-hover:bg-slate-800'}`}>
+            <Target className="w-5 h-5" />
+          </div>
+          <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">Planning</span>
+        </button>
+
+        {/* 3. CHAT — WhatsApp / Call Action Sheet */}
         <button
           type="button"
           onClick={handleChatClick}

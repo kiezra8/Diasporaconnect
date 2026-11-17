@@ -26,7 +26,21 @@ import {
   Moon,
 } from 'lucide-react';
 
-type TabId = 'register' | 'directory' | 'kyc' | 'requests' | 'notices' | 'chat' | 'settings';
+type TabId = 'register' | 'applications' | 'directory' | 'kyc' | 'requests' | 'notices' | 'chat' | 'settings';
+
+export interface PendingMemberApplication {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  chapter: string;
+  reason: string;
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+  secretaryApproved: boolean;
+  adminApproved: boolean;
+  submittedAt: string;
+  memberId?: string;
+}
 
 export default function SecretaryPortal() {
   const navigate = useNavigate();
@@ -58,6 +72,7 @@ export default function SecretaryPortal() {
 
   // Live data
   const [members, setMembers] = useState<SaccoMember[]>([]);
+  const [memberApps, setMemberApps] = useState<PendingMemberApplication[]>([]);
 
   // Register form
   const [fullName, setFullName] = useState('');
@@ -114,6 +129,75 @@ export default function SecretaryPortal() {
 
   const reloadData = () => {
     setMembers(SaccoFarmStore.getMembers());
+    try {
+      const stored = JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+      setMemberApps(stored);
+    } catch {
+      setMemberApps([]);
+    }
+  };
+
+  const handleSecretaryRecommend = (id: string) => {
+    try {
+      const stored: PendingMemberApplication[] = JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+      let targetName = '';
+      const updated = stored.map(app => {
+        if (app.id === id) {
+          targetName = app.fullName;
+          const newSecApproved = true;
+          const isFullyApproved = app.adminApproved && newSecApproved;
+          const assignedId = app.memberId || `DC-00${Math.floor(7 + Math.random() * 20)}`;
+          if (isFullyApproved) {
+            SaccoFarmStore.addMember({
+              memberId: assignedId,
+              name: app.fullName,
+              phone: app.phone,
+              category: app.chapter ? `Diaspora (${app.chapter})` : 'Ordinary Member',
+              shares: 4,
+              adminFee: 50000,
+              email: app.email,
+              nin: `CM${Math.floor(10000000 + Math.random() * 90000000)}Z`,
+              joinDate: new Date().toISOString().split('T')[0],
+              status: 'ACTIVE',
+              jan: 2050000, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
+              jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
+            });
+          }
+          return {
+            ...app,
+            secretaryApproved: newSecApproved,
+            status: isFullyApproved ? ('APPROVED' as const) : ('PENDING_APPROVAL' as const),
+            memberId: isFullyApproved ? assignedId : app.memberId
+          };
+        }
+        return app;
+      });
+      localStorage.setItem('dc_member_registrations', JSON.stringify(updated));
+      window.dispatchEvent(new Event('dc_storage_update'));
+      setMemberApps(updated);
+      notify(`Secretariat recommendation recorded for ${targetName}. Awaiting Admin final authorization.`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSecretaryReject = (id: string) => {
+    if (!window.confirm('Reject this member application?')) return;
+    try {
+      const stored: PendingMemberApplication[] = JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+      const updated = stored.map(app => {
+        if (app.id === id) {
+          return { ...app, status: 'REJECTED' as const };
+        }
+        return app;
+      });
+      localStorage.setItem('dc_member_registrations', JSON.stringify(updated));
+      window.dispatchEvent(new Event('dc_storage_update'));
+      setMemberApps(updated);
+      notify('Application rejected by Secretariat.');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
@@ -163,8 +247,11 @@ export default function SecretaryPortal() {
     m.email.toLowerCase().includes(memberSearch.toLowerCase())
   );
 
+  const pendingSecretaryCount = memberApps.filter(a => !a.secretaryApproved && a.status === 'PENDING_APPROVAL').length;
+
   const navItems: { id: TabId; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'register', label: 'Register Member', icon: <UserPlus className="w-4 h-4" /> },
+    { id: 'applications', label: 'Pending Approvals', icon: <CheckCircle2 className="w-4 h-4" />, badge: pendingSecretaryCount || undefined },
     { id: 'directory', label: 'Member Directory', icon: <Users className="w-4 h-4" />, badge: members.length },
     { id: 'kyc', label: 'KYC Management', icon: <UserCheck className="w-4 h-4" />, badge: members.filter(m => m.status === 'PENDING').length },
     { id: 'requests', label: 'Request Status', icon: <Clock className="w-4 h-4" />, badge: requestStatuses.filter(r => r.status !== 'APPROVED').length },
@@ -391,6 +478,129 @@ export default function SecretaryPortal() {
                   </button>
                 </form>
               </div>
+            </div>
+          )}
+
+          {/* ── TAB: PENDING APPROVALS ──────────────────────────────────── */}
+          {activeTab === 'applications' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Member Application Approvals</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Dual-authorization gate: Review applicant KYC credentials and issue Secretariat recommendation. Final activation requires Admin authorization.
+                </p>
+              </div>
+
+              {memberApps.length === 0 ? (
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-10 text-center">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+                  <p className="text-slate-900 dark:text-white font-bold">No Pending Membership Applications</p>
+                  <p className="text-slate-400 text-xs mt-1">All new self-registered member applications have been reviewed.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {memberApps.map(app => (
+                    <div key={app.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-slate-500">{app.id}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                              app.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
+                              app.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-500' :
+                              'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                            }`}>
+                              {app.status.replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-[11px] text-slate-400">Submitted: {app.submittedAt}</span>
+                          </div>
+
+                          <h4 className="text-base font-extrabold text-slate-900 dark:text-white">
+                            {app.fullName}
+                          </h4>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs text-slate-600 dark:text-slate-300">
+                            <div><span className="text-slate-400">Email:</span> {app.email}</div>
+                            <div><span className="text-slate-400">Phone:</span> {app.phone}</div>
+                            <div><span className="text-slate-400">Chapter:</span> {app.chapter}</div>
+                          </div>
+
+                          {app.reason && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                              <span className="font-semibold text-slate-700 dark:text-slate-300">Reason / Interest:</span> {app.reason}
+                            </p>
+                          )}
+
+                          {/* Dual approval status indicators */}
+                          <div className="flex flex-wrap items-center gap-3 pt-1">
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="text-slate-400 font-semibold">1. Secretariat:</span>
+                              {app.secretaryApproved ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                                  <CheckCircle2 className="w-3 h-3" /> Recommended
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-[11px]">
+                                  <Clock className="w-3 h-3" /> Pending Review
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="text-slate-400 font-semibold">2. Admin:</span>
+                              {app.adminApproved ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                                  <CheckCircle2 className="w-3 h-3" /> Authorized
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-500 dark:text-slate-400 font-bold text-[11px]">
+                                  <Clock className="w-3 h-3" /> Awaiting Final Step
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-2 shrink-0">
+                          {app.status === 'PENDING_APPROVAL' && (
+                            <>
+                              {!app.secretaryApproved ? (
+                                <button
+                                  onClick={() => handleSecretaryRecommend(app.id)}
+                                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition"
+                                >
+                                  Recommend Approval
+                                </button>
+                              ) : (
+                                <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/30">
+                                  Recommended to Admin
+                                </span>
+                              )}
+                              <button
+                                onClick={() => handleSecretaryReject(app.id)}
+                                className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 font-bold text-xs transition"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {app.status === 'APPROVED' && (
+                            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/30">
+                              Active Member ({app.memberId})
+                            </span>
+                          )}
+                          {app.status === 'REJECTED' && (
+                            <span className="px-3 py-1.5 rounded-xl bg-rose-500/15 text-rose-500 font-bold text-xs border border-rose-500/30">
+                              Rejected
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

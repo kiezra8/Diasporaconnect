@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { getSession, clearSession, api } from '../../services/api';
 import { applyTheme, getTheme } from '../../services/theme';
 import PortalBottomNav from '../../components/PortalBottomNav';
+import Planning from '../Planning';
 import {
   SaccoFarmStore,
   SaccoMember,
@@ -31,7 +32,10 @@ import {
   Award,
   Globe,
   Sun,
-  Moon
+  Moon,
+  Target,
+  MessageSquare,
+  Settings
 } from 'lucide-react';
 
 export default function MemberPortal() {
@@ -55,7 +59,14 @@ export default function MemberPortal() {
   };
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'overview' | 'shares' | 'statement' | 'deposit' | 'withdraw' | 'support' | 'chat' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'shares' | 'statement' | 'deposit' | 'withdraw' | 'planning' | 'chat' | 'settings'>(() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get('tab');
+      if (p === 'planning') return 'planning';
+      if (p === 'settings') return 'settings';
+    } catch {}
+    return 'overview';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNotification, setShowNotification] = useState('');
   const [navSearch, setNavSearch] = useState('');
@@ -125,7 +136,8 @@ export default function MemberPortal() {
     reloadData();
     const handlePortalTabSwitch = (e: any) => {
       const tab = e.detail;
-      if (tab === 'chat') setActiveTab('support');
+      if (tab === 'chat') window.dispatchEvent(new CustomEvent('dc_open_chat'));
+      else if (tab === 'planning') setActiveTab('planning');
       else if (tab === 'dashboard') setActiveTab('overview');
       else if (tab === 'settings') setActiveTab('settings');
     };
@@ -627,15 +639,15 @@ export default function MemberPortal() {
             </button>
 
             <button
-              onClick={() => { setActiveTab('support'); setSidebarOpen(false); }}
+              onClick={() => { setActiveTab('planning'); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                activeTab === 'support'
-                  ? 'bg-emerald-700 text-white shadow-md font-bold'
+                activeTab === 'planning'
+                  ? 'bg-emerald-600 text-white shadow-md font-bold'
                   : isDark ? 'text-slate-300 hover:text-white hover:bg-slate-800/60' : 'text-slate-900 font-bold hover:text-emerald-700 hover:bg-slate-100'
               }`}
             >
-              <HelpCircle className="w-4 h-4 shrink-0" />
-              <span>Support</span>
+              <Target className="w-4 h-4 shrink-0 text-emerald-500" />
+              <span>Planning</span>
             </button>
           </div>
         </div>
@@ -722,7 +734,7 @@ export default function MemberPortal() {
                   { label: 'Statement', tab: 'statement' as const, desc: 'Monthly contribution breakdown' },
                   { label: 'Deposit Request', tab: 'deposit' as const, desc: 'Submit deposit & payment receipt' },
                   { label: 'Withdrawal Request', tab: 'withdraw' as const, desc: 'Request savings payout' },
-                  { label: 'Support', tab: 'support' as const, desc: 'SACCO bylaws and member assistance' },
+                  { label: 'Planning', tab: 'planning' as const, desc: 'Savings goals and expense projections' },
                 ]
                   .filter(i => i.label.toLowerCase().includes(navSearch.toLowerCase()) || i.desc.toLowerCase().includes(navSearch.toLowerCase()))
                   .map(item => (
@@ -819,46 +831,179 @@ export default function MemberPortal() {
                     </div>
                   </div>
 
-                  {/* 4 Action Buttons */}
+                  {/* Top Action Buttons */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button
+                      type="button"
                       onClick={() => setShowDepositModal(true)}
-                      className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md flex flex-col items-center justify-center gap-1 transition active:scale-95"
+                      className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
                     >
                       <ArrowDownLeft className="w-4 h-4" />
                       <span>DEPOSIT</span>
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => setShowWithdrawModal(true)}
-                      className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md shadow-rose-900/20 flex flex-col items-center justify-center gap-1 transition active:scale-95"
+                      className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md shadow-rose-900/20 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
                     >
                       <ArrowUpRight className="w-4 h-4" />
                       <span>WITHDRAW</span>
                     </button>
 
                     <button
-                      onClick={() => setActiveTab('statement')}
-                      className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-xs border border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-1 transition active:scale-95"
+                      type="button"
+                      onClick={() => setActiveTab('planning')}
+                      className="px-4 py-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-extrabold text-xs border border-emerald-500/40 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
                     >
-                      <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>STATEMENT</span>
+                      <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>PLANNING</span>
                     </button>
 
                     <button
-                      onClick={() => setActiveTab('support')}
-                      className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-xs border border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-1 transition active:scale-95"
+                      type="button"
+                      onClick={() => setActiveTab('statement')}
+                      className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-xs border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
                     >
-                      <HelpCircle className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-                      <span>SUPPORT</span>
+                      <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>STATEMENT</span>
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* 4 Financial Balances Cards */}
+              {/* ── MODULE CARDS: Small Square with Round Border Buttons ── */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Target className="w-4 h-4 text-emerald-600" />
+                    <span>Member Modules &amp; Services</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">All Clickable</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                  {/* 1. Planning */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('planning')}
+                    className="group aspect-square p-2.5 rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/15 hover:border-emerald-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
+                    title="Financial Planning & Goals"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                      <Target className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Planning</span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase">Goals</span>
+                  </button>
+
+                  {/* 2. Statement */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('statement')}
+                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
+                    title="12-Month Ledger Statement"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Statement</span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase">Ledger</span>
+                  </button>
+
+                  {/* 3. Shares */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('shares')}
+                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
+                    title="Share Capital & Dividends"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Shares</span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase">Equity</span>
+                  </button>
+
+                  {/* 4. Deposit Funds */}
+                  <button
+                    type="button"
+                    onClick={() => setShowDepositModal(true)}
+                    className="group aspect-square p-2.5 rounded-2xl border-2 border-emerald-600/40 bg-emerald-600/10 hover:bg-emerald-600/20 hover:border-emerald-600 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
+                    title="Make Deposit"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-1 group-hover:scale-110 transition shadow-sm">
+                      <ArrowDownLeft className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Deposit</span>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Top Up</span>
+                  </button>
+
+                  {/* 5. Withdraw Funds */}
+                  <button
+                    type="button"
+                    onClick={() => setShowWithdrawModal(true)}
+                    className="group aspect-square p-2.5 rounded-2xl border-2 border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/15 hover:border-rose-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
+                    title="Request Withdrawal"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center mb-1 group-hover:scale-110 transition shadow-sm">
+                      <ArrowUpRight className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Withdraw</span>
+                    <span className="text-[9px] text-rose-600 dark:text-rose-400 font-bold uppercase">Payout</span>
+                  </button>
+
+                  {/* 6. Certificate */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCertificateModal(true)}
+                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-amber-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
+                    title="View Share Certificate"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                      <Award className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Certificate</span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase">Official</span>
+                  </button>
+
+                  {/* 7. Chat / WhatsApp Support */}
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('dc_open_chat'))}
+                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
+                    title="Live Chat Support"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Chat</span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase">Direct</span>
+                  </button>
+
+                  {/* 8. Settings */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('settings')}
+                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
+                    title="Portal Settings"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                      <Settings className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Settings</span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase">Security</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 Financial Balances Cards - Clickable */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('statement')}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-emerald-500/60 transition cursor-pointer active:scale-98"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Savings Balance</span>
                     <Coins className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -867,11 +1012,15 @@ export default function MemberPortal() {
                     UGX {currentMember.savings.toLocaleString()}
                   </div>
                   <p className="text-xs font-bold mt-1 text-rose-600 dark:text-rose-400">
-                    Withdrawable: UGX {currentMember.withdrawable.toLocaleString()}
+                    Withdrawable: UGX {currentMember.withdrawable.toLocaleString()} &rarr;
                   </p>
-                </div>
+                </button>
 
-                <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('shares')}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-purple-500/60 transition cursor-pointer active:scale-98"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Share Ownership</span>
                     <ShieldCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -880,11 +1029,15 @@ export default function MemberPortal() {
                     {currentMember.shares} Shares
                   </div>
                   <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">
-                    Value: UGX {(currentMember.shares * 250000).toLocaleString()}
+                    Value: UGX {(currentMember.shares * 250000).toLocaleString()} &rarr;
                   </p>
-                </div>
+                </button>
 
-                <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('statement')}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-emerald-500/60 transition cursor-pointer active:scale-98"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Total Contributed</span>
                     <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -892,10 +1045,14 @@ export default function MemberPortal() {
                   <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
                     UGX {currentMember.total.toLocaleString()}
                   </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">Cumulative Deposits</p>
-                </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">Cumulative Deposits &rarr;</p>
+                </button>
 
-                <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setShowCertificateModal(true)}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-amber-500/60 transition cursor-pointer active:scale-98"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Membership Status</span>
                     <Award className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -903,8 +1060,8 @@ export default function MemberPortal() {
                   <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
                     Active
                   </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">Voting Member</p>
-                </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">Voting Member &bull; View Cert &rarr;</p>
+                </button>
               </div>
 
               {/* Monthly Savings Section - Every Month Clickable */}
@@ -1488,56 +1645,10 @@ export default function MemberPortal() {
             </div>
           )}
 
-          {/* VIEW: SUPPORT */}
-          {activeTab === 'support' && (
-            <div className="max-w-3xl mx-auto space-y-6">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Member Support</h3>
-              </div>
-
-              {/* Chat Container */}
-              <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col h-[520px]">
-                <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-                  {chatMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed font-semibold ${
-                          msg.sender === 'user'
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-200'
-                        }`}
-                      >
-                        <p>{msg.text}</p>
-                        {msg.source && (
-                          <p className="mt-2 text-[10px] text-emerald-700 dark:text-emerald-400 font-bold border-t border-slate-200 dark:border-slate-800 pt-1">
-                            Source: {msg.source}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <form onSubmit={handleSupportSend} className="pt-3 border-t border-slate-200 dark:border-slate-800 flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Ask a question..."
-                    value={supportQuery}
-                    onChange={(e) => setSupportQuery(e.target.value)}
-                    className="flex-1 bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition active:scale-95 shrink-0"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Send</span>
-                  </button>
-                </form>
-              </div>
+          {/* VIEW: PLANNING */}
+          {activeTab === 'planning' && (
+            <div className="space-y-4">
+              <Planning />
             </div>
           )}
 
@@ -2065,10 +2176,11 @@ export default function MemberPortal() {
       )}
           {/* Mobile Bottom Navigation Bar (Home, Dashboard, Chat, Settings) */}
       <PortalBottomNav
-        currentTab={activeTab === 'overview' ? 'dashboard' : activeTab === 'support' || activeTab === 'chat' ? 'chat' : activeTab}
+        currentTab={activeTab === 'overview' ? 'dashboard' : activeTab === 'planning' ? 'planning' : activeTab === 'chat' ? 'chat' : activeTab}
         onSelectTab={t => {
           if (t === 'dashboard') setActiveTab('overview');
-          else if (t === 'chat') setActiveTab('support');
+          else if (t === 'planning') setActiveTab('planning');
+          else if (t === 'chat') window.dispatchEvent(new CustomEvent('dc_open_chat'));
           else if (t === 'settings') setActiveTab('settings');
           else setActiveTab(t as any);
         }}

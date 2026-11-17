@@ -125,6 +125,11 @@ export default function Navbar() {
             </NavLink>
           </li>
           <li>
+            <NavLink to="/vision" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
+              Vision
+            </NavLink>
+          </li>
+          <li>
             <NavLink to="/farmlife" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
               Farm Life
             </NavLink>
@@ -135,9 +140,26 @@ export default function Navbar() {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/contact" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
-              Contact
-            </NavLink>
+            <button
+              type="button"
+              className="nav-link"
+              onClick={() => {
+                handleNavClick();
+                window.dispatchEvent(new CustomEvent('dc_open_chat'));
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                font: 'inherit',
+                color: 'inherit',
+                padding: '8px 14px',
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+            >
+              Chat
+            </button>
           </li>
           <li>
             {session ? (

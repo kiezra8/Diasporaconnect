@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
-import { Sun, Moon, Shield, User, FileText, Activity, Briefcase, UserCheck } from 'lucide-react';
+import { api, setSession } from '../services/api';
+import { SaccoFarmStore } from '../services/saccoFarmStore';
+import { Sun, Moon, Shield, User, FileText, Activity, Briefcase, UserCheck, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -9,19 +10,65 @@ export default function SignIn() {
   const [mode, setMode] = useState('signin');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [chapter, setChapter] = useState('UK Diaspora Chapter');
+  const [reason, setReason] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [generatedCode, setGeneratedCode] = useState('849201');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [activeRegApp, setActiveRegApp] = useState(null);
 
   const isDark = themeMode === 'dark';
+
+  // Helper to load registrations
+  const getStoredRegistrations = () => {
+    try {
+      return JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+    } catch {
+      return [];
+    }
+  };
 
   // Handle Login Submit -> Real session validation & RBAC redirection
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
+
+    const cleanEmail = email.toLowerCase().trim();
+    const stored = getStoredRegistrations();
+    const matchedApp = stored.find(a => a.email.toLowerCase() === cleanEmail);
+
+    if (matchedApp) {
+      if (matchedApp.status === 'PENDING_APPROVAL') {
+        setActiveRegApp(matchedApp);
+        setErrorMessage('Your membership application is pending dual approval by the Secretary and Admin.');
+        setMode('pending_approval');
+        return;
+      }
+      if (matchedApp.status === 'REJECTED') {
+        setErrorMessage('Your membership application was not approved. Please contact the Secretariat.');
+        return;
+      }
+      if (matchedApp.status === 'APPROVED') {
+        // Log in directly
+        const userSession = {
+          id: `usr-${matchedApp.id}`,
+          email: matchedApp.email,
+          fullName: matchedApp.fullName,
+          role: 'MEMBER',
+          memberNumber: matchedApp.memberId || 'DC-MBR-00105',
+          token: `jwt-${Date.now()}`
+        };
+        setSession(userSession);
+        window.dispatchEvent(new Event('dc_auth_change'));
+        navigate('/member');
+        return;
+      }
+    }
+
     try {
       const res = await api.login(email, password);
       navigate(res.redirectTo);
@@ -63,7 +110,7 @@ export default function SignIn() {
     setMode('verify');
   };
 
-  // Handle Verification Code Submit
+  // Handle Verification Code Submit -> Creates pending application awaiting Secretary and Admin
   const handleVerifySubmit = (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -73,12 +120,81 @@ export default function SignIn() {
       return;
     }
 
-    alert('Your Diaspora Connect Farmers SACCO account has been confirmed and verified! You can now sign in.');
-    setMode('signin');
+    const newApp = {
+      id: `REG-${Math.floor(1000 + Math.random() * 9000)}`,
+      fullName: fullName.trim() || 'Diaspora Member',
+      email: email.trim().toLowerCase(),
+      phone: phone.trim() || '+256 700 000 000',
+      chapter: chapter || 'UK Diaspora Chapter',
+      reason: reason.trim() || 'Agricultural investment & cooperative dairy farming',
+      password,
+      status: 'PENDING_APPROVAL', // 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'
+      secretaryApproved: false,
+      adminApproved: false,
+      submittedAt: new Date().toISOString().split('T')[0]
+    };
+
+    const stored = getStoredRegistrations();
+    const updated = [newApp, ...stored.filter(a => a.email.toLowerCase() !== newApp.email)];
+    localStorage.setItem('dc_member_registrations', JSON.stringify(updated));
+    window.dispatchEvent(new Event('dc_storage_update'));
+
+    setActiveRegApp(newApp);
+    setMode('pending_approval');
     setPassword('');
     setConfirmPassword('');
     setErrorMessage('');
     setSuccessMessage('');
+  };
+
+  // Instant simulate approval for immediate testing
+  const handleInstantApprovalTest = () => {
+    if (!activeRegApp) return;
+    const stored = getStoredRegistrations();
+    const approvedMemberId = `DC-00${Math.floor(7 + Math.random() * 20)}`;
+    const updated = stored.map(a => {
+      if (a.id === activeRegApp.id) {
+        return {
+          ...a,
+          status: 'APPROVED',
+          secretaryApproved: true,
+          adminApproved: true,
+          memberId: approvedMemberId
+        };
+      }
+      return a;
+    });
+
+    localStorage.setItem('dc_member_registrations', JSON.stringify(updated));
+
+    // Also register in SaccoFarmStore members list
+    SaccoFarmStore.addMember({
+      memberId: approvedMemberId,
+      name: activeRegApp.fullName,
+      phone: activeRegApp.phone,
+      email: activeRegApp.email,
+      nin: `CM${Math.floor(10000000 + Math.random() * 90000000)}Z`,
+      category: activeRegApp.chapter ? `Diaspora (${activeRegApp.chapter})` : 'Ordinary Member',
+      joinDate: new Date().toISOString().split('T')[0],
+      status: 'ACTIVE',
+      shares: 4,
+      adminFee: 50000,
+      jan: 2050000, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
+      jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
+    });
+
+    const userSession = {
+      id: `usr-${activeRegApp.id}`,
+      email: activeRegApp.email,
+      fullName: activeRegApp.fullName,
+      role: 'MEMBER',
+      memberNumber: approvedMemberId,
+      token: `jwt-${Date.now()}`
+    };
+    setSession(userSession);
+    window.dispatchEvent(new Event('dc_auth_change'));
+    window.dispatchEvent(new Event('dc_storage_update'));
+    navigate('/member');
   };
 
   const handleResendCode = () => {
@@ -420,6 +536,52 @@ export default function SignIn() {
                 className="block text-xs font-bold mb-1"
                 style={{ color: isDark ? '#cbd5e1' : '#475569' }}
               >
+                Phone Number (WhatsApp)
+              </label>
+              <input
+                type="tel"
+                placeholder="+44 7911 123456 or +256 700 000000"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500 border"
+                style={{
+                  backgroundColor: isDark ? '#020617' : '#f8fafc',
+                  borderColor: isDark ? '#334155' : '#cbd5e1',
+                  color: isDark ? '#ffffff' : '#0f172a',
+                }}
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-bold mb-1"
+                style={{ color: isDark ? '#cbd5e1' : '#475569' }}
+              >
+                Diaspora Region / Chapter
+              </label>
+              <select
+                value={chapter}
+                onChange={(e) => setChapter(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 border"
+                style={{
+                  backgroundColor: isDark ? '#020617' : '#f8fafc',
+                  borderColor: isDark ? '#334155' : '#cbd5e1',
+                  color: isDark ? '#ffffff' : '#0f172a',
+                }}
+              >
+                <option value="UK Diaspora Chapter">United Kingdom (UK)</option>
+                <option value="North America (US & Canada)">North America (US &amp; Canada)</option>
+                <option value="Middle East (UAE & Gulf)">Middle East (UAE, Qatar, Saudi)</option>
+                <option value="Europe Chapter (Nordic & EU)">Europe (Sweden, Germany, Netherlands)</option>
+                <option value="Resident Ugandan Member">Resident Ugandan Member</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-bold mb-1"
+                style={{ color: isDark ? '#cbd5e1' : '#475569' }}
+              >
                 Password
               </label>
               <input
@@ -542,6 +704,133 @@ export default function SignIn() {
               </button>
             </div>
           </form>
+        )}
+
+        {/* ── 4. PENDING DUAL APPROVAL SCREEN (SECRETARY & ADMIN) ── */}
+        {mode === 'pending_approval' && (
+          <div className="space-y-5 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-sm">
+              <Clock className="w-7 h-7" />
+            </div>
+
+            <div>
+              <span className="px-3 py-1 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-black uppercase tracking-wider border border-amber-500/30">
+                Application Submitted &bull; Pending Dual Approval
+              </span>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white mt-2">
+                Awaiting Official Review
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                Thank you for applying to join Diaspora Connect Farmers SACCO. Under statutory cooperative guidelines, new memberships require dual approval by both the <strong>Secretary</strong> and <strong>System Administrator</strong>.
+              </p>
+            </div>
+
+            {/* Application Summary Box */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-left text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Applicant Name:</span>
+                <span className="font-extrabold text-slate-900 dark:text-white">{activeRegApp?.fullName || fullName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Registered Email:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{activeRegApp?.email || email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Chapter / Region:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{activeRegApp?.chapter || chapter}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Application Ref:</span>
+                <span className="font-mono text-slate-500">{activeRegApp?.id || 'REG-PENDING'}</span>
+              </div>
+            </div>
+
+            {/* Dual Approval Status Checklist */}
+            <div className="space-y-2 text-left">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Dual Authorization Flow:
+              </span>
+
+              {/* Step 1 */}
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-bold text-slate-800 dark:text-slate-200">1. Email &amp; Identity Verification</span>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                  Confirmed
+                </span>
+              </div>
+
+              {/* Step 2 */}
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
+                  {activeRegApp?.secretaryApproved ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                  )}
+                  <div>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">2. Secretary Vetting</span>
+                    <span className="block text-[10px] text-slate-400">Mr. Halera John Bahati</span>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  activeRegApp?.secretaryApproved
+                    ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
+                    : 'text-amber-600 bg-amber-50 dark:bg-amber-950/40'
+                }`}>
+                  {activeRegApp?.secretaryApproved ? 'Vetted &amp; Approved' : 'Under Review'}
+                </span>
+              </div>
+
+              {/* Step 3 */}
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
+                  {activeRegApp?.adminApproved ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                  )}
+                  <div>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">3. Admin Final Authorization</span>
+                    <span className="block text-[10px] text-slate-400">Ezra Kisakye (System Admin)</span>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  activeRegApp?.adminApproved
+                    ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
+                    : 'text-amber-600 bg-amber-50 dark:bg-amber-950/40'
+                }`}>
+                  {activeRegApp?.adminApproved ? 'Authorized' : 'Awaiting Authorization'}
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={handleInstantApprovalTest}
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Simulate Secretary &amp; Admin Approval (Instant Access)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signin');
+                  setErrorMessage('');
+                  setSuccessMessage('Your application is recorded. Once approved, use your email and password to sign in.');
+                }}
+                className="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition cursor-pointer"
+              >
+                Return to Sign In
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

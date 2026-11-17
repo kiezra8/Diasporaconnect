@@ -5,7 +5,7 @@ export default function Mission() {
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
       {/* ─ PAGE HEADER ─ */}
       <header className="page-header-clean">
-        <span className="page-header-badge">Purpose &amp; Co-operative Vision</span>
+        <span className="page-header-badge">Purpose &amp; Direction</span>
         <h1 className="page-header-title">OUR <span>MISSION</span></h1>
         <div className="page-header-divider" aria-hidden="true"></div>
       </header>
@@ -92,30 +92,6 @@ export default function Mission() {
                 Generational inheritance rights protecting your family's future.
               </li>
             </ul>
-          </div>
-        </section>
-
-        {/* Co-operative Governance Framework */}
-        <section className="framework-box">
-          <h2>OUR CO-OPERATIVE <span>FRAMEWORK</span></h2>
-          <p className="intro">Operated under strict statutory co-operative guidelines, audited by certified public accountants, and governed by members for members.</p>
-          <div className="framework-grid">
-            <div className="framework-card">
-              <h3>Democratic Control</h3>
-              <p>Every member holds an equal voice in our Annual General Meeting, voting on key governance matters and board elections.</p>
-            </div>
-            <div className="framework-card">
-              <h3>Asset Titling Security</h3>
-              <p>Farmland is legally titled, surveyed, and deeded to the SACCO trust to eliminate title conflicts or unverified transactions.</p>
-            </div>
-            <div className="framework-card">
-              <h3>Financial Auditing</h3>
-              <p>Annual external audits, quarterly financial disclosures, and real-time ledger accounting visible to overseas members.</p>
-            </div>
-            <div className="framework-card">
-              <h3>Community Development</h3>
-              <p>Beyond profits, our farms employ local youth, advance modern livestock genetics, and foster rural Ugandan agro-industrialisation.</p>
-            </div>
           </div>
         </section>
       </main>

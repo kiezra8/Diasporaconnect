@@ -1,8 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import BrandSection from './components/BrandSection';
-import ChatFab from './components/ChatFab';
 import ScrollToTop from './components/ScrollToTop';
 import GlobalBottomNav from './components/GlobalBottomNav';
 
@@ -10,11 +8,13 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Mission from './pages/Mission';
 import Values from './pages/Values';
+import Vision from './pages/Vision';
 import FarmLife from './pages/FarmLife';
 import Blog from './pages/Blog';
 import Contact from './pages/Contact';
 import SignIn from './pages/SignIn';
 import Images from './pages/Images';
+import Planning from './pages/Planning';
 
 // Enterprise Category Portals & Systems
 import MemberPortal from './pages/portals/MemberPortal';
@@ -78,6 +78,8 @@ export default function App() {
         <Route path="/mission.html" element={<Mission />} />
         <Route path="/values" element={<Values />} />
         <Route path="/values.html" element={<Values />} />
+        <Route path="/vision" element={<Vision />} />
+        <Route path="/vision.html" element={<Vision />} />
         <Route path="/farmlife" element={<FarmLife />} />
         <Route path="/farmlife.html" element={<FarmLife />} />
         <Route path="/blog" element={<Blog />} />
@@ -88,6 +90,7 @@ export default function App() {
         <Route path="/signin.html" element={<SignIn />} />
         <Route path="/images" element={<Images />} />
         <Route path="/images.html" element={<Images />} />
+        <Route path="/planning" element={<Planning />} />
 
         {/* 6 Category Portals & Dedicated JBS Farm Systems */}
         <Route path="/admin" element={<RequireAuth allowedRoles={['ADMIN']}><AdminPortal /></RequireAuth>} />
@@ -111,10 +114,6 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-
-      {/* Render Public BrandSection and ChatFab ONLY on marketing/public pages */}
-      {!isPortalRoute && <BrandSection />}
-      {!isPortalRoute && <ChatFab />}
 
       {/* Universal Bottom Navigation Bar for the Whole Website */}
       <GlobalBottomNav />
