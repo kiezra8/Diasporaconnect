@@ -696,12 +696,17 @@ export default function MemberPortal() {
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{currentMember.name}</p>
-                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-bold">{currentMember.memberId}</p>
-                <span className="inline-block px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[9px] font-bold">
-                  {currentMember.status}
-                </span>
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-bold whitespace-nowrap">{currentMember.memberId}</p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => { openEditProfile(); setSidebarOpen(false); }}
+              className="w-full py-1.5 px-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/60 hover:bg-emerald-50 dark:hover:bg-slate-800/80 text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Edit Profile</span>
+            </button>
           </div>
 
           {/* Left Navigation Items */}
@@ -786,6 +791,14 @@ export default function MemberPortal() {
             >
               <Target className="w-4 h-4 shrink-0 text-emerald-500" />
               <span>Planning</span>
+            </button>
+
+            <button
+              onClick={() => { openEditProfile(); setSidebarOpen(false); }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-900 dark:text-slate-300 font-bold hover:text-emerald-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer"
+            >
+              <Edit3 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span>Edit Profile</span>
             </button>
           </div>
         </div>
@@ -872,46 +885,24 @@ export default function MemberPortal() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
                   <div className="flex items-center gap-4">
                     {memberPhoto ? (
-                      <div
-                        onClick={openEditProfile}
-                        className="relative group cursor-pointer w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-md border-2 border-emerald-500/50 shrink-0 bg-slate-900"
-                        title="Click to edit profile"
-                      >
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-md border-2 border-emerald-500/50 shrink-0 bg-slate-900">
                         <img
                           src={memberPhoto}
                           alt={currentMember.name}
                           className="w-full h-full object-cover object-top"
                         />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                          <Camera className="w-5 h-5 text-white" />
-                        </div>
                       </div>
                     ) : (
-                      <div
-                        onClick={openEditProfile}
-                        className="relative group cursor-pointer w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0"
-                        title="Click to edit profile"
-                      >
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0">
                         {currentMember.name.slice(0, 2).toUpperCase()}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-2xl">
-                          <Camera className="w-5 h-5 text-white" />
-                        </div>
                       </div>
                     )}
-                    <div>
+                    <div className="min-w-0">
                       <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{currentMember.name}</h3>
-                      <p className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 font-mono font-bold mt-1.5 flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>{currentMember.phone || (session as any)?.phone || '+256 700 000 000'}</span>
+                      <p className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 font-mono font-bold mt-1.5 flex items-center gap-1.5 flex-wrap">
+                        <Phone className="w-3.5 h-3.5 shrink-0" />
+                        <span className="break-all">{currentMember.phone || (session as any)?.phone || '+256 700 000 000'}</span>
                       </p>
-                      <button
-                        type="button"
-                        onClick={openEditProfile}
-                        className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 text-[11px] font-bold border border-slate-300 dark:border-slate-700 transition cursor-pointer"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>Edit Profile</span>
-                      </button>
                     </div>
                   </div>
 
