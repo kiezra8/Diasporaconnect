@@ -168,14 +168,7 @@ export default function Blog() {
               </div>
 
               {/* Body (YouTube Card Style) */}
-              <div className="p-4 sm:p-5 flex gap-3 flex-1">
-                {/* Author Avatar */}
-                <img
-                  src={art.author.avatar}
-                  alt={art.author.name}
-                  className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0 mt-0.5"
-                />
-
+              <div className="p-4 sm:p-5 flex flex-col flex-1">
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-snug line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
@@ -239,16 +232,9 @@ export default function Blog() {
             </h2>
 
             {/* Author Profile */}
-            <div className="flex items-center gap-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
-              <img
-                src={activeArticle.author.avatar}
-                alt={activeArticle.author.name}
-                className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-700"
-              />
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">{activeArticle.author.name}</p>
-                <p className="text-[11px] text-slate-500">{activeArticle.author.location}</p>
-              </div>
+            <div className="pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
+              <p className="text-xs font-bold text-slate-900 dark:text-white">{activeArticle.author.name}</p>
+              <p className="text-[11px] text-slate-500">{activeArticle.author.location}</p>
             </div>
 
             {/* Featured Image */}

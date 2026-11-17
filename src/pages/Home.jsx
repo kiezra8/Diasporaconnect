@@ -165,7 +165,7 @@ export default function Home() {
       <canvas id="particles-canvas" ref={canvasRef}></canvas>
 
       {/* HERO IMAGE */}
-      <section id="hero">
+      <section id="hero" style={{ height: '42vh', minHeight: '300px', maxHeight: '380px', display: 'flex', alignItems: 'center' }}>
         <div className="hero-carousel" id="hero-carousel">
           <div
             className="hero-slide active"
@@ -173,35 +173,35 @@ export default function Home() {
           ></div>
         </div>
         <div className="hero-overlay"></div>
-        <div className="hero-content">
-          <p className="hero-eyebrow">Diaspora Connect &middot; Uganda</p>
-          <div className="hero-logo-wrap">
-            <img src="/images/Diasporaconnectlogo.jpg" alt="Diaspora Connect Farmers SACCO" width="68" height="68" />
+        <div className="hero-content" style={{ textAlign: 'left', width: '100%', maxWidth: '1200px', padding: '0 32px', margin: '0 auto', display: 'flex', alignItems: 'center', height: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <h1 style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: 'clamp(1.8rem, 4.5vw, 3.2rem)',
+              fontWeight: 900,
+              color: '#ffffff',
+              lineHeight: 1.15,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              textShadow: '0 3px 12px rgba(0,0,0,0.85)',
+              margin: 0
+            }}>
+              Come home,<br />
+              <span style={{ color: 'var(--gold, #d4af37)' }}>Invest,</span><br />
+              Grow together.
+            </h1>
           </div>
-          <h1 className="hero-title">
-            DIASPORA<br />
-            <span className="accent">CONNECT</span>
-          </h1>
-          <p className="hero-subtitle">Farmers SACCO</p>
-          <div className="hero-divider"></div>
-          <p className="hero-tagline">
-            <strong>Come Home.</strong>&nbsp; Invest.&nbsp; Grow Together.
-          </p>
-        </div>
-        <div className="hero-scroll">
-          <span>Scroll</span>
-          <div className="scroll-line"></div>
         </div>
       </section>
 
       {/* ─ 1. MISSION / VALUES / VISION TAB SWITCHER ─ */}
-      <section id="pillars" style={{ padding: '72px 0 60px' }}>
+      <section id="pillars" style={{ padding: '24px 0 36px' }}>
         {/* Tab Bar */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
           gap: '0',
-          marginBottom: '48px',
+          marginBottom: '28px',
           borderBottom: '2px solid rgba(184,134,11,0.15)',
           position: 'relative',
         }}>
@@ -585,15 +585,7 @@ export default function Home() {
                     </div>
 
                     {/* YouTube Card Body */}
-                    <div style={{ padding: '16px', display: 'flex', gap: '12px', flex: 1 }}>
-                      <img
-                        src={post.authorImg}
-                        alt={post.author}
-                        width="36"
-                        height="36"
-                        style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: '2px' }}
-                        decoding="async"
-                      />
+                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                         <h3 style={{
                           margin: '0 0 4px 0',

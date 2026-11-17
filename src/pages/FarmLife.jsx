@@ -131,10 +131,14 @@ export default function FarmLife() {
 
         {/* All Video Clips Grid */}
         <div className="space-y-4">
-          <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-            All Farm Sections
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+              All Farm Sections
+            </h3>
+            <span className="text-xs text-slate-500 font-bold">5 Ground Videos</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {FARM_VIDEOS.map((v) => (
               <div
                 key={v.id}
@@ -142,20 +146,51 @@ export default function FarmLife() {
                   setActiveVideoId(v.id);
                   window.scrollTo({ top: 120, behavior: 'smooth' });
                 }}
-                className={`p-4 rounded-3xl border transition cursor-pointer flex items-center gap-3 ${
+                className={`group rounded-3xl border overflow-hidden transition cursor-pointer flex flex-col shadow-sm ${
                   activeVideoId === v.id
-                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600'
                 }`}
               >
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-emerald-600">
-                  <Play className="w-5 h-5 fill-current" />
+                {/* Real Video Preview */}
+                <div className="relative aspect-video w-full bg-black overflow-hidden">
+                  <video
+                    src={v.src}
+                    muted
+                    playsInline
+                    loop
+                    preload="metadata"
+                    onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
+                    onMouseLeave={(e) => { e.currentTarget.pause(); }}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
+                  
+                  {/* Category Pill */}
+                  <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-emerald-600/90 text-white text-[10px] font-extrabold uppercase tracking-wider shadow">
+                    {v.category}
+                  </span>
+
+                  {/* Play Button Indicator */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-emerald-600 transition">
+                      <Play className="w-5 h-5 fill-current ml-0.5" />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{v.title}</h4>
-                  <p className="text-[11px] text-slate-500 truncate">{v.subtitle}</p>
+
+                {/* Card Meta */}
+                <div className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-extrabold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                      {v.title}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                      {v.subtitle}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-emerald-600 transition shrink-0" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
               </div>
             ))}
           </div>

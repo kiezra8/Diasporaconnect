@@ -872,195 +872,66 @@ export default function MemberPortal() {
                 </div>
               </div>
 
-              {/* ── MODULE CARDS: Small Square with Round Border Buttons ── */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Target className="w-4 h-4 text-emerald-600" />
-                    <span>Member Modules &amp; Services</span>
-                  </h4>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">All Clickable</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                  {/* 1. Planning */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('planning')}
-                    className="group aspect-square p-2.5 rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/15 hover:border-emerald-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
-                    title="Financial Planning & Goals"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
-                      <Target className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Planning</span>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase">Goals</span>
-                  </button>
-
-                  {/* 2. Statement */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('statement')}
-                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
-                    title="12-Month Ledger Statement"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Statement</span>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase">Ledger</span>
-                  </button>
-
-                  {/* 3. Shares */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('shares')}
-                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
-                    title="Share Capital & Dividends"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Shares</span>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase">Equity</span>
-                  </button>
-
-                  {/* 4. Deposit Funds */}
-                  <button
-                    type="button"
-                    onClick={() => setShowDepositModal(true)}
-                    className="group aspect-square p-2.5 rounded-2xl border-2 border-emerald-600/40 bg-emerald-600/10 hover:bg-emerald-600/20 hover:border-emerald-600 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
-                    title="Make Deposit"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-1 group-hover:scale-110 transition shadow-sm">
-                      <ArrowDownLeft className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Deposit</span>
-                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Top Up</span>
-                  </button>
-
-                  {/* 5. Withdraw Funds */}
-                  <button
-                    type="button"
-                    onClick={() => setShowWithdrawModal(true)}
-                    className="group aspect-square p-2.5 rounded-2xl border-2 border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/15 hover:border-rose-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
-                    title="Request Withdrawal"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center mb-1 group-hover:scale-110 transition shadow-sm">
-                      <ArrowUpRight className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Withdraw</span>
-                    <span className="text-[9px] text-rose-600 dark:text-rose-400 font-bold uppercase">Payout</span>
-                  </button>
-
-                  {/* 6. Certificate */}
-                  <button
-                    type="button"
-                    onClick={() => setShowCertificateModal(true)}
-                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-amber-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
-                    title="View Share Certificate"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
-                      <Award className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Certificate</span>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase">Official</span>
-                  </button>
-
-                  {/* 7. Chat / WhatsApp Support */}
-                  <button
-                    type="button"
-                    onClick={() => window.dispatchEvent(new CustomEvent('dc_open_chat'))}
-                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-500 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
-                    title="Live Chat Support"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
-                      <MessageSquare className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Chat</span>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase">Direct</span>
-                  </button>
-
-                  {/* 8. Settings */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('settings')}
-                    className="group aspect-square p-2.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm active:scale-95"
-                    title="Portal Settings"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center mb-1 group-hover:scale-110 transition">
-                      <Settings className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">Settings</span>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase">Security</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 4 Financial Balances Cards - Clickable */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 3 Financial Balances - Minimal Rectangular Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                {/* 1. Saving Balance */}
                 <button
                   type="button"
                   onClick={() => setActiveTab('statement')}
-                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-emerald-500/60 transition cursor-pointer active:scale-98"
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-emerald-500 transition cursor-pointer active:scale-[0.99] flex flex-col justify-between"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Savings Balance</span>
-                    <Coins className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Savings Balance</span>
+                    <Coins className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 font-mono">
-                    UGX {currentMember.savings.toLocaleString()}
+                  <div>
+                    <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                      UGX {currentMember.savings.toLocaleString()}
+                    </div>
+                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                      Withdrawable: <span className="text-rose-600 dark:text-rose-400 font-bold font-mono">UGX {currentMember.withdrawable.toLocaleString()}</span>
+                    </p>
                   </div>
-                  <p className="text-xs font-bold mt-1 text-rose-600 dark:text-rose-400">
-                    Withdrawable: UGX {currentMember.withdrawable.toLocaleString()} &rarr;
-                  </p>
                 </button>
 
+                {/* 2. Shares */}
                 <button
                   type="button"
                   onClick={() => setActiveTab('shares')}
-                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-purple-500/60 transition cursor-pointer active:scale-98"
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-purple-500 transition cursor-pointer active:scale-[0.99] flex flex-col justify-between"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Share Ownership</span>
-                    <ShieldCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Share Ownership</span>
+                    <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   </div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                    {currentMember.shares} Shares
+                  <div>
+                    <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
+                      {currentMember.shares} Shares
+                    </div>
+                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                      Valuation: <span className="font-bold font-mono text-purple-600 dark:text-purple-400">UGX {(currentMember.shares * 250000).toLocaleString()}</span>
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">
-                    Value: UGX {(currentMember.shares * 250000).toLocaleString()} &rarr;
-                  </p>
                 </button>
 
+                {/* 3. Total Contributed */}
                 <button
                   type="button"
                   onClick={() => setActiveTab('statement')}
-                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-emerald-500/60 transition cursor-pointer active:scale-98"
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-blue-500 transition cursor-pointer active:scale-[0.99] flex flex-col justify-between"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Total Contributed</span>
-                    <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Contributed</span>
+                    <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                    UGX {currentMember.total.toLocaleString()}
+                  <div>
+                    <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
+                      UGX {currentMember.total.toLocaleString()}
+                    </div>
+                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                      Cumulative Deposits Recorded
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">Cumulative Deposits &rarr;</p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowCertificateModal(true)}
-                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm text-left hover:border-amber-500/60 transition cursor-pointer active:scale-98"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Membership Status</span>
-                    <Award className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
-                    Active
-                  </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">Voting Member &bull; View Cert &rarr;</p>
                 </button>
               </div>
 

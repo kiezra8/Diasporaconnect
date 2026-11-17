@@ -121,24 +121,24 @@ export default function GlobalBottomNav() {
           CHAT OPTIONS MODAL / ACTION SHEET (WHATSAPP & CALL)
          ───────────────────────────────────────────────────────────── */}
       {showChatOptions && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center pb-20 md:pb-24 px-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div
             ref={chatPopupRef}
-            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3"
+            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 relative"
           >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Contact & Support
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Contact &amp; Chat
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Direct connection to Diaspora Connect team
+                  Direct connection with our team
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowChatOptions(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />
