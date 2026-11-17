@@ -1892,14 +1892,16 @@ footer span {
     }
     .founder-img-wrap {
       width: 100%;
-      aspect-ratio: 1 / 1;
+      aspect-ratio: 4 / 4.5;
       overflow: hidden;
       background: #0f172a;
+      position: relative;
     }
     .founder-img-wrap img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: top center;
       display: block;
       transition: transform 0.5s ease;
     }

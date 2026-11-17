@@ -5,14 +5,115 @@ export default function About() {
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
       {/* ─ PAGE HEADER ─ */}
       <header className="page-header-clean">
-        <span className="page-header-badge">Who We Are</span>
+        <span className="page-header-badge">Leadership &amp; Governance</span>
         <h1 className="page-header-title">ABOUT <span>DIASPORA CONNECT</span></h1>
         <div className="page-header-divider" aria-hidden="true"></div>
       </header>
 
       <main className="about-content-wrap">
-        {/* Overview Section */}
-        <section className="about-intro-grid">
+        {/* 1. BOARD MEMBERS & FOUNDERS SECTION (FIRST) */}
+        <section className="founders-section" style={{ marginBottom: '48px' }}>
+          <div className="founders-header">
+            <h2>BOARD MEMBERS &amp; <span>FOUNDING LEADERSHIP</span></h2>
+            <p>The visionary board and founding leadership team guiding Diaspora Connect Farmers SACCO.</p>
+          </div>
+
+          <div className="founders-grid">
+            {/* Founder 1: Chairperson */}
+            <article className="founder-card">
+              <div className="founder-img-wrap">
+                <img
+                  src="/images/nyanzi_edrine.jpg"
+                  alt="Mr. Nyanzi Edrine – Chairperson"
+                  width="300"
+                  height="300"
+                  decoding="async"
+                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
+                />
+              </div>
+              <div className="founder-info">
+                <h3 className="founder-name">Mr. Nyanzi Edrine</h3>
+                <span className="founder-role">Chairperson</span>
+                <p className="founder-bio">Visionary leader providing executive direction, strategic oversight, and cooperative governance for the SACCO.</p>
+              </div>
+            </article>
+
+            {/* Founder 2: Treasurer */}
+            <article className="founder-card">
+              <div className="founder-img-wrap">
+                <img
+                  src="/images/miriam_halera.jpg"
+                  alt="Mrs. Miriam Halera – Treasurer"
+                  width="300"
+                  height="300"
+                  decoding="async"
+                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
+                />
+              </div>
+              <div className="founder-info">
+                <h3 className="founder-name">Mrs. Miriam Halera</h3>
+                <span className="founder-role">Treasurer</span>
+                <p className="founder-bio">Managing financial stewardship, capital allocation, member dividend distribution, and statutory audits.</p>
+              </div>
+            </article>
+
+            {/* Founder 3: Vice Chairperson */}
+            <article className="founder-card">
+              <div className="founder-img-wrap">
+                <img
+                  src="/images/namulindwa_mary_flavia.jpg"
+                  alt="Ms. Namulindwa Mary Flavia – Vice Chairperson"
+                  width="300"
+                  height="300"
+                  decoding="async"
+                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
+                />
+              </div>
+              <div className="founder-info">
+                <h3 className="founder-name">Ms. Namulindwa Mary Flavia</h3>
+                <span className="founder-role">Vice Chairperson</span>
+                <p className="founder-bio">Leading operational strategy, member alignment, and agricultural development initiatives across our farm networks.</p>
+              </div>
+            </article>
+
+            {/* Founder 4: Secretary */}
+            <article className="founder-card">
+              <div className="founder-img-wrap">
+                <img
+                  src="/images/halera_john_bahati.jpg"
+                  alt="Mr. Halera John Bahati – Secretary"
+                  width="300"
+                  height="300"
+                  decoding="async"
+                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
+                />
+              </div>
+              <div className="founder-info">
+                <h3 className="founder-name">Mr. Halera John Bahati</h3>
+                <span className="founder-role">Secretary</span>
+                <p className="founder-bio">Directing institutional records, statutory compliance, board resolutions, and member correspondence.</p>
+              </div>
+            </article>
+
+            {/* Founder 5: Member Representative */}
+            <article className="founder-card">
+              <div className="founder-img-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '84px', height: '84px', opacity: 0.5 }} aria-label="No photo available">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+              <div className="founder-info">
+                <h3 className="founder-name">Ms. Ssanyu Phiona</h3>
+                <span className="founder-role">Member Representative</span>
+                <p className="founder-bio">Championing diaspora member interests, community engagement, and ensuring every member voice is heard.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        {/* 2. OVERVIEW & PURPOSE EXPLANATION SECTION (LATER) */}
+        <section className="about-intro-grid" style={{ paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
           <div className="about-intro-text">
             <h2>Building Uganda&rsquo;s Agricultural Future Together</h2>
             <p>
@@ -54,79 +155,6 @@ export default function About() {
                 <p>Annual surplus dividends and regular commercial dairy milk yields.</p>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* 5 Founders Section */}
-        <section className="founders-section">
-          <div className="founders-header">
-            <h2>OUR <span>FOUNDERS &amp; BOARD MEMBERS</span></h2>
-            <p>The visionary board and founding leadership team guiding Diaspora Connect Farmers SACCO.</p>
-          </div>
-
-          <div className="founders-grid">
-            {/* Founder 1 */}
-            <article className="founder-card">
-              <div className="founder-img-wrap">
-                <img src="/images/nyanzi_edrine.jpg" alt="Mr. Nyanzi Edrine – Chairperson" width="300" height="300" decoding="async" />
-              </div>
-              <div className="founder-info">
-                <h3 className="founder-name">Mr. Nyanzi Edrine</h3>
-                <span className="founder-role">Chairperson</span>
-                <p className="founder-bio">Visionary leader providing executive direction, strategic oversight, and cooperative governance for the SACCO.</p>
-              </div>
-            </article>
-
-            {/* Founder 2 */}
-            <article className="founder-card">
-              <div className="founder-img-wrap">
-                <img src="/images/miriam_halera.jpg" alt="Mrs. Miriam Halera – Treasurer" width="300" height="300" decoding="async" />
-              </div>
-              <div className="founder-info">
-                <h3 className="founder-name">Mrs. Miriam Halera</h3>
-                <span className="founder-role">Treasurer</span>
-                <p className="founder-bio">Managing financial stewardship, capital allocation, member dividend distribution, and statutory audits.</p>
-              </div>
-            </article>
-
-            {/* Founder 3 */}
-            <article className="founder-card">
-              <div className="founder-img-wrap">
-                <img src="/images/namulindwa_mary_flavia.jpg" alt="Ms. Namulindwa Mary Flavia – Vice Chairperson" width="300" height="300" decoding="async" />
-              </div>
-              <div className="founder-info">
-                <h3 className="founder-name">Ms. Namulindwa Mary Flavia</h3>
-                <span className="founder-role">Vice Chairperson</span>
-                <p className="founder-bio">Leading operational strategy, member alignment, and agricultural development initiatives across our farm networks.</p>
-              </div>
-            </article>
-
-            {/* Founder 4 */}
-            <article className="founder-card">
-              <div className="founder-img-wrap">
-                <img src="/images/halera_john_bahati.jpg" alt="Mr. Halera John Bahati – Secretary" width="300" height="300" decoding="async" />
-              </div>
-              <div className="founder-info">
-                <h3 className="founder-name">Mr. Halera John Bahati</h3>
-                <span className="founder-role">Secretary</span>
-                <p className="founder-bio">Directing institutional records, statutory compliance, board resolutions, and member correspondence.</p>
-              </div>
-            </article>
-
-            {/* Founder 5 */}
-            <article className="founder-card">
-              <div className="founder-img-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '84px', height: '84px', opacity: 0.5 }} aria-label="No photo available">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-              </div>
-              <div className="founder-info">
-                <h3 className="founder-name">Ms. Ssanyu Phiona</h3>
-                <span className="founder-role">Member Representative</span>
-                <p className="founder-bio">Championing diaspora member interests, community engagement, and ensuring every member voice is heard.</p>
-              </div>
-            </article>
           </div>
         </section>
       </main>
