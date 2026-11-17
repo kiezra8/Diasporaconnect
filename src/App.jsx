@@ -28,8 +28,12 @@ import { getSession } from './services/api';
 
 function RequireAuth({ allowedRoles, children }) {
   const session = getSession();
-  if (session && !allowedRoles.includes(session.role)) {
-    return <AccessDenied message="You have no access to this field." backPath="/member" />;
+  if (!session) {
+    return <Navigate to="/signin" replace />;
+  }
+  if (allowedRoles && !allowedRoles.includes(session.role)) {
+    const fallback = session.role === 'ADMIN' ? '/admin' : '/member';
+    return <AccessDenied message="You have no access to this field." backPath={fallback} />;
   }
   return children;
 }
@@ -103,9 +107,8 @@ export default function App() {
         <Route path="/health" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
         <Route path="/breeding" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
         <Route path="/feed" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
-        <Route path="/portal" element={<MemberPortal />} />
-
-        <Route path="/member" element={<MemberPortal />} />
+        <Route path="/portal" element={<RequireAuth allowedRoles={['MEMBER', 'ADMIN', 'BOARD_MEMBER', 'SECRETARY', 'ACCOUNTANT', 'FARM_WORKER']}><MemberPortal /></RequireAuth>} />
+        <Route path="/member" element={<RequireAuth allowedRoles={['MEMBER', 'ADMIN', 'BOARD_MEMBER', 'SECRETARY', 'ACCOUNTANT', 'FARM_WORKER']}><MemberPortal /></RequireAuth>} />
         <Route path="/board" element={<RequireAuth allowedRoles={['BOARD_MEMBER', 'ADMIN']}><BoardPortal /></RequireAuth>} />
         <Route path="/secretary" element={<RequireAuth allowedRoles={['SECRETARY', 'ADMIN']}><SecretaryPortal /></RequireAuth>} />
         <Route path="/accountant" element={<RequireAuth allowedRoles={['ACCOUNTANT', 'ADMIN']}><AccountantPortal /></RequireAuth>} />

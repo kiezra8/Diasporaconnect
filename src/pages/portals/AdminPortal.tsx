@@ -19,6 +19,7 @@ import {
   FeedInventoryItem,
   LoanRepaymentEntry,
   CowHealthRecord,
+  getMemberPhoto,
 } from '../../services/saccoFarmStore';
 import {
   LayoutDashboard,
@@ -2467,9 +2468,15 @@ export default function AdminPortal() {
                         <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0">
-                                {m.name.slice(0, 2).toUpperCase()}
-                              </div>
+                              {m.avatar || getMemberPhoto(m.name) ? (
+                                <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0 border border-emerald-500/40 bg-slate-900">
+                                  <img src={m.avatar || getMemberPhoto(m.name)} alt={m.name} className="w-full h-full object-cover object-top" />
+                                </div>
+                              ) : (
+                                <div className="w-7 h-7 rounded-lg bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0">
+                                  {m.name.slice(0, 2).toUpperCase()}
+                                </div>
+                              )}
                               <div>
                                 <button
                                   onClick={() => { setSelectedMember(m); setShowMemberModal(true); }}
@@ -4264,61 +4271,73 @@ export default function AdminPortal() {
                     {memberApps.map(app => (
                       <div key={app.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono font-bold text-slate-500">{app.id}</span>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                                app.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
-                                app.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-500' :
-                                'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                              }`}>
-                                {app.status.replace(/_/g, ' ')}
-                              </span>
-                              <span className="text-[11px] text-slate-400">Submitted: {app.submittedAt}</span>
-                            </div>
-
-                            <p className="text-base font-extrabold text-slate-900 dark:text-white">
-                              {app.fullName}
-                            </p>
-
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
-                              <span><span className="text-slate-400">Email:</span> {app.email}</span>
-                              <span><span className="text-slate-400">Phone:</span> {app.phone}</span>
-                              <span><span className="text-slate-400">Chapter:</span> {app.chapter}</span>
-                            </div>
-
-                            {app.reason && (
-                              <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                                <span className="font-semibold text-slate-700 dark:text-slate-300">Motivation:</span> {app.reason}
-                              </p>
+                          <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                            {app.photoUrl ? (
+                              <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-emerald-500/50 shadow-sm shrink-0 bg-slate-900">
+                                <img src={app.photoUrl} alt={app.fullName} className="w-full h-full object-cover object-top" />
+                              </div>
+                            ) : (
+                              <div className="w-14 h-14 rounded-2xl bg-emerald-600/15 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-emerald-500/30">
+                                <Users className="w-6 h-6" />
+                              </div>
                             )}
 
-                            {/* Dual status badges */}
-                            <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-slate-400 font-semibold">1. Secretariat Recommendation:</span>
-                                {app.secretaryApproved ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
-                                    <CheckCircle2 className="w-3 h-3" /> Recommended
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-[11px]">
-                                    <Clock className="w-3 h-3" /> Awaiting Secretariat Review
-                                  </span>
-                                )}
+                            <div className="space-y-2 flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono font-bold text-slate-500">{app.id}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                  app.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
+                                  app.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-500' :
+                                  'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                                }`}>
+                                  {app.status.replace(/_/g, ' ')}
+                                </span>
+                                <span className="text-[11px] text-slate-400">Submitted: {app.submittedAt}</span>
                               </div>
 
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-slate-400 font-semibold">2. Admin Authorization:</span>
-                                {app.adminApproved ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
-                                    <CheckCircle2 className="w-3 h-3" /> Authorized
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-500 dark:text-slate-400 font-bold text-[11px]">
-                                    <Clock className="w-3 h-3" /> Pending Admin
-                                  </span>
-                                )}
+                              <p className="text-base font-extrabold text-slate-900 dark:text-white">
+                                {app.fullName}
+                              </p>
+
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+                                <span><span className="text-slate-400">Email:</span> {app.email}</span>
+                                <span><span className="text-slate-400">Phone:</span> {app.phone}</span>
+                                <span><span className="text-slate-400">Chapter:</span> {app.chapter}</span>
+                              </div>
+
+                              {app.reason && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300">Motivation:</span> {app.reason}
+                                </p>
+                              )}
+
+                              {/* Dual status badges */}
+                              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-slate-400 font-semibold">1. Secretariat Recommendation:</span>
+                                  {app.secretaryApproved ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                                      <CheckCircle2 className="w-3 h-3" /> Recommended
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-[11px]">
+                                      <Clock className="w-3 h-3" /> Awaiting Secretariat Review
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-slate-400 font-semibold">2. Admin Authorization:</span>
+                                  {app.adminApproved ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                                      <CheckCircle2 className="w-3 h-3" /> Authorized
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-500 dark:text-slate-400 font-bold text-[11px]">
+                                      <Clock className="w-3 h-3" /> Pending Admin
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>

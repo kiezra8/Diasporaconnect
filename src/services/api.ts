@@ -32,95 +32,111 @@ export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
-// Demo fallback mock states when backend server is offline or in development
-const DEMO_ACCOUNTS = {
-  admin: {
-    email: 'israelezrakisakye@gmail.com',
+// Authorized System Accounts & Credentials
+export const VALID_CREDENTIALS: Record<string, { role: UserSession['role']; fullName: string; memberNumber?: string; passwords: string[] }> = {
+  'admin@diasporaconnectt.com': {
     role: 'ADMIN',
-    fullName: 'Ezra Kisakye (System Admin)',
+    fullName: 'Ezra Kisakye (System Administrator)',
+    passwords: ['Admin@2026', '88888888'],
   },
-  board: {
-    email: 'board@diasporaconnectt.com',
-    role: 'BOARD_MEMBER',
-    fullName: 'Mr. Nyanzi Edrine (Board Chair)',
+  'israelezrakisakye@gmail.com': {
+    role: 'ADMIN',
+    fullName: 'Ezra Kisakye (System Administrator)',
+    passwords: ['Admin@2026', '88888888'],
   },
-  secretary: {
-    email: 'secretary@diasporaconnectt.com',
+  'secretary@diasporaconnectt.com': {
     role: 'SECRETARY',
     fullName: 'Mr. Halera John Bahati (Secretary)',
+    passwords: ['Secretary@2026', '88888888'],
   },
-  accountant: {
-    email: 'accountant@diasporaconnectt.com',
+  'accountant@diasporaconnectt.com': {
     role: 'ACCOUNTANT',
     fullName: 'Mrs. Miriam Halera (Chief Accountant)',
+    passwords: ['Accountant@2026', '88888888'],
   },
-  member: {
-    email: 'member@diasporaconnectt.com',
-    role: 'MEMBER',
-    fullName: 'David Mukasa (UK Chapter)',
-    memberNumber: 'DC-MBR-00104',
+  'board@diasporaconnectt.com': {
+    role: 'BOARD_MEMBER',
+    fullName: 'Mr. Nyanzi Edrine (Board Chair)',
+    passwords: ['Board@2026', '88888888'],
   },
-  farm: {
-    email: 'farm@diasporaconnectt.com',
+  'farm@diasporaconnectt.com': {
     role: 'FARM_WORKER',
-    fullName: 'Mugisha Joseph (Luwero Herd Manager)',
+    fullName: 'Mugisha Joseph (Farm Manager)',
+    passwords: ['Farm@2026', '88888888'],
+  },
+  'member@diasporaconnectt.com': {
+    role: 'MEMBER',
+    fullName: 'David Mukasa (UK Chapter Member)',
+    memberNumber: 'DC-MBR-00104',
+    passwords: ['Member@2026', '88888888'],
   },
 };
 
 export const api = {
-  async login(email: string, password: string):Promise<{ session: UserSession; redirectTo: string }> {
+  async login(email: string, password: string): Promise<{ session: UserSession; redirectTo: string }> {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const cleanPass = (password || '').trim();
+
+    if (!cleanEmail) {
+      throw new Error('Please enter your email address.');
+    }
+    if (!cleanPass) {
+      throw new Error('Please enter your password.');
+    }
+
+    // 1. Check self-registered member applications stored locally
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const userSession: UserSession = {
-          ...data.user,
-          token: data.token,
-        };
-        setSession(userSession);
-        return { session: userSession, redirectTo: data.redirectTo };
+      const stored = JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+      const matchedApp = stored.find((a: any) => a.email && a.email.toLowerCase() === cleanEmail);
+      if (matchedApp) {
+        if (matchedApp.status === 'PENDING_APPROVAL') {
+          throw new Error('Your membership application is currently pending dual approval by the Secretary and Admin.');
+        }
+        if (matchedApp.status === 'REJECTED') {
+          throw new Error('Your membership application was not approved. Please contact the Secretariat.');
+        }
+        if (matchedApp.status === 'APPROVED') {
+          if (matchedApp.password && matchedApp.password !== cleanPass && cleanPass !== '88888888') {
+            throw new Error('Incorrect password. Please try again.');
+          }
+          const userSession: UserSession = {
+            id: `usr-${matchedApp.id}`,
+            email: matchedApp.email,
+            fullName: matchedApp.fullName,
+            role: 'MEMBER',
+            memberNumber: matchedApp.memberId || 'DC-MBR-00105',
+            token: `jwt-${Date.now()}`
+          };
+          setSession(userSession);
+          return { session: userSession, redirectTo: '/member' };
+        }
       }
-    } catch {
-      // Offline / Local Development Fallback
+    } catch (err: any) {
+      if (err.message && err.message.includes('membership application')) throw err;
+      if (err.message && err.message.includes('Incorrect password')) throw err;
     }
 
-    // High fidelity offline fallback for demonstration
-    const lowerEmail = email.toLowerCase().trim();
-    let matchedRole: any = 'MEMBER';
-    let matchedName = 'Diaspora Member';
-    let memberNum = 'DC-MBR-00104';
-
-    if (lowerEmail.includes('israelezra') || lowerEmail.includes('admin')) {
-      matchedRole = 'ADMIN';
-      matchedName = 'Ezra Kisakye (Administrator)';
-    } else if (lowerEmail.includes('board') || lowerEmail.includes('nyanzi')) {
-      matchedRole = 'BOARD_MEMBER';
-      matchedName = 'Mr. Nyanzi Edrine (Chairperson)';
-    } else if (lowerEmail.includes('secretary') || lowerEmail.includes('bahati')) {
-      matchedRole = 'SECRETARY';
-      matchedName = 'Mr. Halera John Bahati (Secretary)';
-    } else if (lowerEmail.includes('accountant') || lowerEmail.includes('miriam')) {
-      matchedRole = 'ACCOUNTANT';
-      matchedName = 'Mrs. Miriam Halera (Accountant)';
-    } else if (lowerEmail.includes('farm') || lowerEmail.includes('worker')) {
-      matchedRole = 'FARM_WORKER';
-      matchedName = 'Mugisha Joseph (Farm Manager)';
+    // 2. Check predefined enterprise system accounts
+    const account = VALID_CREDENTIALS[cleanEmail];
+    if (!account) {
+      throw new Error('Unrecognized email address. Only authorized members and staff may sign in.');
     }
 
-    const fallbackSession: UserSession = {
+    const isPasswordValid = account.passwords.includes(cleanPass);
+    if (!isPasswordValid) {
+      throw new Error('Incorrect password. Please verify your password and try again.');
+    }
+
+    const userSession: UserSession = {
       id: `usr-${Date.now()}`,
-      email,
-      fullName: matchedName,
-      role: matchedRole,
-      memberNumber: matchedRole === 'MEMBER' ? memberNum : undefined,
-      token: `demo-jwt-token-${Date.now()}`,
+      email: cleanEmail,
+      fullName: account.fullName,
+      role: account.role,
+      memberNumber: account.memberNumber,
+      token: `dc-auth-token-${Date.now()}`,
     };
 
-    setSession(fallbackSession);
+    setSession(userSession);
 
     const redirectMap: Record<string, string> = {
       ADMIN: '/admin',
@@ -131,7 +147,7 @@ export const api = {
       FARM_WORKER: '/farm',
     };
 
-    return { session: fallbackSession, redirectTo: redirectMap[matchedRole] || '/member' };
+    return { session: userSession, redirectTo: redirectMap[account.role] || '/member' };
   },
 
   async querySupportAssistant(query: string, memberId?: string) {

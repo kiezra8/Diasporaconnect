@@ -1229,7 +1229,7 @@ export const getMemberPhoto = (name: string): string => {
   if ((n.includes('miriam') || n.includes('halera')) && !n.includes('john') && !n.includes('bahati')) return '/images/miriam_halera.jpg';
   if (n.includes('namulindwa') || n.includes('flavia') || n.includes('mary')) return '/images/namulindwa_mary_flavia.jpg';
   if (n.includes('john') || n.includes('bahati')) return '/images/halera_john_bahati.jpg';
-  // Ms. Ssanyu Phiona and others intentionally have no photo as requested
+  if (n.includes('ssanyu') || n.includes('phiona')) return '/images/ssanyu_phiona.jpg';
   return '';
 };
 

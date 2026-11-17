@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Home, MessageSquare, LogIn, LayoutDashboard, Settings, Phone, X, ExternalLink, Target } from 'lucide-react';
+import { Home, MessageSquare, LogIn, LayoutDashboard, MoreHorizontal, Phone, X, ExternalLink, Target, Info, Target as TargetIcon, ShieldCheck, Eye, Sparkles, Sprout, BookOpen } from 'lucide-react';
 import { getSession } from '../services/api';
 
 export default function GlobalBottomNav() {
@@ -8,7 +8,9 @@ export default function GlobalBottomNav() {
   const navigate = useNavigate();
   const [session, setSession] = useState(() => getSession());
   const [showChatOptions, setShowChatOptions] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const chatPopupRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Listen for login/logout and session updates
   useEffect(() => {
@@ -26,9 +28,10 @@ export default function GlobalBottomNav() {
     };
   }, []);
 
-  // Close chat options when clicking outside or navigating
+  // Close menus when clicking outside or navigating
   useEffect(() => {
     setShowChatOptions(false);
+    setShowMoreMenu(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -36,10 +39,13 @@ export default function GlobalBottomNav() {
       if (showChatOptions && chatPopupRef.current && !chatPopupRef.current.contains(e.target as Node)) {
         setShowChatOptions(false);
       }
+      if (showMoreMenu && moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showChatOptions]);
+  }, [showChatOptions, showMoreMenu]);
 
   // Determine user's portal dashboard route based on role
   const getDashboardPath = () => {
@@ -200,16 +206,103 @@ export default function GlobalBottomNav() {
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          UNIVERSAL BOTTOM NAVIGATION DOCK
+          MORE DETAILS MODAL / ACTION SHEET (TOP NAV DETAILS)
+         ───────────────────────────────────────────────────────────── */}
+      {showMoreMenu && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            ref={moreMenuRef}
+            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 relative"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Explore More
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Diaspora Connect Sections
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMoreMenu(false)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <Link
+                to="/about"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200/70 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 transition"
+              >
+                <Info className="w-4 h-4 text-emerald-600" />
+                <span>About Us</span>
+              </Link>
+
+              <Link
+                to="/vision"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200/70 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 transition"
+              >
+                <Eye className="w-4 h-4 text-amber-500" />
+                <span>Vision</span>
+              </Link>
+
+              <Link
+                to="/mission"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200/70 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 transition"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                <span>Mission</span>
+              </Link>
+
+              <Link
+                to="/values"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200/70 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 transition"
+              >
+                <ShieldCheck className="w-4 h-4 text-blue-500" />
+                <span>Values</span>
+              </Link>
+
+              <Link
+                to="/farmlife"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200/70 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 transition"
+              >
+                <Sprout className="w-4 h-4 text-emerald-600" />
+                <span>Farm Life</span>
+              </Link>
+
+              <Link
+                to="/blog"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200/70 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 transition"
+              >
+                <BookOpen className="w-4 h-4 text-indigo-500" />
+                <span>Blog</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          UNIVERSAL BOTTOM NAVIGATION DOCK (MOBILE ONLY - HIDDEN ON DESKTOPS)
          ───────────────────────────────────────────────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl pb-[max(10px,env(safe-area-inset-bottom))] md:bottom-5 md:left-1/2 md:-translate-x-1/2 md:w-auto md:min-w-[460px] md:max-w-xl md:rounded-2xl md:border md:border-slate-200/80 md:dark:border-slate-800/80 md:bg-white/90 md:dark:bg-slate-900/90 md:shadow-2xl md:px-6 md:py-2.5 transition-all duration-300"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl pb-[max(10px,env(safe-area-inset-bottom))] transition-all duration-300"
         aria-label="Bottom Navigation Bar"
       >
         {/* 1. HOME — Public Website */}
         <Link
           to="/"
-          onClick={() => setShowChatOptions(false)}
+          onClick={() => { setShowChatOptions(false); setShowMoreMenu(false); }}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition group ${
             isHomeActive
               ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
@@ -225,7 +318,7 @@ export default function GlobalBottomNav() {
         {/* 2. PLANNING — Savings Goals & Expenses Breakdown */}
         <button
           type="button"
-          onClick={handlePlanningClick}
+          onClick={() => { setShowMoreMenu(false); handlePlanningClick(); }}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer group ${
             isPlanningActive
               ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
@@ -241,7 +334,7 @@ export default function GlobalBottomNav() {
         {/* 3. CHAT — WhatsApp / Call Action Sheet */}
         <button
           type="button"
-          onClick={handleChatClick}
+          onClick={() => { setShowMoreMenu(false); handleChatClick(); }}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer group ${
             showChatOptions
               ? 'text-emerald-600 dark:text-emerald-400 font-extrabold'
@@ -254,10 +347,10 @@ export default function GlobalBottomNav() {
           <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">Chat</span>
         </button>
 
-        {/* 3. SIGN IN / ACCOUNT (DASHBOARD) */}
+        {/* 4. SIGN IN / ACCOUNT (DASHBOARD) */}
         <button
           type="button"
-          onClick={handleAccountClick}
+          onClick={() => { setShowMoreMenu(false); handleAccountClick(); }}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer group ${
             isPortalActive || isSignInActive
               ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
@@ -280,16 +373,23 @@ export default function GlobalBottomNav() {
           </span>
         </button>
 
-        {/* 4. SETTINGS */}
+        {/* 5. MORE — Top Navbar Details */}
         <button
           type="button"
-          onClick={handleSettingsClick}
-          className="flex flex-col items-center justify-center flex-1 py-1 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer group"
+          onClick={() => {
+            setShowChatOptions(false);
+            setShowMoreMenu(prev => !prev);
+          }}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer group ${
+            showMoreMenu
+              ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
         >
-          <div className="p-1 rounded-xl transition group-hover:bg-slate-100 dark:group-hover:bg-slate-800">
-            <Settings className="w-5 h-5" />
+          <div className={`p-1 rounded-xl transition ${showMoreMenu ? 'bg-emerald-500/15' : 'group-hover:bg-slate-100 dark:group-hover:bg-slate-800'}`}>
+            <MoreHorizontal className="w-5 h-5" />
           </div>
-          <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">Settings</span>
+          <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">More</span>
         </button>
       </nav>
     </>

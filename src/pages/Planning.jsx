@@ -100,10 +100,45 @@ export default function Planning() {
     localStorage.setItem('dc_planning_expenses', JSON.stringify(expenses));
   }, [expenses]);
 
-  // Goal updates
+  // Goal updates - enforce exactly 100% total
   const handleUpdateGoalPct = (id, newPct) => {
-    const clamped = Math.max(0, Math.min(100, Number(newPct) || 0));
-    setGoals(goals.map(g => g.id === id ? { ...g, allocatedPct: clamped } : g));
+    const clamped = Math.max(0, Math.min(100, Math.round(Number(newPct) || 0)));
+    const others = goals.filter(g => g.id !== id);
+    if (others.length === 0) {
+      setGoals(goals.map(g => g.id === id ? { ...g, allocatedPct: 100 } : g));
+      return;
+    }
+    const remaining = 100 - clamped;
+    const otherTotal = others.reduce((s, g) => s + (Number(g.allocatedPct) || 0), 0);
+
+    let updated;
+    if (otherTotal === 0) {
+      const share = Math.floor(remaining / others.length);
+      const rem = remaining - (share * others.length);
+      updated = goals.map(g => {
+        if (g.id === id) return { ...g, allocatedPct: clamped };
+        const idx = others.findIndex(o => o.id === g.id);
+        return { ...g, allocatedPct: share + (idx === 0 ? rem : 0) };
+      });
+    } else {
+      let allocatedCount = 0;
+      updated = goals.map(g => {
+        if (g.id === id) return { ...g, allocatedPct: clamped };
+        const scaled = Math.round(((Number(g.allocatedPct) || 0) / otherTotal) * remaining);
+        allocatedCount += scaled;
+        return { ...g, allocatedPct: scaled };
+      });
+      // Adjust difference to hit exact 100
+      const totalNow = updated.reduce((s, g) => s + (Number(g.allocatedPct) || 0), 0);
+      const diff = 100 - totalNow;
+      if (diff !== 0) {
+        const firstOther = updated.find(g => g.id !== id);
+        if (firstOther) {
+          updated = updated.map(g => g.id === firstOther.id ? { ...g, allocatedPct: Math.max(0, Number(g.allocatedPct) + diff) } : g);
+        }
+      }
+    }
+    setGoals(updated);
   };
 
   const handleUpdateGoalTarget = (id, newTarget) => {
@@ -113,22 +148,46 @@ export default function Planning() {
 
   const handleDeleteGoal = (id) => {
     if (goals.length <= 1) return;
-    setGoals(goals.filter(g => g.id !== id));
+    const remainingGoals = goals.filter(g => g.id !== id);
+    const totalRemaining = remainingGoals.reduce((s, g) => s + (Number(g.allocatedPct) || 0), 0);
+    const scaled = remainingGoals.map((g, idx) => {
+      if (totalRemaining === 0) {
+        return { ...g, allocatedPct: Math.floor(100 / remainingGoals.length) };
+      }
+      return { ...g, allocatedPct: Math.round(((Number(g.allocatedPct) || 0) / totalRemaining) * 100) };
+    });
+    // exact 100
+    const sum = scaled.reduce((s, g) => s + (Number(g.allocatedPct) || 0), 0);
+    if (sum !== 100 && scaled.length > 0) {
+      scaled[0].allocatedPct += (100 - sum);
+    }
+    setGoals(scaled);
   };
 
   const handleAddGoal = (e) => {
     e.preventDefault();
     if (!newGoalTitle.trim()) return;
     const targetVal = Number(newGoalTarget) || 5000000;
-    const pctVal = Math.min(100, Math.max(1, Number(newGoalPct) || 10));
+    const rawPct = Math.min(99, Math.max(1, Math.round(Number(newGoalPct) || 10)));
+    const remaining = 100 - rawPct;
+    const oldTotal = goals.reduce((s, g) => s + (Number(g.allocatedPct) || 0), 0);
+    const scaledGoals = goals.map(g => ({
+      ...g,
+      allocatedPct: oldTotal > 0 ? Math.round(((Number(g.allocatedPct) || 0) / oldTotal) * remaining) : Math.floor(remaining / goals.length)
+    }));
     const newG = {
       id: `goal-${Date.now()}`,
       title: newGoalTitle.trim(),
       target: targetVal,
-      allocatedPct: pctVal,
+      allocatedPct: rawPct,
       color: GOAL_COLORS[goals.length % GOAL_COLORS.length]
     };
-    setGoals([...goals, newG]);
+    const combined = [...scaledGoals, newG];
+    const totalNow = combined.reduce((s, g) => s + (Number(g.allocatedPct) || 0), 0);
+    if (totalNow !== 100 && combined.length > 1) {
+      combined[0].allocatedPct += (100 - totalNow);
+    }
+    setGoals(combined);
     setNewGoalTitle('');
     setNewGoalTarget('');
     setNewGoalPct('10');
@@ -228,7 +287,7 @@ export default function Planning() {
               onClick={() => setActiveTab('expenses')}
               className={`px-6 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition cursor-pointer ${
                 activeTab === 'expenses'
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-rose-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -582,7 +641,7 @@ export default function Planning() {
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-[11px] font-bold text-slate-500">
-                          Adjust Allocation Share:
+                          Allocation Share
                         </span>
                         <div className="flex items-center gap-1">
                           <input
@@ -621,37 +680,37 @@ export default function Planning() {
             
             {/* 4 Minimal Time-Based Expense Cards: Today, Week, Month, Year */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Today</span>
-                <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono mt-1">
+              <div className="bg-rose-50/60 dark:bg-rose-950/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-sm">
+                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider block">Today</span>
+                <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono mt-1">
                   UGX {todayTotal.toLocaleString()}
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Week</span>
-                <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono mt-1">
+              <div className="bg-rose-50/60 dark:bg-rose-950/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-sm">
+                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider block">Week</span>
+                <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono mt-1">
                   UGX {weekTotal.toLocaleString()}
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Month</span>
-                <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono mt-1">
+              <div className="bg-rose-50/60 dark:bg-rose-950/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-sm">
+                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider block">Month</span>
+                <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono mt-1">
                   UGX {monthTotal.toLocaleString()}
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Year</span>
-                <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
+              <div className="bg-rose-50/60 dark:bg-rose-950/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-sm">
+                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider block">Year</span>
+                <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono mt-1">
                   UGX {yearTotal.toLocaleString()}
                 </div>
               </div>
             </div>
 
             {/* Quick Add Expense Form */}
-            <form onSubmit={handleAddExpense} className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <form onSubmit={handleAddExpense} className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-rose-200/80 dark:border-rose-900/60 shadow-sm">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
                 <div>
                   <input
@@ -660,7 +719,7 @@ export default function Planning() {
                     placeholder="Expense item (e.g. Fuel)"
                     value={expenseTitle}
                     onChange={(e) => setExpenseTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold focus:border-rose-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -671,14 +730,14 @@ export default function Planning() {
                     placeholder="Amount (UGX)"
                     value={expenseAmount}
                     onChange={(e) => setExpenseAmount(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono font-bold"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono font-bold focus:border-rose-500 focus:outline-none"
                   />
                 </div>
                 <div>
                   <select
                     value={expenseCategory}
                     onChange={(e) => setExpenseCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold focus:border-rose-500 focus:outline-none"
                   >
                     {['Food', 'Commute', 'Bills', 'Family', 'Medical', 'Other'].map(c => (
                       <option key={c} value={c}>{c}</option>
@@ -688,7 +747,7 @@ export default function Planning() {
                 <div>
                   <button
                     type="submit"
-                    className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition shadow-sm cursor-pointer"
+                    className="w-full py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition shadow-sm cursor-pointer"
                   >
                     + Add Expense
                   </button>
@@ -713,13 +772,13 @@ export default function Planning() {
                         <p className="text-[10px] text-slate-400">{e.date} &bull; {e.category}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                        <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
                           UGX {Number(e.amount).toLocaleString()}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleDeleteExpense(e.id)}
-                          className="text-slate-400 hover:text-rose-500 p-1"
+                          className="text-slate-400 hover:text-rose-500 p-1 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

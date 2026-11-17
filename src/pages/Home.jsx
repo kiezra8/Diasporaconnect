@@ -195,13 +195,13 @@ export default function Home() {
       </section>
 
       {/* ─ 1. MISSION / VALUES / VISION TAB SWITCHER ─ */}
-      <section id="pillars" style={{ padding: '24px 0 36px' }}>
+      <section id="pillars" style={{ padding: '16px 0 28px' }}>
         {/* Tab Bar */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
           gap: '0',
-          marginBottom: '28px',
+          marginBottom: '18px',
           borderBottom: '2px solid rgba(184,134,11,0.15)',
           position: 'relative',
         }}>
@@ -213,10 +213,10 @@ export default function Home() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                padding: '14px 36px',
+                padding: '10px 28px',
                 fontSize: '13px',
                 fontWeight: activePillar === p.key ? '800' : '600',
-                letterSpacing: '0.12em',
+                letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 color: activePillar === p.key ? 'var(--gold, #b8860b)' : 'var(--text-secondary, #6b7280)',
                 borderBottom: activePillar === p.key ? '3px solid var(--gold, #b8860b)' : '3px solid transparent',
@@ -233,41 +233,35 @@ export default function Home() {
 
         {/* MISSION PANEL */}
         {activePillar === 'mission' && (
-          <div>
-            <div className="mission-header reveal" style={{ textAlign: 'center', marginBottom: '36px' }}>
-              <h2 className="section-heading">OUR <span>MISSION</span></h2>
-              <div className="gold-line gold-line-center"></div>
+          <div className="mission-cards">
+            <div className="mission-card">
+              <div className="mission-card-bg bg-pin-1" style={{ backgroundImage: "url('/images/card_img_1.jpg?v=3.2')" }}></div>
+              <div className="mission-card-overlay"></div>
+              <div className="mission-card-content">
+                <span className="mission-card-num">01 &middot; Mission</span>
+                <h3 className="mission-card-title">COME HOME.</h3>
+                <span className="mission-card-desc">Your roots are calling &mdash; your community awaits.</span>
+                <div className="mission-card-bar"></div>
+              </div>
             </div>
-            <div className="mission-cards">
-              <div className="mission-card">
-                <div className="mission-card-bg bg-pin-1" style={{ backgroundImage: "url('/images/card_img_1.jpg?v=3.2')" }}></div>
-                <div className="mission-card-overlay"></div>
-                <div className="mission-card-content">
-                  <span className="mission-card-num">01 &middot; Mission</span>
-                  <h3 className="mission-card-title">COME HOME.</h3>
-                  <span className="mission-card-desc">Your roots are calling &mdash; your community awaits.</span>
-                  <div className="mission-card-bar"></div>
-                </div>
+            <div className="mission-card">
+              <div className="mission-card-bg bg-pin-2" style={{ backgroundImage: "url('/images/card_img_2.jpg?v=3.2')" }}></div>
+              <div className="mission-card-overlay"></div>
+              <div className="mission-card-content">
+                <span className="mission-card-num">02 &middot; Mission</span>
+                <h3 className="mission-card-title">INVEST.</h3>
+                <span className="mission-card-desc">Put capital into fertile, productive farmland and enterprise.</span>
+                <div className="mission-card-bar"></div>
               </div>
-              <div className="mission-card">
-                <div className="mission-card-bg bg-pin-2" style={{ backgroundImage: "url('/images/card_img_2.jpg?v=3.2')" }}></div>
-                <div className="mission-card-overlay"></div>
-                <div className="mission-card-content">
-                  <span className="mission-card-num">02 &middot; Mission</span>
-                  <h3 className="mission-card-title">INVEST.</h3>
-                  <span className="mission-card-desc">Put capital into fertile, productive farmland and enterprise.</span>
-                  <div className="mission-card-bar"></div>
-                </div>
-              </div>
-              <div className="mission-card">
-                <div className="mission-card-bg bg-pin-3" style={{ backgroundImage: "url('/images/card_img_3.jpg?v=3.2')" }}></div>
-                <div className="mission-card-overlay"></div>
-                <div className="mission-card-content">
-                  <span className="mission-card-num">03 &middot; Mission</span>
-                  <h3 className="mission-card-title">GROW TOGETHER.</h3>
-                  <span className="mission-card-desc">Unite resources to compound returns and create enduring wealth.</span>
-                  <div className="mission-card-bar"></div>
-                </div>
+            </div>
+            <div className="mission-card">
+              <div className="mission-card-bg bg-pin-3" style={{ backgroundImage: "url('/images/card_img_3.jpg?v=3.2')" }}></div>
+              <div className="mission-card-overlay"></div>
+              <div className="mission-card-content">
+                <span className="mission-card-num">03 &middot; Mission</span>
+                <h3 className="mission-card-title">GROW TOGETHER.</h3>
+                <span className="mission-card-desc">Unite resources to compound returns and create enduring wealth.</span>
+                <div className="mission-card-bar"></div>
               </div>
             </div>
           </div>
@@ -276,10 +270,6 @@ export default function Home() {
         {/* VALUES PANEL */}
         {activePillar === 'values' && (
           <div>
-            <div className="values-header reveal" style={{ textAlign: 'center', marginBottom: '36px' }}>
-              <h2 className="section-heading">OUR <span>VALUES</span></h2>
-              <div className="gold-line gold-line-center"></div>
-            </div>
             <div className="values-grid">
               {[
                 { icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>, num: '01', title: 'TEAMWORK', desc: 'We grow stronger when we work together.', bg: 'bg-teamwork', style: {} },
@@ -300,7 +290,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <div className="values-grid-row2" style={{ marginTop: '20px' }}>
+            <div className="values-grid-row2" style={{ marginTop: '16px' }}>
               {[
                 { icon: <><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></>, num: '05', title: 'PRODUCTIVITY', desc: 'We believe in assets that work for you.', bg: 'bg-productivity', style: {} },
                 { icon: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>, num: '06', title: 'LEGACY', desc: 'What we build today benefits tomorrow.', bg: 'bg-pin-3', style: { backgroundImage: "url('/images/card_img_3.jpg?v=3.2')" } },
@@ -325,12 +315,6 @@ export default function Home() {
         {/* VISION PANEL */}
         {activePillar === 'vision' && (
           <div style={{ position: 'relative', overflow: 'hidden' }}>
-            <div className="vision-orb vision-orb-1"></div>
-            <div className="vision-orb vision-orb-2"></div>
-            <div className="vision-header reveal" style={{ textAlign: 'center', marginBottom: '36px' }}>
-              <h2 className="section-heading">OUR <span>VISION</span></h2>
-              <div className="gold-line gold-line-center"></div>
-            </div>
             <div className="vision-cards">
               <div className="vision-card">
                 <div className="vision-card-bg bg-pin-2" style={{ backgroundImage: "url('/images/card_img_2.jpg?v=3.2')" }}></div>
@@ -672,6 +656,100 @@ export default function Home() {
             </div>
           )}
 
+        </div>
+      </section>
+
+      {/* ─ 3. ABOUT US SECTION (LAST SECTION ON HOME) ─ */}
+      <section id="about-us-home" style={{ padding: '48px 0 60px', background: '#ffffff', borderTop: '1px solid #f1f5f9' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <span className="section-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--gold, #b8860b)', display: 'block', marginBottom: '6px' }}>
+              Leadership &amp; Governance
+            </span>
+            <h2 className="section-heading" style={{ margin: 0, fontFamily: "'Cinzel', serif", fontSize: 'clamp(24px, 3.5vw, 34px)', fontWeight: 800, color: '#111827' }}>
+              About <span>Us</span>
+            </h2>
+            <div className="gold-line gold-line-center" style={{ width: '48px', height: '2px', background: 'var(--gold, #b8860b)', margin: '10px auto 0' }}></div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '16px',
+            marginBottom: '32px'
+          }}>
+            {[
+              { name: 'Mr. Nyanzi Edrine', role: 'Chairperson', img: '/images/nyanzi_edrine.jpg', bio: 'Executive direction and cooperative governance.' },
+              { name: 'Mrs. Miriam Halera', role: 'Treasurer', img: '/images/miriam_halera.jpg', bio: 'Financial stewardship and capital allocation.' },
+              { name: 'Ms. Namulindwa Mary Flavia', role: 'Vice Chairperson', img: '/images/namulindwa_mary_flavia.jpg', bio: 'Operational strategy and farm networks.' },
+              { name: 'Mr. Halera John Bahati', role: 'Secretary', img: '/images/halera_john_bahati.jpg', bio: 'Institutional records and compliance.' },
+              { name: 'Ms. Ssanyu Phiona', role: 'Member Representative', img: '/images/ssanyu_phiona.jpg', bio: 'Diaspora member engagement and community.' },
+            ].map((f, i) => (
+              <div key={i} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                padding: '12px 14px',
+                background: '#ffffff',
+                borderRadius: '16px',
+                border: '1px solid rgba(0,0,0,0.07)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '14px',
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                  background: '#0f172a',
+                  border: '1.5px solid rgba(184,134,11,0.25)'
+                }}>
+                  <img
+                    src={f.img}
+                    alt={f.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                    decoding="async"
+                  />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <h4 style={{ margin: '0 0 2px', fontSize: '13.5px', fontWeight: 800, color: '#111827', lineHeight: 1.25 }}>
+                    {f.name}
+                  </h4>
+                  <span style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: 'var(--gold, #b8860b)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>
+                    {f.role}
+                  </span>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {f.bio}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
+            <Link to="/about" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '11px 28px',
+              borderRadius: '16px',
+              border: '1.5px solid rgba(184,134,11,0.35)',
+              backgroundColor: '#ffffff',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+              fontSize: '12px',
+              fontWeight: '800',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--gold, #b8860b)',
+              textDecoration: 'none',
+              transition: 'all 0.2s ease',
+            }}>
+              Learn More About Us
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M5 12h14m-7-7 7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
         </div>
       </section>
     </>

@@ -3,21 +3,17 @@ import React from 'react';
 export default function About() {
   return (
     <div style={{ backgroundColor: '#ffffff', color: '#334155' }}>
-      {/* ─ PAGE HEADER ─ */}
-      <header className="page-header-clean">
-        <span className="page-header-badge">Leadership &amp; Governance</span>
-        <h1 className="page-header-title">ABOUT <span>DIASPORA CONNECT</span></h1>
-        <div className="page-header-divider" aria-hidden="true"></div>
+      {/* ─ PAGE HEADER: JUST ABOUT US ─ */}
+      <header className="page-header-clean" style={{ padding: '36px 20px 20px', textAlign: 'center' }}>
+        <h1 className="page-header-title" style={{ margin: 0, fontSize: 'clamp(24px, 4vw, 36px)', fontFamily: "'Cinzel', serif", fontWeight: 800 }}>
+          ABOUT <span>US</span>
+        </h1>
+        <div className="page-header-divider" aria-hidden="true" style={{ width: '48px', height: '2px', background: 'var(--gold, #b8860b)', margin: '12px auto 0' }}></div>
       </header>
 
-      <main className="about-content-wrap">
-        {/* 1. BOARD MEMBERS & FOUNDERS SECTION (FIRST) */}
-        <section className="founders-section" style={{ marginBottom: '48px' }}>
-          <div className="founders-header">
-            <h2>BOARD MEMBERS &amp; <span>FOUNDING LEADERSHIP</span></h2>
-            <p>The visionary board and founding leadership team guiding Diaspora Connect Farmers SACCO.</p>
-          </div>
-
+      <main className="about-content-wrap" style={{ maxWidth: '1100px', margin: '0 auto', padding: '16px 16px 48px' }}>
+        {/* 1. FOUNDING MEMBERS STRAIGHT AWAY (NO EXPLANATORY HEADINGS) */}
+        <section className="founders-section" style={{ marginBottom: '40px' }}>
           <div className="founders-grid">
             {/* Founder 1: Chairperson */}
             <article className="founder-card">
@@ -25,10 +21,9 @@ export default function About() {
                 <img
                   src="/images/nyanzi_edrine.jpg"
                   alt="Mr. Nyanzi Edrine – Chairperson"
-                  width="300"
-                  height="300"
+                  width="180"
+                  height="220"
                   decoding="async"
-                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
                 />
               </div>
               <div className="founder-info">
@@ -44,10 +39,9 @@ export default function About() {
                 <img
                   src="/images/miriam_halera.jpg"
                   alt="Mrs. Miriam Halera – Treasurer"
-                  width="300"
-                  height="300"
+                  width="180"
+                  height="220"
                   decoding="async"
-                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
                 />
               </div>
               <div className="founder-info">
@@ -63,10 +57,9 @@ export default function About() {
                 <img
                   src="/images/namulindwa_mary_flavia.jpg"
                   alt="Ms. Namulindwa Mary Flavia – Vice Chairperson"
-                  width="300"
-                  height="300"
+                  width="180"
+                  height="220"
                   decoding="async"
-                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
                 />
               </div>
               <div className="founder-info">
@@ -82,10 +75,9 @@ export default function About() {
                 <img
                   src="/images/halera_john_bahati.jpg"
                   alt="Mr. Halera John Bahati – Secretary"
-                  width="300"
-                  height="300"
+                  width="180"
+                  height="220"
                   decoding="async"
-                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
                 />
               </div>
               <div className="founder-info">
@@ -101,10 +93,9 @@ export default function About() {
                 <img
                   src="/images/ssanyu_phiona.jpg"
                   alt="Ms. Ssanyu Phiona – Member Representative"
-                  width="300"
-                  height="300"
+                  width="180"
+                  height="220"
                   decoding="async"
-                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
                 />
               </div>
               <div className="founder-info">

@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
-import { getSession } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { getSession, clearSession } from '../services/api';
 
 export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [session, setSession] = useState(() => getSession());
-  const navWrapRef = useRef(null);
-  const hamburgerRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const syncSession = () => setSession(getSession());
 
@@ -35,33 +33,6 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setIsOpen(false);
-  }, [location]);
-
-  // Close when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        isOpen &&
-        navWrapRef.current &&
-        !navWrapRef.current.contains(e.target) &&
-        hamburgerRef.current &&
-        !hamburgerRef.current.contains(e.target)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [isOpen]);
-
-  const handleNavClick = () => {
-    setIsOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const getDashboardPath = () => {
     if (!session) return '/signin';
     const role = session.role;
@@ -71,6 +42,13 @@ export default function Navbar() {
     if (role === 'ACCOUNTANT') return '/accountant';
     if (role === 'FARM_WORKER') return '/farm';
     return '/member';
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    setSession(null);
+    window.dispatchEvent(new Event('dc_auth_change'));
+    navigate('/signin');
   };
 
   const accountPath = getDashboardPath();
@@ -85,123 +63,56 @@ export default function Navbar() {
         right: 0,
         zIndex: 1000,
         background: isScrolled ? 'rgba(255, 255, 255, 0.98)' : 'rgba(255, 255, 255, 0.95)',
-        boxShadow: isScrolled ? '0 4px 20px rgba(0, 0, 0, 0.07)' : '0 2px 10px rgba(0, 0, 0, 0.03)'
+        boxShadow: isScrolled ? '0 4px 20px rgba(0, 0, 0, 0.07)' : '0 2px 10px rgba(0, 0, 0, 0.03)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 28px',
+        transition: 'background 0.3s, box-shadow 0.3s'
       }}
     >
       <Link
         to="/"
         className="nav-logo"
-        style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
+        style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
         title="Diaspora Connect Farmers SACCO Home"
-        onClick={handleNavClick}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       >
-        <img src="/images/logo.jpg" alt="Diaspora Connect Farmers SACCO – Official Logo" width="46" height="46" loading="eager" />
+        <img
+          src="/images/logo.jpg"
+          alt="Diaspora Connect Farmers SACCO Official Logo"
+          width="44"
+          height="44"
+          loading="eager"
+          style={{ borderRadius: '50%', border: '2px solid var(--gold, #b45309)', objectFit: 'contain' }}
+        />
         <div className="nav-brand">
           <span className="top">Diaspora Connect</span>
           <span className="bottom">Farmers SACCO</span>
         </div>
       </Link>
 
-      <div className={`nav-menu-wrap ${isOpen ? 'open' : ''}`} id="nav-menu-wrap" ref={navWrapRef}>
-        <ul className="nav-menu">
-          <li>
-            <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
-              Home
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/about" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
-              About Us
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/mission" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
-              Mission
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/values" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
-              Values
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/vision" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
-              Vision
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/farmlife" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
-              Farm Life
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/blog" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
-              Blog
-            </NavLink>
-          </li>
-          <li>
-            <button
-              type="button"
-              className="nav-link"
-              onClick={() => {
-                handleNavClick();
-                window.dispatchEvent(new CustomEvent('dc_open_chat'));
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                font: 'inherit',
-                color: 'inherit',
-                padding: '8px 14px',
-                display: 'inline-flex',
-                alignItems: 'center'
-              }}
-            >
-              Chat
-            </button>
-          </li>
-          <li>
-            {session ? (
-              <NavLink
-                to={accountPath}
-                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                style={{ color: '#059669', fontWeight: '700' }}
-                onClick={handleNavClick}
-              >
-                Account
-              </NavLink>
-            ) : (
-              <NavLink
-                to="/signin"
-                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                style={{ color: '#059669', fontWeight: '700' }}
-                onClick={handleNavClick}
-              >
-                Sign In
-              </NavLink>
-            )}
-          </li>
-        </ul>
-
-        <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {session ? (
+      <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {session ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Link
               to={accountPath}
               className="nav-signin-btn"
-              onClick={handleNavClick}
               style={{
                 background: '#059669',
                 color: '#ffffff',
                 border: '1px solid #10b981',
                 fontWeight: '700',
-                padding: '7px 16px',
-                fontSize: '12px',
-                borderRadius: '8px',
+                padding: '8px 18px',
+                fontSize: '13px',
+                borderRadius: '10px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer'
+                gap: '7px',
+                cursor: 'pointer',
+                textDecoration: 'none',
+                boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)',
+                transition: 'all 0.2s'
               }}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16" fill="currentColor">
@@ -209,47 +120,55 @@ export default function Navbar() {
               </svg>
               Account
             </Link>
-          ) : (
-            <Link
-              to="/signin"
-              className="nav-signin-btn"
-              onClick={handleNavClick}
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Sign Out"
               style={{
-                background: '#059669',
-                color: '#ffffff',
-                border: '1px solid #10b981',
-                fontWeight: '700',
-                padding: '7px 16px',
+                background: 'transparent',
+                color: '#64748b',
+                border: '1px solid #cbd5e1',
+                fontWeight: '600',
+                padding: '7px 12px',
                 fontSize: '12px',
                 borderRadius: '8px',
+                cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer'
+                transition: 'all 0.2s'
               }}
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-              </svg>
-              Sign In
-            </Link>
-          )}
-        </div>
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <Link
+            to="/signin"
+            className="nav-signin-btn"
+            style={{
+              background: '#059669',
+              color: '#ffffff',
+              border: '1px solid #10b981',
+              fontWeight: '700',
+              padding: '8px 20px',
+              fontSize: '13px',
+              borderRadius: '10px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)',
+              transition: 'all 0.2s'
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+            </svg>
+            Sign In
+          </Link>
+        )}
       </div>
-
-      <button
-        ref={hamburgerRef}
-        className={`nav-hamburger ${isOpen ? 'open' : ''}`}
-        id="nav-hamburger"
-        type="button"
-        aria-label="Toggle navigation menu"
-        aria-expanded={isOpen ? 'true' : 'false'}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
     </nav>
   );
 }

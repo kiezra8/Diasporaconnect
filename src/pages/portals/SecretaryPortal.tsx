@@ -35,6 +35,7 @@ export interface PendingMemberApplication {
   phone: string;
   chapter: string;
   reason: string;
+  photoUrl?: string;
   status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
   secretaryApproved: boolean;
   adminApproved: boolean;
@@ -502,22 +503,33 @@ export default function SecretaryPortal() {
                   {memberApps.map(app => (
                     <div key={app.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl">
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono font-bold text-slate-500">{app.id}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                              app.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
-                              app.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-500' :
-                              'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                            }`}>
-                              {app.status.replace(/_/g, ' ')}
-                            </span>
-                            <span className="text-[11px] text-slate-400">Submitted: {app.submittedAt}</span>
-                          </div>
+                        <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                          {app.photoUrl ? (
+                            <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-emerald-500/50 shadow-sm shrink-0 bg-slate-900">
+                              <img src={app.photoUrl} alt={app.fullName} className="w-full h-full object-cover object-top" />
+                            </div>
+                          ) : (
+                            <div className="w-14 h-14 rounded-2xl bg-emerald-600/15 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-emerald-500/30">
+                              <Users className="w-6 h-6" />
+                            </div>
+                          )}
 
-                          <h4 className="text-base font-extrabold text-slate-900 dark:text-white">
-                            {app.fullName}
-                          </h4>
+                          <div className="space-y-2 flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono font-bold text-slate-500">{app.id}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                app.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
+                                app.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-500' :
+                                'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                              }`}>
+                                {app.status.replace(/_/g, ' ')}
+                              </span>
+                              <span className="text-[11px] text-slate-400">Submitted: {app.submittedAt}</span>
+                            </div>
+
+                            <h4 className="text-base font-extrabold text-slate-900 dark:text-white">
+                              {app.fullName}
+                            </h4>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs text-slate-600 dark:text-slate-300">
                             <div><span className="text-slate-400">Email:</span> {app.email}</div>
@@ -560,6 +572,7 @@ export default function SecretaryPortal() {
                             </div>
                           </div>
                         </div>
+                      </div>
 
                         {/* Action buttons */}
                         <div className="flex sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-2 shrink-0">

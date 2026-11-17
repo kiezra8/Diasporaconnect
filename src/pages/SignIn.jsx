@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, setSession } from '../services/api';
 import { SaccoFarmStore } from '../services/saccoFarmStore';
-import { Sun, Moon, Shield, User, FileText, Activity, Briefcase, UserCheck, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Sun, Moon, CheckCircle2, Clock, AlertCircle, Camera } from 'lucide-react';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ export default function SignIn() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [chapter, setChapter] = useState('UK Diaspora Chapter');
+  const [photoUrl, setPhotoUrl] = useState('');
   const [reason, setReason] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,6 +21,19 @@ export default function SignIn() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [activeRegApp, setActiveRegApp] = useState(null);
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result;
+      if (typeof base64 === 'string') {
+        setPhotoUrl(base64);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const isDark = themeMode === 'dark';
 
@@ -60,6 +74,7 @@ export default function SignIn() {
           fullName: matchedApp.fullName,
           role: 'MEMBER',
           memberNumber: matchedApp.memberId || 'DC-MBR-00105',
+          photoUrl: matchedApp.photoUrl || '',
           token: `jwt-${Date.now()}`
         };
         setSession(userSession);
@@ -77,17 +92,7 @@ export default function SignIn() {
     }
   };
 
-  const handleQuickLogin = async (loginEmail) => {
-    setEmail(loginEmail);
-    setPassword('88888888');
-    setErrorMessage('');
-    try {
-      const res = await api.login(loginEmail, '88888888');
-      navigate(res.redirectTo);
-    } catch (err) {
-      navigate('/member');
-    }
-  };
+
 
   // Handle Sign Up Submit -> sends email code and moves to verification step
   const handleSignUpSubmit = (e) => {
@@ -126,6 +131,7 @@ export default function SignIn() {
       email: email.trim().toLowerCase(),
       phone: phone.trim() || '+256 700 000 000',
       chapter: chapter || 'UK Diaspora Chapter',
+      photoUrl: photoUrl || '',
       reason: reason.trim() || 'Agricultural investment & cooperative dairy farming',
       password,
       status: 'PENDING_APPROVAL', // 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'
@@ -189,6 +195,7 @@ export default function SignIn() {
       fullName: activeRegApp.fullName,
       role: 'MEMBER',
       memberNumber: approvedMemberId,
+      photoUrl: activeRegApp.photoUrl || '',
       token: `jwt-${Date.now()}`
     };
     setSession(userSession);
@@ -238,12 +245,12 @@ export default function SignIn() {
             alt="Diaspora Connect Watermark"
             className="select-none rounded-full object-cover shadow-2xl transition-all duration-300"
             style={{
-              maxWidth: '520px',
-              maxHeight: '520px',
-              width: '60vw',
-              height: '60vw',
-              opacity: isDark ? 0.16 : 0.13,
-              filter: isDark ? 'contrast(1.2) brightness(0.95)' : 'contrast(1.15)',
+              maxWidth: '540px',
+              maxHeight: '540px',
+              width: '65vw',
+              height: '65vw',
+              opacity: isDark ? 0.22 : 0.18,
+              filter: isDark ? 'contrast(1.25) brightness(0.95)' : 'contrast(1.18)',
             }}
           />
         </div>
@@ -400,71 +407,7 @@ export default function SignIn() {
               Sign In to System
             </button>
 
-            {/* Quick Testing Portal Selectors (Clean, No Emojis) */}
-            <div
-              className="pt-4 border-t space-y-2"
-              style={{ borderColor: isDark ? '#1e293b' : '#e2e8f0' }}
-            >
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                <span>Testing Quick Access</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-mono">Development</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('israelezrakisakye@gmail.com')}
-                  className="p-2 rounded-xl text-[11px] font-bold text-left transition flex items-center gap-2 border bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border-emerald-600/30"
-                >
-                  <Shield className="w-3.5 h-3.5 shrink-0" />
-                  <span>Admin Suite</span>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('member@diasporaconnectt.com')}
-                  className="p-2 rounded-xl text-[11px] font-bold text-left transition flex items-center gap-2 border bg-blue-600/10 hover:bg-blue-600/20 text-blue-700 dark:text-blue-400 border-blue-600/30"
-                >
-                  <User className="w-3.5 h-3.5 shrink-0" />
-                  <span>Member Portal</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('accountant@diasporaconnectt.com')}
-                  className="p-2 rounded-xl text-[11px] font-bold text-left transition flex items-center gap-2 border bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700"
-                >
-                  <FileText className="w-3.5 h-3.5 shrink-0" />
-                  <span>Accountant</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('farm@diasporaconnectt.com')}
-                  className="p-2 rounded-xl text-[11px] font-bold text-left transition flex items-center gap-2 border bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border-emerald-600/30"
-                >
-                  <Activity className="w-3.5 h-3.5 shrink-0" />
-                  <span>Farm Manager</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('secretary@diasporaconnectt.com')}
-                  className="p-2 rounded-xl text-[11px] font-bold text-left transition flex items-center gap-2 border bg-blue-600/10 hover:bg-blue-600/20 text-blue-700 dark:text-blue-400 border-blue-600/30"
-                >
-                  <UserCheck className="w-3.5 h-3.5 shrink-0" />
-                  <span>Secretary</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('board@diasporaconnectt.com')}
-                  className="p-2 rounded-xl text-[11px] font-bold text-left transition flex items-center gap-2 border bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700"
-                >
-                  <Briefcase className="w-3.5 h-3.5 shrink-0" />
-                  <span>Board Chair</span>
-                </button>
-              </div>
-            </div>
 
             <div className="pt-2 text-center text-xs text-slate-500">
               Don't have an account?{' '}
@@ -575,6 +518,36 @@ export default function SignIn() {
                 <option value="Europe Chapter (Nordic & EU)">Europe (Sweden, Germany, Netherlands)</option>
                 <option value="Resident Ugandan Member">Resident Ugandan Member</option>
               </select>
+            </div>
+
+            {/* Profile Photo Upload */}
+            <div>
+              <label
+                className="block text-xs font-bold mb-1"
+                style={{ color: isDark ? '#cbd5e1' : '#475569' }}
+              >
+                Profile Photo (For Identification)
+              </label>
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5">
+                {photoUrl ? (
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-500 shrink-0">
+                    <img src={photoUrl} alt="Profile preview" className="w-full h-full object-cover object-top" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="w-full text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white cursor-pointer"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Upload a clear photo showing full face</p>
+                </div>
+              </div>
             </div>
 
             <div>
