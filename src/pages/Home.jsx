@@ -1,12 +1,118 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Play, ChevronRight, Calendar, Clock } from 'lucide-react';
+
+const FARM_VIDEOS = [
+  {
+    id: 'start',
+    title: 'The Farm',
+    subtitle: 'Where it all begins',
+    category: 'Foundation',
+    src: '/videos/farmvideo4starting.mp4',
+    description: 'Our primary agricultural hub in Uganda. Here, perimeter fencing, pasture paddocks, and water catchment systems provide the backbone for our high-yield dairy herds.'
+  },
+  {
+    id: 'growing',
+    title: 'Growing Strong',
+    subtitle: 'Crops in full season',
+    category: 'Agronomy',
+    src: '/videos/farm video1.mp4',
+    description: 'High-density fodder cultivation including Napier grass and ensiled maize. Strong nutritional inputs ensure consistent milk yield year-round regardless of drought.'
+  },
+  {
+    id: 'operations',
+    title: 'Daily Operations',
+    subtitle: 'Hands-on farm management',
+    category: 'Management',
+    src: '/videos/farmvideo2.mp4',
+    description: 'Veterinary rounds, scheduled cattle dippings, and automated milking stations. Resident livestock professionals monitor herd health and output daily.'
+  },
+  {
+    id: 'harvest',
+    title: 'Harvest Season',
+    subtitle: 'The reward of patience',
+    category: 'Yield & Production',
+    src: '/videos/farmvideo3.mp4',
+    description: 'Bulk silage processing and raw milk consolidation into solar-hybrid chillers. Zero post-harvest losses guarantee peak dividends for diaspora members.'
+  },
+  {
+    id: 'land',
+    title: 'Fertile Land',
+    subtitle: "Uganda's greatest asset",
+    category: 'Land & Assets',
+    src: '/videos/farm video5.mp4',
+    description: 'Freehold agricultural acreage deeded in collective trust. Compounding land appreciation and tangible dairy assets create enduring generational security.'
+  }
+];
+
+const HOME_BLOGS = [
+  {
+    id: 'b1',
+    title: 'The White Gold Revolution: How Diaspora Capital is Modernising Dairy Farming in Uganda',
+    category: 'Dairy Farming',
+    date: 'Sep 28, 2026',
+    readTime: '6 min read',
+    img: '/images/blog_dairy_1.jpg?v=3.5',
+    author: {
+      name: 'Dairy Desk',
+      location: 'Mbarara, Uganda',
+      avatar: '/images/author_amara.jpg'
+    },
+    excerpt: 'From automated milking parlours to cold-chain preservation, SACCO members are pooling funds to transform Uganda’s milk belt into a high-yield dairy powerhouse.',
+    link: '/blog'
+  },
+  {
+    id: 'b2',
+    title: 'Investing in Dairy Cattle from London: Consistent Monthly Milk Yields',
+    category: 'Livestock Investment',
+    date: 'Sep 24, 2026',
+    readTime: '4 min read',
+    img: '/images/blog_dairy_1.jpg?v=3.5',
+    author: {
+      name: 'Amara Nakato',
+      location: 'London, UK',
+      avatar: '/images/author_amara.jpg'
+    },
+    excerpt: 'I co-own a herd of 15 Friesian-cross heifers in Kiruhura through the SACCO. The daily milk collection provides dependable quarterly dividends without the stress of remote management.',
+    link: '/blog'
+  },
+  {
+    id: 'b3',
+    title: 'Cold-Chain Milk Storage: Solving the Dairy Distribution Puzzle',
+    category: 'Value Addition',
+    date: 'Sep 14, 2026',
+    readTime: '5 min read',
+    img: '/images/blog_farmland.jpg',
+    author: {
+      name: 'David Ochieng',
+      location: 'Toronto, Canada',
+      avatar: '/images/author_david.jpg'
+    },
+    excerpt: 'Our cooperative investment in solar-powered milk chillers cut spoilage to zero across three collection depots, compounding member returns significantly.',
+    link: '/blog'
+  },
+  {
+    id: 'b4',
+    title: 'Silage & Pasture Management: Sustaining Milk Production Year-Round',
+    category: 'Agronomy & Feed',
+    date: 'Aug 28, 2026',
+    readTime: '4 min read',
+    img: '/images/card_img_1.jpg?v=3.2',
+    author: {
+      name: 'Grace Asiimwe',
+      location: 'Stockholm, Sweden',
+      avatar: '/images/author_grace.jpg'
+    },
+    excerpt: 'During dry spells when milk prices surge, our SACCO-backed silage banks ensure uninterrupted milk yield and protect cattle health through shared trust.',
+    link: '/blog'
+  }
+];
 
 export default function Home() {
   const [activePillar, setActivePillar] = useState('mission');
-  const [activeMediaTab, setActiveMediaTab] = useState('farmlife');
-  const [activeFarmDot, setActiveFarmDot] = useState(0);
+  const [activeVideoId, setActiveVideoId] = useState('start');
+  const activeVideo = FARM_VIDEOS.find(v => v.id === activeVideoId) || FARM_VIDEOS[0];
   const canvasRef = useRef(null);
-  const farmTrackWrapRef = useRef(null);
 
   // 1. PARTICLES CANVAS
   useEffect(() => {
@@ -89,74 +195,10 @@ export default function Home() {
     }
   }, []);
 
-  // 3. FARM VIDEO TRACK INTERSECTION & AUTOPLAY
-  useEffect(() => {
-    const wrap = farmTrackWrapRef.current;
-    if (!wrap) return;
-    const cards = wrap.querySelectorAll('.farm-vid-card');
-    if ('IntersectionObserver' in window && cards.length > 0) {
-      const vidObs = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            const vid = entry.target.querySelector('.farm-video');
-            if (!vid) return;
-            if (entry.isIntersecting) vid.play().catch(() => {});
-            else vid.pause();
-          });
-        },
-        { threshold: 0.4 }
-      );
-      cards.forEach((c) => vidObs.observe(c));
-      return () => vidObs.disconnect();
-    }
-  }, [activeMediaTab]);
-
-  // 4. FARM TRACK DRAG SCROLL & SCROLL LISTENER
-  useEffect(() => {
-    const wrap = farmTrackWrapRef.current;
-    if (!wrap) return;
-    const cards = wrap.querySelectorAll('.farm-vid-card');
-    const onScroll = () => {
-      const cardW = cards[0] ? cards[0].offsetWidth + 16 : 280;
-      const idx = Math.round(wrap.scrollLeft / cardW);
-      setActiveFarmDot(idx);
-    };
-    wrap.addEventListener('scroll', onScroll, { passive: true });
-    let isDown = false, startX = 0, scrollLeft = 0;
-    const onMouseDown = (e) => { isDown = true; wrap.classList.add('grabbing'); startX = e.pageX - wrap.offsetLeft; scrollLeft = wrap.scrollLeft; };
-    const onMouseLeave = () => { isDown = false; wrap.classList.remove('grabbing'); };
-    const onMouseUp = () => { isDown = false; wrap.classList.remove('grabbing'); };
-    const onMouseMove = (e) => { if (!isDown) return; e.preventDefault(); const x = e.pageX - wrap.offsetLeft; wrap.scrollLeft = scrollLeft - (x - startX) * 1.5; };
-    wrap.addEventListener('mousedown', onMouseDown);
-    wrap.addEventListener('mouseleave', onMouseLeave);
-    wrap.addEventListener('mouseup', onMouseUp);
-    wrap.addEventListener('mousemove', onMouseMove);
-    return () => {
-      wrap.removeEventListener('scroll', onScroll);
-      wrap.removeEventListener('mousedown', onMouseDown);
-      wrap.removeEventListener('mouseleave', onMouseLeave);
-      wrap.removeEventListener('mouseup', onMouseUp);
-      wrap.removeEventListener('mousemove', onMouseMove);
-    };
-  }, [activeMediaTab]);
-
-  const handleDotClick = (index) => {
-    const wrap = farmTrackWrapRef.current;
-    if (!wrap) return;
-    const cards = wrap.querySelectorAll('.farm-vid-card');
-    const cardW = cards[0] ? cards[0].offsetWidth + 16 : 280;
-    wrap.scrollTo({ left: index * cardW, behavior: 'smooth' });
-  };
-
   const pillars = [
     { key: 'mission', label: 'Mission' },
     { key: 'values', label: 'Values' },
     { key: 'vision', label: 'Vision' },
-  ];
-
-  const mediaTabs = [
-    { key: 'farmlife', label: 'Farm Life' },
-    { key: 'blogs', label: 'Diaspora Blogs' },
   ];
 
   return (
@@ -361,301 +403,342 @@ export default function Home() {
         )}
       </section>
 
-      {/* ─ 2. FARM LIFE & DIASPORA BLOGS SWITCHER ─ */}
-      <section id="media-showcase" style={{ padding: '60px 0 72px', background: 'var(--surface, #f8f9fa)' }}>
+      {/* ─ 2. FARM LIFE SECTION (MIRRORS FARM LIFE PAGE) ─ */}
+      <section id="farm-showcase" style={{ padding: '64px 0 40px', background: 'var(--surface, #f8f9fa)' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 20px' }}>
 
-          {/* Media Switcher Tab Bar */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '0',
-            marginBottom: '40px',
-            borderBottom: '2px solid rgba(184,134,11,0.15)',
-          }}>
-            {mediaTabs.map((tab) => (
+          {/* Bold Header */}
+          <div className="farm-header reveal" style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <h2
+              className="section-heading"
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: 'clamp(32px, 4.5vw, 48px)',
+                fontWeight: 900,
+                letterSpacing: '2.5px',
+                color: '#0f172a',
+                lineHeight: 1.15
+              }}
+            >
+              FARM <span style={{ color: 'var(--gold, #b8860b)' }}>LIFE</span>
+            </h2>
+            <div className="gold-line gold-line-center" style={{ width: '64px', height: '3px', background: 'var(--gold, #b8860b)', margin: '14px auto 0', borderRadius: '2px' }}></div>
+          </div>
+
+          {/* Tab Switcher like Farm Life page */}
+          <div className="flex items-center justify-start sm:justify-center gap-1.5 overflow-x-auto pb-4 mb-8 border-b border-slate-200 dark:border-slate-800 scrollbar-none">
+            {FARM_VIDEOS.map((v) => (
               <button
-                key={tab.key}
-                onClick={() => setActiveMediaTab(tab.key)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '12px 32px',
-                  fontSize: '13px',
-                  fontWeight: activeMediaTab === tab.key ? '800' : '600',
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: activeMediaTab === tab.key ? 'var(--gold, #b8860b)' : 'var(--text-secondary, #6b7280)',
-                  borderBottom: activeMediaTab === tab.key ? '3px solid var(--gold, #b8860b)' : '3px solid transparent',
-                  marginBottom: '-2px',
-                  transition: 'all 0.2s ease',
-                }}
-                aria-selected={activeMediaTab === tab.key}
-                role="tab"
+                key={v.id}
+                type="button"
+                onClick={() => setActiveVideoId(v.id)}
+                className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition cursor-pointer ${
+                  activeVideoId === v.id
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
+                }`}
               >
-                {tab.label}
+                {v.title}
               </button>
             ))}
           </div>
 
-          {/* TAB 1: FARM LIFE */}
-          {activeMediaTab === 'farmlife' && (
-            <div>
-              <div className="farm-header reveal" style={{ textAlign: 'center', marginBottom: '28px' }}>
-                <span className="section-label">Ground Level Footage</span>
-                <h2 className="section-heading">Farm <span>Life</span></h2>
-                <div className="gold-line gold-line-center"></div>
+          {/* Featured Video Player & Details */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm mb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-3">
+              {/* Video Player */}
+              <div className="lg:col-span-2 bg-black flex items-center justify-center aspect-video lg:aspect-auto">
+                <video
+                  key={activeVideo.src}
+                  className="w-full h-full max-h-[500px] object-cover"
+                  controls
+                  autoPlay
+                  muted
+                  playsInline
+                  loop
+                >
+                  <source src={activeVideo.src} type="video/mp4" />
+                </video>
               </div>
 
-              <div className="farm-track-wrap" ref={farmTrackWrapRef} style={{
-                overflowX: 'auto',
-                scrollSnapType: 'x mandatory',
-                WebkitOverflowScrolling: 'touch',
-                display: 'flex',
-                gap: '16px',
-                paddingBottom: '12px',
-                cursor: 'grab',
-              }}>
-                <div className="farm-track" id="farm-track" style={{ display: 'flex', gap: '16px' }}>
-                  {[
-                    { src: '/videos/farmvideo4starting.mp4', title: 'The Farm', sub: 'Where it all begins' },
-                    { src: '/videos/farm video1.mp4', title: 'Growing Strong', sub: 'Crops in full season' },
-                    { src: '/videos/farmvideo2.mp4', title: 'Daily Operations', sub: 'Hands-on farm management' },
-                    { src: '/videos/farmvideo3.mp4', title: 'Harvest Season', sub: 'The reward of patience' },
-                    { src: '/videos/farm video5.mp4', title: 'Fertile Land', sub: "Uganda's greatest asset" },
-                  ].map((v, i) => (
-                    <div key={i} className="farm-vid-card" style={{ scrollSnapAlign: 'start', flexShrink: 0, width: '300px' }}>
-                      <video className="farm-video" muted playsInline loop preload="metadata">
-                        <source src={v.src} type="video/mp4" />
-                      </video>
-                      <div className="farm-vid-label">
-                        <span>{v.title}</span>
-                        <p>{v.sub}</p>
-                      </div>
-                    </div>
-                  ))}
+              {/* Video Meta Info */}
+              <div className="p-6 sm:p-8 flex flex-col justify-between">
+                <div>
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                    {activeVideo.category}
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-3 leading-snug">
+                    {activeVideo.title}
+                  </h3>
+                  <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1 uppercase tracking-wider">
+                    {activeVideo.subtitle}
+                  </p>
+                  <div className="h-0.5 w-12 bg-amber-500/40 my-4" />
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {activeVideo.description}
+                  </p>
                 </div>
-              </div>
 
-              <div className="farm-scroll-hint" style={{ marginTop: '16px' }}>
-                <div className="farm-scroll-dots">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className={`farm-dot ${activeFarmDot === i ? 'active' : ''}`}
-                      role="button"
-                      aria-label={`Go to slide ${i + 1}`}
-                      onClick={() => handleDotClick(i)}
-                    ></div>
-                  ))}
+                <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                  <span>Direct on-site recording</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">1080p HD</span>
                 </div>
-              </div>
-
-              <div style={{ textAlign: 'center', marginTop: '28px' }}>
-                <Link to="/farmlife" style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 24px',
-                  borderRadius: '16px',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid rgba(184,134,11,0.3)',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-                  fontSize: '12px',
-                  fontWeight: '800',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color: 'var(--gold, #b8860b)',
-                  textDecoration: 'none',
-                }}>
-                  Explore All Farm Videos
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M5 12h14m-7-7 7 7-7 7" />
-                  </svg>
-                </Link>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* TAB 2: DIASPORA BLOGS (YOUTUBE STYLE WORD ARTICLES) */}
-          {activeMediaTab === 'blogs' && (
-            <div>
-              <div className="blogs-header reveal" style={{ textAlign: 'center', marginBottom: '28px' }}>
-                <span className="section-label">Member Stories</span>
-                <h2 className="section-heading">Diaspora <span>Blogs</span></h2>
-                <div className="gold-line gold-line-center"></div>
-              </div>
+          {/* All Video Clips Grid */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                All Farm Sections
+              </h3>
+              <span className="text-xs text-slate-500 font-bold">5 Ground Videos</span>
+            </div>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '24px',
-              }}>
-                {[
-                  {
-                    img: '/images/blog_dairy_1.jpg?v=3.5',
-                    alt: 'The White Gold Revolution',
-                    date: 'Sep 28, 2026',
-                    cat: 'Dairy Farming',
-                    title: 'The White Gold Revolution: How Diaspora Capital is Modernising Dairy Farming',
-                    excerpt: 'From automated milking parlours to cold-chain preservation, SACCO members are pooling funds to transform Uganda’s milk belt into a high-yield powerhouse.',
-                    author: 'Dairy Desk',
-                    loc: 'Mbarara, Uganda',
-                    authorImg: '/images/author_amara.jpg',
-                    link: '/blog',
-                  },
-                  {
-                    img: '/images/blog_dairy_1.jpg?v=3.5',
-                    alt: 'Investing in Dairy Cattle from London',
-                    date: 'Sep 24, 2026',
-                    cat: 'Livestock Investment',
-                    title: 'Investing in Dairy Cattle from London: Consistent Monthly Milk Yields',
-                    excerpt: 'I co-own a herd of 15 Friesian-cross heifers in Kiruhura through the SACCO. The daily milk collection provides dependable quarterly dividends.',
-                    author: 'Amara Nakato',
-                    loc: 'London, UK',
-                    authorImg: '/images/author_amara.jpg',
-                    link: '/blog',
-                  },
-                  {
-                    img: '/images/blog_farmland.jpg',
-                    alt: 'Cold-Chain Milk Storage',
-                    date: 'Sep 14, 2026',
-                    cat: 'Value Addition',
-                    title: 'Cold-Chain Milk Storage: Solving the Dairy Distribution Puzzle',
-                    excerpt: 'Our cooperative investment in solar-powered milk chillers cut spoilage to zero across three collection centres, compounding member returns.',
-                    author: 'David Ochieng',
-                    loc: 'Toronto, Canada',
-                    authorImg: '/images/author_david.jpg',
-                    link: '/blog',
-                  },
-                ].map((post, i) => (
-                  <article key={i} style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    background: 'var(--card-bg, #ffffff)',
-                    borderRadius: '20px',
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-                    border: '1px solid rgba(0,0,0,0.06)',
-                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {FARM_VIDEOS.map((v) => (
+                <div
+                  key={v.id}
+                  onClick={() => {
+                    setActiveVideoId(v.id);
                   }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,0,0,0.1)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.06)'; }}
-                  >
-                    {/* YouTube-like 16:9 Thumbnail Banner */}
-                    <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', overflow: 'hidden', background: '#e2e8f0' }}>
-                      <img
-                        src={post.img}
-                        alt={post.alt}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        decoding="async"
-                      />
-                      <span style={{
-                        position: 'absolute',
-                        top: '10px',
-                        left: '10px',
-                        fontSize: '9px',
-                        fontWeight: '800',
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        color: '#ffffff',
-                        background: '#059669',
-                        padding: '3px 8px',
-                        borderRadius: '20px',
-                      }}>
-                        {post.cat}
+                  className={`group rounded-3xl border overflow-hidden transition cursor-pointer flex flex-col shadow-sm ${
+                    activeVideoId === v.id
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600'
+                  }`}
+                >
+                  <div className="relative aspect-video w-full bg-black overflow-hidden">
+                    <video
+                      src={v.src}
+                      muted
+                      playsInline
+                      loop
+                      preload="metadata"
+                      onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
+                      onMouseLeave={(e) => { e.currentTarget.pause(); }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
+
+                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-emerald-600/90 text-white text-[10px] font-extrabold uppercase tracking-wider shadow">
+                      {v.category}
+                    </span>
+
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-emerald-600 transition">
+                        <Play className="w-5 h-5 fill-current ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                        {v.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {v.subtitle}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-emerald-600 transition shrink-0" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '36px', paddingBottom: '16px' }}>
+            <Link to="/farmlife" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '12px 28px', borderRadius: '16px', backgroundColor: '#ffffff',
+              border: '1.5px solid rgba(184,134,11,0.35)', boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+              fontSize: '12px', fontWeight: '800', letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: 'var(--gold, #b8860b)', textDecoration: 'none',
+              transition: 'all 0.2s'
+            }}>
+              Explore Farm Life Page
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M5 12h14m-7-7 7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ─ 2b. DIASPORA BLOGS (PROFESSIONAL EDITORIAL LAYOUT) ─ */}
+      <section id="blogs-showcase" style={{ padding: '64px 0 76px', background: 'var(--surface, #f8f9fa)', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 20px' }}>
+
+          <div className="blogs-header reveal" style={{ textAlign: 'center', marginBottom: '36px' }}>
+            <span className="section-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--gold, #b8860b)', display: 'block', marginBottom: '6px' }}>
+              Member Stories &amp; Insights
+            </span>
+            <h2
+              className="section-heading"
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: 'clamp(28px, 4vw, 44px)',
+                fontWeight: 900,
+                letterSpacing: '2px',
+                color: '#0f172a',
+                lineHeight: 1.15
+              }}
+            >
+              DIASPORA <span style={{ color: 'var(--gold, #b8860b)' }}>BLOGS</span>
+            </h2>
+            <div className="gold-line gold-line-center" style={{ width: '64px', height: '3px', background: 'var(--gold, #b8860b)', margin: '14px auto 0', borderRadius: '2px' }}></div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+            {HOME_BLOGS.map((post) => (
+              <article
+                key={post.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: 'var(--card-bg, #ffffff)',
+                  borderRadius: '24px',
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                  border: '1px solid rgba(0,0,0,0.07)',
+                  transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-5px)';
+                  e.currentTarget.style.boxShadow = '0 16px 36px rgba(0,0,0,0.09)';
+                  e.currentTarget.style.borderColor = 'rgba(5, 150, 105, 0.4)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = '';
+                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.04)';
+                  e.currentTarget.style.borderColor = 'rgba(0,0,0,0.07)';
+                }}
+              >
+                {/* 16:9 Image */}
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', overflow: 'hidden', background: '#0f172a' }}>
+                  <img
+                    src={post.img}
+                    alt={post.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.4s ease' }}
+                    loading="lazy"
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    top: '12px',
+                    left: '12px',
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: '#ffffff',
+                    background: '#059669',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.18)'
+                  }}>
+                    {post.category}
+                  </span>
+                </div>
+
+                {/* Article Body */}
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+                  <div>
+                    {/* Meta Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <Calendar style={{ width: '13px', height: '13px', color: '#94a3b8' }} />
+                        {post.date}
+                      </span>
+                      <span>&bull;</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <Clock style={{ width: '13px', height: '13px', color: '#94a3b8' }} />
+                        {post.readTime}
                       </span>
                     </div>
 
-                    {/* YouTube Card Body */}
-                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                        <h3 style={{
-                          margin: '0 0 4px 0',
-                          fontSize: '13.5px',
-                          fontWeight: '800',
-                          lineHeight: '1.35',
-                          color: 'var(--text-primary, #111827)',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          {post.title}
-                        </h3>
+                    {/* Title */}
+                    <h3 style={{
+                      margin: '0 0 8px 0',
+                      fontSize: '14.5px',
+                      fontWeight: '800',
+                      lineHeight: '1.38',
+                      color: 'var(--text-primary, #0f172a)',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}>
+                      {post.title}
+                    </h3>
 
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary, #6b7280)', marginBottom: '6px' }}>
-                          <span>{post.author}</span> &middot; <span>{post.loc}</span>
-                        </div>
+                    {/* Excerpt */}
+                    <p style={{
+                      margin: '0 0 16px 0',
+                      fontSize: '12px',
+                      color: 'var(--text-secondary, #475569)',
+                      lineHeight: '1.55',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}>
+                      {post.excerpt}
+                    </p>
+                  </div>
 
-                        <div style={{ fontSize: '10.5px', color: 'var(--text-secondary, #9ca3af)', marginBottom: '8px' }}>
-                          {post.date}
-                        </div>
-
-                        <p style={{
-                          margin: '0 0 12px 0',
-                          fontSize: '12px',
-                          color: 'var(--text-secondary, #4b5563)',
-                          lineHeight: '1.45',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          {post.excerpt}
-                        </p>
-
-                        <div style={{ marginTop: 'auto' }}>
-                          <Link to={post.link} style={{
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            color: 'var(--gold, #b8860b)',
-                            textDecoration: 'none',
-                            letterSpacing: '0.06em',
-                            textTransform: 'uppercase',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
-                            Read Full Story
-                            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                              <path d="M5 12h14m-7-7 7 7-7 7" />
-                            </svg>
-                          </Link>
-                        </div>
+                  {/* Author Byline & Link */}
+                  <div style={{ paddingTop: '14px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <img
+                        src={post.author.avatar}
+                        alt={post.author.name}
+                        style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #e2e8f0' }}
+                      />
+                      <div style={{ fontSize: '11px', lineHeight: 1.25 }}>
+                        <span style={{ fontWeight: 700, color: '#1e293b', display: 'block' }}>{post.author.name}</span>
+                        <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>{post.author.location}</span>
                       </div>
                     </div>
-                  </article>
-                ))}
-              </div>
 
-              <div style={{ textAlign: 'center', marginTop: '28px' }}>
-                <Link to="/blog" style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 24px',
-                  borderRadius: '16px',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid rgba(184,134,11,0.3)',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-                  fontSize: '12px',
-                  fontWeight: '800',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color: 'var(--gold, #b8860b)',
-                  textDecoration: 'none',
-                }}>
-                  View All Stories
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M5 12h14m-7-7 7 7-7 7" />
-                  </svg>
-                </Link>
-              </div>
-            </div>
-          )}
+                    <Link
+                      to={post.link}
+                      style={{
+                        fontSize: '11.5px',
+                        fontWeight: '800',
+                        color: 'var(--gold, #b8860b)',
+                        textDecoration: 'none',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'color 0.2s'
+                      }}
+                    >
+                      <span>Read Story</span>
+                      <ChevronRight style={{ width: '13px', height: '13px' }} />
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
 
+          <div style={{ textAlign: 'center', marginTop: '36px' }}>
+            <Link to="/blog" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '12px 28px', borderRadius: '16px', backgroundColor: '#ffffff',
+              border: '1.5px solid rgba(184,134,11,0.35)', boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+              fontSize: '12px', fontWeight: '800', letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: 'var(--gold, #b8860b)', textDecoration: 'none',
+              transition: 'all 0.2s'
+            }}>
+              View All Blog Stories
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14m-7-7 7 7-7 7" /></svg>
+            </Link>
+          </div>
         </div>
       </section>
 

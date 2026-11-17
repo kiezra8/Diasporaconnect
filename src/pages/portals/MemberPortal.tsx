@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getSession, clearSession, api } from '../../services/api';
+import { getSession, setSession, clearSession, api } from '../../services/api';
 import { applyTheme, getTheme } from '../../services/theme';
 import PortalBottomNav from '../../components/PortalBottomNav';
 import Planning from '../Planning';
@@ -36,7 +36,12 @@ import {
   Target,
   MessageSquare,
   Settings,
-  Phone
+  Phone,
+  Edit3,
+  Camera,
+  User,
+  Upload,
+  Check
 } from 'lucide-react';
 
 export default function MemberPortal() {
@@ -76,6 +81,14 @@ export default function MemberPortal() {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+
+  // Edit Profile Form State
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhotoUrl, setEditPhotoUrl] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Month Constants
   const MONTH_FULL_NAMES: Record<string, string> = {
@@ -203,6 +216,117 @@ export default function MemberPortal() {
   const notify = (msg: string) => {
     setShowNotification(msg);
     setTimeout(() => setShowNotification(''), 6000);
+  };
+
+  useEffect(() => {
+    if (currentMember) {
+      if (!editName) setEditName(currentMember.name || session?.fullName || '');
+      if (!editPhone) setEditPhone(currentMember.phone || (session as any)?.phone || '');
+      if (!editEmail) setEditEmail(currentMember.email || session?.email || '');
+      if (!editPhotoUrl) setEditPhotoUrl(memberPhoto || '');
+    }
+  }, [currentMember, memberPhoto, session]);
+
+  const openEditProfile = () => {
+    setEditName(currentMember.name || session?.fullName || '');
+    setEditPhone(currentMember.phone || (session as any)?.phone || '');
+    setEditEmail(currentMember.email || session?.email || '');
+    setEditPhotoUrl(memberPhoto || '');
+    setShowEditProfileModal(true);
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      notify('Photo file size should be under 5MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setEditPhotoUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editName.trim()) {
+      notify('Please enter your full name.');
+      return;
+    }
+    setIsSavingProfile(true);
+
+    try {
+      const finalPhoto = editPhotoUrl || memberPhoto || '';
+
+      // 1. Update in SaccoFarmStore
+      SaccoFarmStore.updateMember(currentMember.id, {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
+        avatar: finalPhoto
+      });
+
+      // 2. Update active user session
+      const currentSession = getSession();
+      if (currentSession) {
+        const updatedSession: any = {
+          ...currentSession,
+          fullName: editName.trim(),
+          email: editEmail.trim() || currentSession.email,
+          phone: editPhone.trim(),
+          photoUrl: finalPhoto
+        };
+        setSession(updatedSession);
+      }
+
+      // 3. Update in dc_member_registrations
+      try {
+        const regs = JSON.parse(localStorage.getItem('dc_member_registrations') || '[]');
+        const updatedRegs = regs.map((r: any) => {
+          if (
+            (r.memberId && (r.memberId === currentMember.memberId || r.memberId === currentMember.id)) ||
+            (r.email && currentMember.email && r.email.toLowerCase() === currentMember.email.toLowerCase()) ||
+            (r.fullName && currentMember.name && r.fullName.toLowerCase() === currentMember.name.toLowerCase())
+          ) {
+            return {
+              ...r,
+              fullName: editName.trim(),
+              phone: editPhone.trim(),
+              email: editEmail.trim(),
+              photoUrl: finalPhoto || r.photoUrl
+            };
+          }
+          return r;
+        });
+        localStorage.setItem('dc_member_registrations', JSON.stringify(updatedRegs));
+      } catch {}
+
+      // 4. Update in dc_member_photos
+      if (finalPhoto) {
+        try {
+          const photos = JSON.parse(localStorage.getItem('dc_member_photos') || '{}');
+          photos[editName.trim()] = finalPhoto;
+          photos[currentMember.name] = finalPhoto;
+          if (currentMember.memberId) photos[currentMember.memberId] = finalPhoto;
+          if (currentMember.id) photos[currentMember.id] = finalPhoto;
+          localStorage.setItem('dc_member_photos', JSON.stringify(photos));
+        } catch {}
+      }
+
+      // 5. Reactive reload & feedback
+      window.dispatchEvent(new Event('dc_storage_update'));
+      reloadData();
+      setShowEditProfileModal(false);
+      notify('Member profile updated successfully!');
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      notify('Failed to update profile. Please try again.');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   // Submit Deposit Request (With Explicit Deposit Purpose)
@@ -705,101 +829,27 @@ export default function MemberPortal() {
 
       {/* 2. MAIN CONTENT AREA */}
       <div className="flex-1 md:ml-64 flex flex-col min-w-0">
-        {/* Top Header */}
-        <header className={`sticky top-0 z-30 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} backdrop-blur border-b px-4 py-3 flex items-center justify-between`}>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:text-white md:hidden"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Member Portal</h2>
-            </div>
-          </div>
+        {/* Mobile Top Header (hidden on desktop so page content starts directly at the top with zero upward clutter) */}
+        <header className={`md:hidden sticky top-0 z-30 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} backdrop-blur border-b px-4 py-2.5 flex items-center justify-between`}>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+            aria-label="Toggle navigation"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
 
-          {/* Navigation Search Bar */}
-          <div className="relative flex-1 max-w-xs sm:max-w-sm md:max-w-md mx-2 sm:mx-4 hidden sm:block">
-            <div className="relative">
-              <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={navSearch}
-                onChange={(e) => setNavSearch(e.target.value)}
-                placeholder="Search modules, savings, shares, statement..."
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-9 pr-8 py-1.5 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 shadow-sm"
-              />
-              {navSearch && (
-                <button
-                  onClick={() => setNavSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            {navSearch.trim() && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border-2 border-emerald-500/40 rounded-2xl shadow-2xl p-3 z-50 max-h-80 overflow-y-auto space-y-2">
-                <p className="text-[10px] uppercase font-bold text-slate-800 dark:text-slate-300">Quick Navigation</p>
-                {[
-                  { label: 'Dashboard', tab: 'overview' as const, desc: 'Balances, shares, and monthly savings' },
-                  { label: 'Shares', tab: 'shares' as const, desc: 'Share certificate & capital valuation' },
-                  { label: 'Statement', tab: 'statement' as const, desc: 'Monthly contribution breakdown' },
-                  { label: 'Deposit Request', tab: 'deposit' as const, desc: 'Submit deposit & payment receipt' },
-                  { label: 'Withdrawal Request', tab: 'withdraw' as const, desc: 'Request savings payout' },
-                  { label: 'Planning', tab: 'planning' as const, desc: 'Savings goals and expense projections' },
-                ]
-                  .filter(i => i.label.toLowerCase().includes(navSearch.toLowerCase()) || i.desc.toLowerCase().includes(navSearch.toLowerCase()))
-                  .map(item => (
-                    <button
-                      key={item.tab}
-                      onClick={() => { setActiveTab(item.tab); setNavSearch(''); }}
-                      className="w-full text-left p-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-slate-800/80 transition flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{item.label}</p>
-                        <p className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">{item.desc}</p>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-emerald-600" />
-                    </button>
-                  ))}
-              </div>
-            )}
-          </div>
-
-          {/* Member Switcher & Theme Toggle */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className={`p-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
-                isDark
-                  ? 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
-              }`}
-              title="Toggle Light / Dark Mode"
-            >
-              {isDark ? <Sun className="w-4 h-4 text-emerald-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
-              <span className="hidden sm:inline text-[11px]">{isDark ? 'Light' : 'Dark'}</span>
-            </button>
-
-            <div className="hidden sm:flex items-center gap-1.5">
-              <span className="text-[10px] uppercase font-bold text-slate-800 dark:text-slate-300">Account:</span>
-              <select
-                value={selectedMemberId}
-                onChange={(e) => setSelectedMemberId(e.target.value)}
-                className={`text-xs font-bold rounded-xl px-2.5 py-1.5 border focus:outline-none transition ${
-                  isDark ? 'bg-slate-950 border-slate-700 text-emerald-400' : 'bg-slate-100 border-slate-300 text-emerald-800 font-bold'
-                }`}
-              >
-                {members.map(m => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({m.memberId})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+              isDark
+                ? 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+            }`}
+            title="Toggle Light / Dark Mode"
+          >
+            {isDark ? <Sun className="w-4 h-4 text-emerald-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+          </button>
         </header>
 
         {/* Notification Toast */}
@@ -822,16 +872,30 @@ export default function MemberPortal() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
                   <div className="flex items-center gap-4">
                     {memberPhoto ? (
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-md border-2 border-emerald-500/50 shrink-0 bg-slate-900">
+                      <div
+                        onClick={openEditProfile}
+                        className="relative group cursor-pointer w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-md border-2 border-emerald-500/50 shrink-0 bg-slate-900"
+                        title="Click to edit profile"
+                      >
                         <img
                           src={memberPhoto}
                           alt={currentMember.name}
                           className="w-full h-full object-cover object-top"
                         />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                          <Camera className="w-5 h-5 text-white" />
+                        </div>
                       </div>
                     ) : (
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0">
+                      <div
+                        onClick={openEditProfile}
+                        className="relative group cursor-pointer w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0"
+                        title="Click to edit profile"
+                      >
                         {currentMember.name.slice(0, 2).toUpperCase()}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-2xl">
+                          <Camera className="w-5 h-5 text-white" />
+                        </div>
                       </div>
                     )}
                     <div>
@@ -840,6 +904,14 @@ export default function MemberPortal() {
                         <Phone className="w-3.5 h-3.5" />
                         <span>{currentMember.phone || (session as any)?.phone || '+256 700 000 000'}</span>
                       </p>
+                      <button
+                        type="button"
+                        onClick={openEditProfile}
+                        className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 text-[11px] font-bold border border-slate-300 dark:border-slate-700 transition cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Edit Profile</span>
+                      </button>
                     </div>
                   </div>
 
@@ -1537,19 +1609,212 @@ export default function MemberPortal() {
 
           {/* TAB: SETTINGS */}
           {activeTab === 'settings' && (
-            <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 rounded-3xl p-6 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-base text-slate-900 dark:text-white">Member Profile &amp; Preferences</h3>
-              <p className="text-xs text-slate-500">Security preferences, phone number, and statement delivery options.</p>
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-                <span className="font-bold text-slate-500 uppercase text-[10px]">Security Status</span>
-                <p className="font-extrabold text-emerald-600 dark:text-emerald-400">Two-Factor Authentication Active</p>
-                <p className="text-slate-500 text-[11px]">Authorized for SACCO digital banking &amp; dividend distribution.</p>
+            <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 rounded-3xl p-6 shadow-sm space-y-6 max-w-2xl">
+              <div>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">Member Profile & Preferences</h3>
+                <p className="text-xs text-slate-500 mt-1">Manage your personal details, contact information, and profile picture.</p>
               </div>
+
+              <form onSubmit={handleSaveProfile} className="space-y-4">
+                {/* Photo Upload */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-emerald-500/50 bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center">
+                    {editPhotoUrl || memberPhoto ? (
+                      <img src={editPhotoUrl || memberPhoto} alt="Profile" className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <User className="w-8 h-8 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">Profile Photo</label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload New Photo</span>
+                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                      </label>
+                      {(editPhotoUrl || memberPhoto) && (
+                        <button
+                          type="button"
+                          onClick={() => setEditPhotoUrl('')}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Full Name */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="+256 7XX XXX XXX"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Member ID (Read-only) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">SACCO Member ID</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={currentMember.memberId || currentMember.id}
+                    className="w-full bg-slate-100 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-500 cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{isSavingProfile ? 'Saving...' : 'Save Profile Changes'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
         </main>
       </div>
+
+      {/* MODAL: EDIT PROFILE */}
+      {showEditProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Edit Member Profile</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditProfileModal(false)}
+                className="text-slate-500 hover:text-slate-900 dark:hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+              {/* Photo Upload */}
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-emerald-500/50 bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center">
+                  {editPhotoUrl || memberPhoto ? (
+                    <img src={editPhotoUrl || memberPhoto} alt="Profile" className="w-full h-full object-cover object-top" />
+                  ) : (
+                    <User className="w-7 h-7 text-slate-400" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <p className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Profile Photo</p>
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition">
+                      <Upload className="w-3 h-3" />
+                      <span>Change</span>
+                      <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                    </label>
+                    {(editPhotoUrl || memberPhoto) && (
+                      <button
+                        type="button"
+                        onClick={() => setEditPhotoUrl('')}
+                        className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  required
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+256 7XX XXX XXX"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditProfileModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{isSavingProfile ? 'Saving...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: DEPOSIT REQUEST */}
       {showDepositModal && (
