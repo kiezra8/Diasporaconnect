@@ -377,11 +377,12 @@ nav#navbar {
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(15, 23, 42, 0.70) 0%,
-    rgba(15, 23, 42, 0.50) 50%,
-    rgba(15, 23, 42, 0.78) 100%
+    rgba(0, 0, 0, 0.05) 0%,
+    rgba(0, 0, 0, 0.12) 40%,
+    rgba(0, 0, 0, 0.55) 100%
   );
   z-index: 2;
+  pointer-events: none;
 }
 .hero-content {
   position: relative;

@@ -97,11 +97,15 @@ export default function About() {
 
             {/* Founder 5: Member Representative */}
             <article className="founder-card">
-              <div className="founder-img-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '84px', height: '84px', opacity: 0.5 }} aria-label="No photo available">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
+              <div className="founder-img-wrap">
+                <img
+                  src="/images/ssanyu_phiona.jpg"
+                  alt="Ms. Ssanyu Phiona – Member Representative"
+                  width="300"
+                  height="300"
+                  decoding="async"
+                  style={{ objectFit: 'cover', objectPosition: 'top center', width: '100%', height: '100%' }}
+                />
               </div>
               <div className="founder-info">
                 <h3 className="founder-name">Ms. Ssanyu Phiona</h3>

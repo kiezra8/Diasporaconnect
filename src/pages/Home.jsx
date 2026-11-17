@@ -165,7 +165,7 @@ export default function Home() {
       <canvas id="particles-canvas" ref={canvasRef}></canvas>
 
       {/* HERO IMAGE */}
-      <section id="hero" style={{ height: '42vh', minHeight: '300px', maxHeight: '380px', display: 'flex', alignItems: 'center' }}>
+      <section id="hero" style={{ height: '45vh', minHeight: '320px', maxHeight: '420px', display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
         <div className="hero-carousel" id="hero-carousel">
           <div
             className="hero-slide active"
@@ -173,17 +173,17 @@ export default function Home() {
           ></div>
         </div>
         <div className="hero-overlay"></div>
-        <div className="hero-content" style={{ textAlign: 'left', width: '100%', maxWidth: '1200px', padding: '0 32px', margin: '0 auto', display: 'flex', alignItems: 'center', height: '100%' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div className="hero-content" style={{ textAlign: 'left', width: '100%', maxWidth: '1200px', padding: '0 28px 24px', margin: '0 auto', zIndex: 3 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h1 style={{
               fontFamily: "'Cinzel', serif",
-              fontSize: 'clamp(1.8rem, 4.5vw, 3.2rem)',
+              fontSize: 'clamp(1.75rem, 4.2vw, 3rem)',
               fontWeight: 900,
               color: '#ffffff',
               lineHeight: 1.15,
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
-              textShadow: '0 3px 12px rgba(0,0,0,0.85)',
+              textShadow: '0 3px 12px rgba(0,0,0,0.95), 0 1px 4px rgba(0,0,0,0.8)',
               margin: 0
             }}>
               Come home,<br />
