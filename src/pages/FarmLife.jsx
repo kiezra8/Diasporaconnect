@@ -1,40 +1,5 @@
 import React, { useState } from 'react';
-import { Play, ChevronRight, BookOpen, Calendar, Clock } from 'lucide-react';
-
-const FARM_BLOGS = [
-  {
-    id: 'b1',
-    title: 'The White Gold Revolution: Diaspora Capital Modernising Dairy in Uganda',
-    category: 'Dairy Farming',
-    date: 'Sep 28, 2026',
-    readTime: '6 min read',
-    excerpt: "From automated milking parlours to cold-chain preservation, SACCO members are pooling funds to transform Uganda's milk belt into a high-yield dairy powerhouse.",
-  },
-  {
-    id: 'b2',
-    title: 'Investing in Dairy Cattle from London: Consistent Monthly Milk Yields',
-    category: 'Livestock Investment',
-    date: 'Sep 24, 2026',
-    readTime: '4 min read',
-    excerpt: 'Co-owning a herd of Friesian-cross heifers through the SACCO provides dependable quarterly dividends without the stress of remote management.',
-  },
-  {
-    id: 'b3',
-    title: 'Cold-Chain Milk Storage: Solving the Dairy Distribution Puzzle',
-    category: 'Value Addition',
-    date: 'Sep 14, 2026',
-    readTime: '5 min read',
-    excerpt: 'Solar-powered milk chillers cut spoilage to zero across three collection centres, compounding member returns significantly.',
-  },
-  {
-    id: 'b4',
-    title: 'Silage & Pasture Management: Sustaining Milk Production Year-Round',
-    category: 'Agronomy & Feed',
-    date: 'Aug 28, 2026',
-    readTime: '4 min read',
-    excerpt: 'During dry spells when milk prices surge, SACCO-backed silage banks ensure uninterrupted yield — smart, resilient agriculture built on shared trust.',
-  },
-];
+import { Play, ChevronRight } from 'lucide-react';
 
 const FARM_VIDEOS = [
   {
@@ -222,46 +187,6 @@ export default function FarmLife() {
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-emerald-600 transition shrink-0" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Blog Articles */}
-        <div className="mt-14 space-y-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-emerald-600" />
-              Farm Blog
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {FARM_BLOGS.map((article) => (
-              <div
-                key={article.id}
-                className="group rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-400 dark:hover:border-emerald-600 transition cursor-pointer p-5 flex flex-col gap-3"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
-                    {article.category}
-                  </span>
-                </div>
-                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
-                  {article.title}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {article.excerpt}
-                </p>
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3" />
-                    {article.date}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" />
-                    {article.readTime}
-                  </span>
                 </div>
               </div>
             ))}

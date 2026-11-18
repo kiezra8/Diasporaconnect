@@ -73,6 +73,7 @@ export default function GlobalBottomNav() {
   );
 
   const isHomeActive = location.pathname === '/';
+  const isFarmLifeActive = location.pathname === '/farmlife' || location.pathname.startsWith('/farmlife');
   const isPlanningActive = location.pathname === '/planning' || (isPortalActive && location.search.includes('tab=planning'));
   const isSignInActive = !session && location.pathname.startsWith('/signin');
 
@@ -315,21 +316,38 @@ export default function GlobalBottomNav() {
           <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">Home</span>
         </Link>
 
-        {/* 2. PLANNING — Savings Goals & Expenses Breakdown */}
-        <button
-          type="button"
-          onClick={() => { setShowMoreMenu(false); handlePlanningClick(); }}
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer group ${
-            isPlanningActive
-              ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
-              : 'text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400'
-          }`}
-        >
-          <div className={`p-1 rounded-xl transition ${isPlanningActive ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : 'group-hover:bg-slate-100 dark:group-hover:bg-slate-800'}`}>
-            <Target className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">Planning</span>
-        </button>
+        {/* 2. FARM LIFE (public) / PLANNING (signed in) */}
+        {session ? (
+          <button
+            type="button"
+            onClick={() => { setShowMoreMenu(false); handlePlanningClick(); }}
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer group ${
+              isPlanningActive
+                ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400'
+            }`}
+          >
+            <div className={`p-1 rounded-xl transition ${isPlanningActive ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : 'group-hover:bg-slate-100 dark:group-hover:bg-slate-800'}`}>
+              <Target className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">Planning</span>
+          </button>
+        ) : (
+          <Link
+            to="/farmlife"
+            onClick={() => { setShowChatOptions(false); setShowMoreMenu(false); }}
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition group ${
+              isFarmLifeActive
+                ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400'
+            }`}
+          >
+            <div className={`p-1 rounded-xl transition ${isFarmLifeActive ? 'bg-emerald-500/15' : 'group-hover:bg-slate-100 dark:group-hover:bg-slate-800'}`}>
+              <Sprout className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold mt-0.5 tracking-wider uppercase">Farm Life</span>
+          </Link>
+        )}
 
         {/* 3. CHAT — WhatsApp / Call Action Sheet */}
         <button
