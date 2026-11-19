@@ -211,7 +211,7 @@ export default function Home() {
         <div className="hero-carousel" id="hero-carousel">
           <div
             className="hero-slide active"
-            style={{ backgroundImage: "url('/images/hero_slide_2.jpg?v=3.5')" }}
+            style={{ backgroundImage: "url('/images/hero_slide_2.jpg?v=4.0')" }}
           ></div>
         </div>
         <div className="hero-overlay"></div>
@@ -277,7 +277,7 @@ export default function Home() {
         {activePillar === 'mission' && (
           <div className="mission-cards">
             <div className="mission-card">
-              <div className="mission-card-bg bg-pin-1" style={{ backgroundImage: "url('/images/card_img_1.jpg?v=3.2')" }}></div>
+              <div className="mission-card-bg bg-pin-1" style={{ backgroundImage: "url('/images/cows_mission_come_home.jpg?v=5.0')" }}></div>
               <div className="mission-card-overlay"></div>
               <div className="mission-card-content">
                 <span className="mission-card-num">01 &middot; Mission</span>
@@ -314,10 +314,10 @@ export default function Home() {
           <div>
             <div className="values-grid">
               {[
-                { icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>, num: '01', title: 'TEAMWORK', desc: 'We grow stronger when we work together.', bg: 'bg-teamwork', style: {} },
-                { icon: <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></>, num: '02', title: 'GROWTH', desc: 'Turning member savings into real possibilities.', bg: 'bg-growth', style: {} },
-                { icon: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>, num: '03', title: 'TRUST', desc: 'Your money. Your future. Our responsibility.', bg: 'bg-trust', style: {} },
-                { icon: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="12" y2="16"/></>, num: '04', title: 'EMPOWERMENT', desc: 'Opportunity within reach of every member.', bg: 'bg-pin-2', style: { backgroundImage: "url('/images/card_img_2.jpg?v=3.2')" } },
+                { icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>, num: '01', title: 'TEAMWORK', desc: 'We grow stronger when we work together.', bg: 'bg-teamwork', style: {} },
+                { icon: <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>, num: '02', title: 'GROWTH', desc: 'Turning member savings into real possibilities.', bg: 'bg-growth', style: {} },
+                { icon: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></>, num: '03', title: 'TRUST', desc: 'Your money. Your future. Our responsibility.', bg: 'bg-trust', style: {} },
+                { icon: <><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="12" y2="16" /></>, num: '04', title: 'EMPOWERMENT', desc: 'Opportunity within reach of every member.', bg: 'bg-pin-2', style: { backgroundImage: "url('/images/card_img_2.jpg?v=3.2')" } },
               ].map((v) => (
                 <div className="value-card" key={v.num}>
                   <div className={`value-card-bg ${v.bg}`} style={v.style}></div>
@@ -334,9 +334,9 @@ export default function Home() {
             </div>
             <div className="values-grid-row2" style={{ marginTop: '16px' }}>
               {[
-                { icon: <><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></>, num: '05', title: 'PRODUCTIVITY', desc: 'We believe in assets that work for you.', bg: 'bg-productivity', style: {} },
-                { icon: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>, num: '06', title: 'LEGACY', desc: 'What we build today benefits tomorrow.', bg: 'bg-pin-3', style: { backgroundImage: "url('/images/card_img_3.jpg?v=3.2')" } },
-                { icon: <><polyline points="20 6 9 17 4 12"/></>, num: '07', title: 'INTEGRITY', desc: 'We do the right thing, always.', bg: 'bg-integrity', style: {} },
+                { icon: <><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></>, num: '05', title: 'PRODUCTIVITY', desc: 'We believe in assets that work for you.', bg: 'bg-productivity', style: {} },
+                { icon: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></>, num: '06', title: 'LEGACY', desc: 'What we build today benefits tomorrow.', bg: 'bg-pin-3', style: { backgroundImage: "url('/images/card_img_3.jpg?v=3.2')" } },
+                { icon: <><polyline points="20 6 9 17 4 12" /></>, num: '07', title: 'INTEGRITY', desc: 'We do the right thing, always.', bg: 'bg-integrity', style: {} },
               ].map((v) => (
                 <div className="value-card" key={v.num}>
                   <div className={`value-card-bg ${v.bg}`} style={v.style}></div>
@@ -432,11 +432,10 @@ export default function Home() {
                 key={v.id}
                 type="button"
                 onClick={() => setActiveVideoId(v.id)}
-                className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition cursor-pointer ${
-                  activeVideoId === v.id
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
-                }`}
+                className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition cursor-pointer ${activeVideoId === v.id
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
+                  }`}
               >
                 {v.title}
               </button>
@@ -503,11 +502,10 @@ export default function Home() {
                   onClick={() => {
                     setActiveVideoId(v.id);
                   }}
-                  className={`group rounded-3xl border overflow-hidden transition cursor-pointer flex flex-col shadow-sm ${
-                    activeVideoId === v.id
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600'
-                  }`}
+                  className={`group rounded-3xl border overflow-hidden transition cursor-pointer flex flex-col shadow-sm ${activeVideoId === v.id
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600'
+                    }`}
                 >
                   <div className="relative aspect-video w-full bg-black overflow-hidden">
                     <video
@@ -516,7 +514,7 @@ export default function Home() {
                       playsInline
                       loop
                       preload="metadata"
-                      onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
+                      onMouseEnter={(e) => { e.currentTarget.play().catch(() => { }); }}
                       onMouseLeave={(e) => { e.currentTarget.pause(); }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -757,8 +755,8 @@ export default function Home() {
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '16px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '18px',
             marginBottom: '32px'
           }}>
             {[
@@ -768,40 +766,39 @@ export default function Home() {
               { name: 'Mr. Halera John Bahati', role: 'Secretary', img: '/images/halera_john_bahati.jpg', bio: 'Institutional records and compliance.' },
               { name: 'Ms. Ssanyu Phiona', role: 'Member Representative', img: '/images/ssanyu_phiona.jpg', bio: 'Diaspora member engagement and community.' },
             ].map((f, i) => (
-              <div key={i} style={{
+              <div key={i} className="founder-card" style={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                padding: '12px 14px',
+                flexDirection: 'column',
                 background: '#ffffff',
-                borderRadius: '16px',
-                border: '1px solid rgba(0,0,0,0.07)',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+                borderRadius: '20px',
+                border: '1px solid rgba(184,134,11,0.22)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                overflow: 'hidden',
+                transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease'
               }}>
                 <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '14px',
-                  overflow: 'hidden',
-                  flexShrink: 0,
+                  width: '100%',
+                  height: '230px',
                   background: '#0f172a',
-                  border: '1.5px solid rgba(184,134,11,0.25)'
+                  overflow: 'hidden',
+                  position: 'relative',
+                  flexShrink: 0
                 }}>
                   <img
                     src={f.img}
                     alt={f.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block', transition: 'transform 0.5s ease' }}
                     decoding="async"
                   />
                 </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <h4 style={{ margin: '0 0 2px', fontSize: '13.5px', fontWeight: 800, color: '#111827', lineHeight: 1.25 }}>
+                <div style={{ padding: '12px 14px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <h4 style={{ margin: '0 0 3px', fontFamily: "'Cinzel', serif", fontSize: '13px', fontWeight: 800, color: '#0f172a', lineHeight: 1.25, letterSpacing: '0.02em' }}>
                     {f.name}
                   </h4>
-                  <span style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: 'var(--gold, #b8860b)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>
+                  <span style={{ display: 'block', fontSize: '9.5px', fontWeight: 700, color: 'var(--gold, #b8860b)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
                     {f.role}
                   </span>
-                  <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <p style={{ margin: 0, fontSize: '10.5px', color: '#64748b', lineHeight: 1.45 }}>
                     {f.bio}
                   </p>
                 </div>

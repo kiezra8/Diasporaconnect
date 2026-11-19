@@ -14,7 +14,7 @@ export default function Mission() {
         {/* Pillar 1: Come Home */}
         <section className="pillar-row">
           <div className="pillar-img-wrap">
-            <img src="/images/card_img_1.jpg" alt="Come Home to Uganda – Diaspora Connect" width="540" height="380" decoding="async" />
+            <img src="/images/cows_mission_come_home.jpg?v=5.0" alt="Come Home to Uganda – Diaspora Connect" width="540" height="380" decoding="async" />
           </div>
           <div className="pillar-text">
             <span className="pillar-tag">Pillar 01</span>
