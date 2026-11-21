@@ -42,13 +42,16 @@
 3. **Site URL:** under **Authentication → URL Configuration**, set the Site URL to `https://diasporaconnectt.com`
    and add `https://diasporaconnectt.com/signin` and `https://diasporaconnectt.com/reset-password` to the redirect URLs.
    Every email setting (sign-up codes, password reset codes, sender, DNS) is listed in order in [EMAIL.md](EMAIL.md).
-4. **First Admin:** **Authentication → Users → Add user**, enter your email and a strong password, and tick
-   **Auto confirm user**. Then in the SQL Editor run:
-   ```sql
-   update public.profiles set role = 'ADMIN' where email = lower('your-email@example.com');
-   ```
-   Roles are kept only in Supabase, never in the app code. All the role commands are in
-   [`supabase/roles.sql`](../supabase/roles.sql).
+4. **First Admin:**
+   1. Make sure you have a login. Either use the one you already made, or create one: **Authentication →
+      Users → Add user**, with your email and a strong password, and tick **Auto confirm user**.
+   2. SQL Editor → paste [`supabase/roles.sql`](../supabase/roles.sql) → put your email and name in the
+      first block → **Run**. The result table must show your email with role **ADMIN**.
+   3. On the website, sign out and sign in again. It asks you to set up two-step login (QR code) and then
+      opens the Admin portal.
+
+   If sign-in still sends you to the sign-up/KYC pages, the role isn't ADMIN yet: run the block again and
+   read its message.
 5. **The app starts empty.** There is no sample data. Add members (Members → Add member, or approved sign-ups),
    cattle, milk records and so on in the portal. If sample records reached the database earlier, run
    [`supabase/clear-data.sql`](../supabase/clear-data.sql) once in the SQL Editor; it empties every record table

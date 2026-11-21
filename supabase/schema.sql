@@ -958,6 +958,13 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- Logins created before this file was first run get their profile now
+insert into public.profiles (id, email, full_name, role)
+select u.id, lower(u.email), regexp_replace(coalesce(u.raw_user_meta_data->>'full_name', ''), '[<>]', '', 'g'), 'MEMBER'
+  from auth.users u
+ where u.email is not null and not exists (select 1 from public.profiles p where p.id = u.id)
+on conflict do nothing;
+
 create or replace function public.handle_user_confirmed() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
