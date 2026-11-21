@@ -24,6 +24,9 @@ git pull --ff-only || echo "(could not pull — using the code already here)"
 echo "==> Building the website"
 docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/app -w /app node:20-alpine sh -c "npm ci --no-audit --no-fund && npm run build"
 
+echo "==> Checking the web server settings"
+docker run --rm -v "$PWD/docker/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
 echo "==> Starting Caddy + API"
 docker compose -f docker/docker-compose.yml up -d --build
 docker image prune -f >/dev/null

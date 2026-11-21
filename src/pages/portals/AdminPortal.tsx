@@ -516,18 +516,6 @@ export default function AdminPortal() {
     }
   };
 
-  const handleAdminOverride = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (authPinInput === '8888' || authPinInput === '1234') {
-      setShowAuthModal(false);
-      notify('Administrative override accepted. Action executed successfully.');
-      if (authModalData.actionToRetry) {
-        authModalData.actionToRetry();
-      }
-    } else {
-      setAuthPinError('Invalid Authorization PIN. Enter 8888 for administrative demo override.');
-    }
-  };
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleAdminApproveConversion = (requestId: string) => {
@@ -4749,52 +4737,31 @@ export default function AdminPortal() {
               </div>
             </div>
 
-            <form onSubmit={handleAdminOverride} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-                  Enter Administrator Override PIN:
-                </label>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
-                  <input
-                    type="password"
-                    maxLength={6}
-                    autoFocus
-                    placeholder="Enter 8888 for Admin Demo PIN"
-                    value={authPinInput}
-                    onChange={e => {
-                      setAuthPinInput(e.target.value);
-                      setAuthPinError('');
-                    }}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3.5 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                {authPinError && <p className="text-rose-400 text-[11px] mt-1 font-semibold">{authPinError}</p>}
-              </div>
-
-              <div className="pt-2 flex flex-col sm:flex-row gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-lg transition"
-                >
-                  Authorize Action (PIN 8888)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveRole('ADMIN');
-                    setShowAuthModal(false);
-                    notify('Role elevated to System Administrator (Full Access).');
-                    if (authModalData.actionToRetry) {
-                      authModalData.actionToRetry();
-                    }
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs transition"
-                >
-                  Switch to Admin Role
-                </button>
-              </div>
-            </form>
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  // only a signed-in Administrator can switch back (the database checks the real role on every save)
+                  if (session?.role !== 'ADMIN') { setShowAuthModal(false); return; }
+                  setActiveRole('ADMIN');
+                  setShowAuthModal(false);
+                  notify('Switched back to the Administrator view.');
+                  if (authModalData.actionToRetry) {
+                    authModalData.actionToRetry();
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-lg transition"
+              >
+                Switch back to Admin view
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs transition"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

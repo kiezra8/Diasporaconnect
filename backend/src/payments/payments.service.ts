@@ -35,6 +35,10 @@ export class PaymentsService {
     if (user.role === 'MEMBER' && user.memberId !== body.memberId) throw new ForbiddenException('You can only pay into your own account.');
     const member = await this.supabase.findMember(body.memberId);
     if (!member) throw new NotFoundException('Member not found');
+    // a member can only send the payment prompt to their own registered phone (stops prompts to strangers)
+    if (user.role === 'MEMBER' && normalizeUg(member.phone) !== msisdn) {
+      throw new ForbiddenException('Use the phone number registered on your SACCO account. Ask the office to update it if it changed.');
+    }
 
     const externalId = `DCM${Date.now()}`;
     const started = await provider.requestToPay({

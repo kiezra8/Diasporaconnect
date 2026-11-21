@@ -66,6 +66,22 @@ if [ -f /root/.ssh/authorized_keys ]; then
   chmod 600 "/home/${APP_USER}/.ssh/authorized_keys"
 fi
 
+echo "==> SSH: keys only (when an SSH key is installed)"
+if [ -s /root/.ssh/authorized_keys ]; then
+  mkdir -p /etc/ssh/sshd_config.d
+  cat > /etc/ssh/sshd_config.d/10-diaspora-hardening.conf <<'SSHCONF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+MaxAuthTries 4
+SSHCONF
+  systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+  echo "    Password logins are now off; use your SSH key."
+else
+  echo "    No SSH key found for root, so password login stays on."
+  echo "    Add a key (ssh-copy-id root@<server-ip>) and run this script again to turn passwords off."
+fi
+
 echo "==> App code in ${APP_DIR}"
 if [ ! -d "${APP_DIR}/.git" ]; then
   git clone "${REPO_URL}" "${APP_DIR}"

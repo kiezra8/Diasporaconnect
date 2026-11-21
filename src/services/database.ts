@@ -4,7 +4,7 @@
 // Changes made by anyone else arrive through Supabase Realtime and update the open page at once,
 // so e.g. a deposit approved by the Admin shows on the member's page immediately.
 
-import { getSession } from './api';
+import { getSession, setSession, clearSession } from './api';
 import { supabase, accessToken } from './supabase';
 import { API_BASE_URL } from './api';
 import { SaccoFarmStore, STORAGE_KEYS, SmsMessage } from './saccoFarmStore';
@@ -101,7 +101,16 @@ const running: Record<string, Promise<void> | undefined> = {};
 const again = new Set<string>();
 let retryTimer: ReturnType<typeof setInterval> | null = null;
 
-const isDenied = (err: any) => err && (err.code === '42501' || err.code === 'PGRST301' || /row-level security|permission denied/i.test(err.message || ''));
+// Refused by the database's access rules or business rules (not a network problem)
+const isDenied = (err: any) => {
+  const refused = err && (['42501', 'PGRST301', 'P0001', '23514', '22P02'].includes(err.code)
+    || /row-level security|permission denied/i.test(err.message || ''));
+  if (refused) {
+    const msg = err.code === 'P0001' ? err.message : 'You are not allowed to make this change.';
+    window.dispatchEvent(new CustomEvent('dc_db_rejected', { detail: { message: msg } }));
+  }
+  return refused;
+};
 
 // ── reading from the server ─────────────────────────────────────────────────
 async function fetchRows(cfg: TableCfg): Promise<Row[]> {
@@ -371,6 +380,18 @@ export const database = {
     const uid = data.session?.user?.id;
     if (!s?.backend || !uid) { database.stop(); return; }
     if (active && meta.owner === uid) return;
+
+    // The role saved in this browser could have been edited; the database's record is the truth
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('role, member_id, active, full_name, email').eq('id', uid).maybeSingle();
+    if (!profileError) {
+      if (!profile || !profile.active || (profile.role === 'MEMBER' && !profile.member_id)) { clearSession(); return; }
+      if (profile.role !== s.role || (profile.member_id || undefined) !== (s.memberNumber || undefined)) {
+        setSession({ ...s, role: profile.role, memberNumber: profile.member_id || undefined });
+        window.location.reload();
+        return;
+      }
+    }
+
     active = true;
     role = s.role;
     ready.clear();
@@ -397,6 +418,24 @@ export const database = {
     connected = false;
     ready.clear();
     if (channel) { supabase.removeChannel(channel); channel = null; }
+  },
+
+  /**
+   * After sign-out: remove the SACCO records kept in this browser so the next person using
+   * this computer cannot see them. Changes not yet saved to the database are kept.
+   */
+  forgetLocalData(): boolean {
+    loadMeta();
+    if (!meta.owner) return false;
+    for (const cfg of TABLES) {
+      if (cfg.appendOnly) continue;
+      const list = readLocal(cfg.key);
+      const known = meta.rows[cfg.key] || {};
+      if (Array.isArray(list) && list.some(r => { const id = cfg.idOf(r); return id && known[id] !== hashOf(r); })) return false;
+    }
+    [...TABLES.map(t => t.key), ...Object.keys(SETTINGS), 'dc_member_photos', META_KEY].forEach(k => localStorage.removeItem(k));
+    meta = { owner: '', rows: {}, settings: {} };
+    return true;
   },
 
   async flushSms(): Promise<number> {

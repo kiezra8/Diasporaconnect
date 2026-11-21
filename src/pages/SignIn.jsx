@@ -127,7 +127,7 @@ export default function SignIn() {
       if (!consent) return 'Confirm that the information is true.';
     }
     if (n === 3) {
-      if (password.length < 8) return 'Password must be at least 8 characters long.';
+      if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) return 'Use at least 10 characters, with letters and numbers.';
       if (password !== confirmPassword) return 'Passwords do not match. Please re-enter.';
     }
     return '';
@@ -365,7 +365,7 @@ export default function SignIn() {
 
             {step === 3 && mode === 'signup' && (
               <div className="space-y-3">
-                {field('Password', password, setPassword, { type: 'password', required: true, autoComplete: 'new-password', placeholder: 'At least 8 characters' })}
+                {field('Password', password, setPassword, { type: 'password', required: true, autoComplete: 'new-password', placeholder: 'At least 10 characters, letters and numbers' })}
                 {field('Confirm Password', confirmPassword, setConfirmPassword, { type: 'password', required: true, autoComplete: 'new-password' })}
               </div>
             )}

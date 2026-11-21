@@ -14,6 +14,10 @@
 --      and, for members, their member number (DC-001 …).
 --    • Row Level Security: staff see the SACCO; a member sees only their own
 --      records. The Board is read-only. Members can only submit requests.
+--      Writing is allowed only to the people who hold the task (Settings → Task
+--      Assignments): money, member records and farm are separate areas, and
+--      verify → approve is enforced here in the database, not only in the app.
+--    • Roles are never in the app code. They are set in Supabase — see roles.sql.
 --    • Realtime is on for every table, so a change made by staff appears on the
 --      member's page immediately.
 -- ════════════════════════════════════════════════════════════════════════════
@@ -443,15 +447,114 @@ create table if not exists public.feed_inventory (
 );
 
 -- ════════════════════════════════════════════════════════════════════════════
---  4. TRIGGERS
+--  4. WHO MAY DO WHAT (same task list the Admin manages in Settings)
+-- ════════════════════════════════════════════════════════════════════════════
+create or replace function public.my_email() returns text
+language sql stable security definer set search_path = public as $$
+  select email from public.profiles where id = auth.uid() and active
+$$;
+
+-- Default roles for each task until the Admin assigns it to named people
+create or replace function public.task_default_roles(p_task text) returns text[]
+language sql immutable as $$
+  select case p_task
+    when 'verify_payments'     then array['ACCOUNTANT']
+    when 'approve_payments'    then array['ADMIN']
+    when 'record_income'       then array['ACCOUNTANT']
+    when 'record_expenses'     then array['ACCOUNTANT']
+    when 'post_journals'       then array['ACCOUNTANT']
+    when 'loan_processing'     then array['ACCOUNTANT', 'ADMIN']
+    when 'kyc_review'          then array['SECRETARY', 'ADMIN']
+    when 'member_registration' then array['SECRETARY']
+    when 'month_end_close'     then array['ACCOUNTANT']
+    when 'dividends'           then array['ADMIN']
+    when 'sms_broadcast'       then array['SECRETARY', 'ADMIN']
+    when 'milk_recording'      then array['FARM_WORKER']
+    when 'herd_register'       then array['FARM_WORKER']
+    when 'animal_health'       then array['FARM_WORKER']
+    when 'feeds_stock'         then array['FARM_WORKER']
+    when 'breeding'            then array['FARM_WORKER']
+    else array[]::text[]
+  end
+$$;
+
+-- The Admin may do everything. Anyone else needs the task: assigned to their email in
+-- Settings → Task Assignments, or (while a task is unassigned) the default role in the staff directory.
+create or replace function public.has_task(p_task text) returns boolean
+language plpgsql stable security definer set search_path = public as $$
+declare me record;
+begin
+  select role, lower(email) as email into me from public.profiles where id = auth.uid() and active;
+  if not found or me.role = 'MEMBER' then return false; end if;
+  if me.role = 'ADMIN' then return true; end if;
+  if exists (select 1 from public.task_assignments where id = p_task) then
+    return exists (
+      select 1 from public.task_assignments ta,
+             jsonb_array_elements_text(case when jsonb_typeof(ta.data->'assigneeEmails') = 'array' then ta.data->'assigneeEmails' else '[]'::jsonb end) e
+       where ta.id = p_task and lower(e) = me.email);
+  end if;
+  return exists (select 1 from public.staff s
+                  where s.email = me.email and coalesce(s.active, true) and s.role = any(public.task_default_roles(p_task)));
+end $$;
+
+create or replace function public.has_any_task(p_tasks text[]) returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(bool_or(public.has_task(t)), false) from unnest(p_tasks) t
+$$;
+
+-- Money: payments, loans, income, expenses, journals, closes, dividends
+create or replace function public.sacco_finance() returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.has_any_task(array['verify_payments','approve_payments','record_income','record_expenses',
+                                   'post_journals','loan_processing','month_end_close','dividends'])
+$$;
+
+-- Member records: registration, KYC, SMS (plus everyone with money tasks)
+create or replace function public.sacco_records() returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.sacco_finance() or public.has_any_task(array['member_registration','kyc_review','sms_broadcast'])
+$$;
+
+-- Farm: milk, herd, health, feeds, breeding
+create or replace function public.farm_writer() returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.has_any_task(array['milk_recording','herd_register','animal_health','feeds_stock','breeding'])
+$$;
+
+create or replace function public.is_approved_member() returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.my_member_id() is not null
+$$;
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  5. TRIGGERS
 -- ════════════════════════════════════════════════════════════════════════════
 
--- Stamp who changed a row and when
-create or replace function public.touch_row() returns trigger
+-- Every save: server time and the real user are stamped; text can never carry HTML or
+-- script tags (so nothing typed in can run in a report); oversized records are refused.
+create or replace function public.stamp_and_clean() returns trigger
 language plpgsql as $$
 begin
+  if tg_op = 'INSERT' then new.created_at := now(); else new.created_at := old.created_at; end if;
   new.updated_at := now();
   new.updated_by := auth.uid();
+  if auth.uid() is not null then
+    new.data := regexp_replace(new.data::text, '[<>]', '', 'g')::jsonb;
+    if octet_length(new.data::text) > 6000000 then raise exception 'This record is too large to save.'; end if;
+  end if;
+  return new;
+end $$;
+
+create or replace function public.stamp_settings() returns trigger
+language plpgsql as $$
+begin
+  if tg_op = 'INSERT' then new.created_at := now(); else new.created_at := old.created_at; end if;
+  new.updated_at := now();
+  new.updated_by := auth.uid();
+  if auth.uid() is not null and new.value is not null then
+    new.value := regexp_replace(new.value::text, '[<>]', '', 'g')::jsonb;
+    if octet_length(new.value::text) > 200000 then raise exception 'This setting is too large to save.'; end if;
+  end if;
   return new;
 end $$;
 
@@ -462,69 +565,51 @@ begin
   return new;
 end $$;
 
+-- old trigger function from earlier versions of this file
+drop function if exists public.touch_row() cascade;
+
 do $$
 declare t text;
 begin
   foreach t in array array['members','member_applications','kyc_submissions','payment_requests','share_conversions','loans',
-    'transactions','investors','dividends','period_closes','sms_messages','staff','task_assignments','app_settings',
-    'cattle','milk_logs','cow_milk_records','health_records','breeding_records','feed_inventory','mobile_money_payments','profiles']
+    'transactions','investors','dividends','period_closes','sms_messages','staff','task_assignments',
+    'cattle','milk_logs','cow_milk_records','health_records','breeding_records','feed_inventory']
   loop
     execute format('drop trigger if exists touch_%1$s on public.%1$I', t);
-    if t in ('mobile_money_payments', 'profiles') then
-      execute format('create trigger touch_%1$s before update on public.%1$I for each row execute function public.touch_updated_at()', t);
-    else
-      execute format('create trigger touch_%1$s before update on public.%1$I for each row execute function public.touch_row()', t);
-    end if;
+    execute format('drop trigger if exists stamp_%1$s on public.%1$I', t);
+    execute format('create trigger stamp_%1$s before insert or update on public.%1$I for each row execute function public.stamp_and_clean()', t);
+  end loop;
+  drop trigger if exists touch_app_settings on public.app_settings;
+  drop trigger if exists stamp_app_settings on public.app_settings;
+  create trigger stamp_app_settings before insert or update on public.app_settings for each row execute function public.stamp_settings();
+  foreach t in array array['mobile_money_payments','profiles']
+  loop
+    execute format('drop trigger if exists touch_%1$s on public.%1$I', t);
+    execute format('create trigger touch_%1$s before update on public.%1$I for each row execute function public.touch_updated_at()', t);
   end loop;
 end $$;
 
--- Members may change only their own contact details and photo
-create or replace function public.guard_member_self_edit() returns trigger
-language plpgsql as $$
+-- Audit entries carry the real user from the server, never what the browser claims
+create or replace function public.stamp_audit() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare p record;
 begin
-  if public.can_write() or coalesce(current_setting('app.bypass_guard', true), '') = 'on' or auth.uid() is null then
-    return new;
+  new.created_at := now();
+  new.updated_at := now();
+  if auth.uid() is not null then
+    new.user_id := auth.uid();
+    new.updated_by := auth.uid();
+    select full_name, role, email into p from public.profiles where id = auth.uid();
+    new.data := regexp_replace(new.data::text, '[<>]', '', 'g')::jsonb
+             || jsonb_build_object('actor', coalesce(nullif(p.full_name, ''), p.email, 'Unknown'),
+                                   'role', coalesce(p.role::text, 'UNKNOWN'), 'email', p.email, 'recordedAt', now());
+    if octet_length(new.data::text) > 200000 then raise exception 'Audit entry too large.'; end if;
   end if;
-  new.data := old.data || jsonb_strip_nulls(jsonb_build_object(
-    'name', new.data->'name', 'phone', new.data->'phone', 'email', new.data->'email', 'avatar', new.data->'avatar'));
   return new;
 end $$;
-drop trigger if exists guard_member_self_edit on public.members;
-create trigger guard_member_self_edit before update on public.members
-  for each row execute function public.guard_member_self_edit();
-
--- Applicants may change only their contact details and photo, never the status or approvals
-create or replace function public.guard_application_self_edit() returns trigger
-language plpgsql as $$
-begin
-  new.user_id := coalesce(old.user_id, new.user_id);
-  if public.can_write() or coalesce(current_setting('app.bypass_guard', true), '') = 'on' or auth.uid() is null then
-    return new;
-  end if;
-  new.data := old.data || jsonb_strip_nulls(jsonb_build_object(
-    'fullName', new.data->'fullName', 'phone', new.data->'phone', 'email', new.data->'email', 'photoUrl', new.data->'photoUrl'));
-  return new;
-end $$;
-drop trigger if exists guard_application_self_edit on public.member_applications;
-create trigger guard_application_self_edit before update on public.member_applications
-  for each row execute function public.guard_application_self_edit();
-
--- Only the Admin can change roles, member links, emails or deactivate a login
-create or replace function public.guard_profile_edit() returns trigger
-language plpgsql as $$
-begin
-  if public.is_admin() or coalesce(current_setting('app.bypass_guard', true), '') = 'on' or auth.uid() is null then
-    return new;
-  end if;
-  new.role := old.role;
-  new.member_id := old.member_id;
-  new.active := old.active;
-  new.email := old.email;
-  return new;
-end $$;
-drop trigger if exists guard_profile_edit on public.profiles;
-create trigger guard_profile_edit before update on public.profiles
-  for each row execute function public.guard_profile_edit();
+drop trigger if exists stamp_audit on public.audit_log;
+create trigger stamp_audit before insert on public.audit_log
+  for each row execute function public.stamp_audit();
 
 -- The audit trail can never be edited or deleted
 create or replace function public.audit_is_append_only() returns trigger
@@ -535,6 +620,216 @@ end $$;
 drop trigger if exists audit_append_only on public.audit_log;
 create trigger audit_append_only before update or delete on public.audit_log
   for each row execute function public.audit_is_append_only();
+
+-- Members may change only their own contact details and photo
+create or replace function public.guard_member_self_edit() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or public.sacco_records() or coalesce(current_setting('app.bypass_guard', true), '') = 'on' then
+    return new;
+  end if;
+  new.data := old.data || jsonb_strip_nulls(jsonb_build_object(
+    'name', new.data->'name', 'phone', new.data->'phone', 'email', new.data->'email', 'avatar', new.data->'avatar'));
+  return new;
+end $$;
+drop trigger if exists guard_member_self_edit on public.members;
+create trigger guard_member_self_edit before update on public.members
+  for each row execute function public.guard_member_self_edit();
+
+-- Savings, shares and monthly contributions change only through money tasks
+create or replace function public.guard_member_money() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare k text;
+begin
+  if auth.uid() is null or public.sacco_finance() then return new; end if;
+  foreach k in array array['savings','shares','sharesValue','total','withdrawable','adminFee',
+                           'jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
+  loop
+    if tg_op = 'UPDATE' then
+      new.data := case when old.data ? k then jsonb_set(new.data, array[k], old.data->k) else new.data - k end;
+    elsif k <> 'adminFee' then
+      new.data := jsonb_set(new.data, array[k], '0'::jsonb);
+    end if;
+  end loop;
+  return new;
+end $$;
+drop trigger if exists guard_member_money on public.members;
+create trigger guard_member_money before insert or update on public.members
+  for each row execute function public.guard_member_money();
+
+-- What a member submits is cleaned: their own member number and name, no approvals, positive amounts
+create or replace function public.clean_member_request() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare nm text; mine text := public.my_member_id();
+begin
+  if auth.uid() is null or public.is_staff() then return new; end if;
+  select data->>'name' into nm from public.members where member_id = mine;
+  new.data := new.data || jsonb_build_object('memberId', mine, 'memberName', coalesce(nm, new.data->>'memberName'));
+  if tg_table_name = 'payment_requests' then
+    new.data := (new.data - 'verifiedBy' - 'verifiedAt' - 'approvedBy' - 'approvedAt' - 'rejectionReason' - 'postedTransactionId')
+             || jsonb_build_object('status', 'PENDING_VERIFICATION');
+    if coalesce(public.jnum(new.data->>'amount'), 0) <= 0 then raise exception 'The amount must be more than zero.'; end if;
+  elsif tg_table_name = 'kyc_submissions' then
+    new.data := (new.data - 'reviewedBy' - 'reviewedAt' - 'rejectionReason') || jsonb_build_object('status', 'PENDING');
+  elsif tg_table_name = 'share_conversions' then
+    new.data := (new.data - 'accountantApprovedAt' - 'accountantApprovedBy' - 'adminApprovedAt' - 'adminApprovedBy' - 'rejectionReason')
+             || jsonb_build_object('status', 'PENDING', 'accountantApproved', false, 'adminApproved', false);
+    if coalesce(public.jnum(new.data->>'shareCount'), 0) <= 0 then raise exception 'The number of shares must be more than zero.'; end if;
+  end if;
+  return new;
+end $$;
+do $$
+declare t text;
+begin
+  foreach t in array array['payment_requests','kyc_submissions','share_conversions'] loop
+    execute format('drop trigger if exists clean_member_request on public.%I', t);
+    execute format('create trigger clean_member_request before insert or update on public.%I for each row execute function public.clean_member_request()', t);
+  end loop;
+end $$;
+
+-- Deposits / withdrawals: verify first, then approve, each by the person assigned that task
+create or replace function public.guard_payment_workflow() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  was text := case when tg_op = 'UPDATE' then old.data->>'status' end;
+  now_status text := new.data->>'status';
+begin
+  if auth.uid() is null or now_status is not distinct from was then return new; end if;
+  if now_status = 'VERIFIED_AWAITING_ADMIN' then
+    if not public.has_task('verify_payments') then
+      raise exception 'Only the person assigned "Verify member payments" can verify this request.';
+    end if;
+  elsif now_status = 'APPROVED' then
+    if not public.has_task('approve_payments') then
+      raise exception 'Only the person assigned "Approve member payments" can approve this request.';
+    end if;
+    if coalesce(was, '') <> 'VERIFIED_AWAITING_ADMIN'
+       and not (coalesce(was, '') = 'PENDING_VERIFICATION' and public.has_task('verify_payments') and new.data->>'verifiedBy' is not null) then
+      raise exception 'A request must be verified before it is approved.';
+    end if;
+  elsif now_status = 'REJECTED' then
+    if not (public.has_task('verify_payments') or public.has_task('approve_payments')) then
+      raise exception 'You are not allowed to reject payment requests.';
+    end if;
+  elsif tg_op = 'UPDATE' and was in ('APPROVED', 'REJECTED') and not public.is_admin() then
+    raise exception 'A finished request cannot be reopened.';
+  elsif tg_op = 'INSERT' and now_status is distinct from 'PENDING_VERIFICATION' then
+    raise exception 'New requests must start as pending.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_payment_workflow on public.payment_requests;
+create trigger guard_payment_workflow before insert or update on public.payment_requests
+  for each row execute function public.guard_payment_workflow();
+
+-- Share conversions: Accountant check, then Admin approval
+create or replace function public.guard_share_conversion() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  acc_was boolean := case when tg_op = 'UPDATE' then coalesce(public.jbool(old.data->>'accountantApproved'), false) else false end;
+  adm_was boolean := case when tg_op = 'UPDATE' then coalesce(public.jbool(old.data->>'adminApproved'), false) else false end;
+  acc_now boolean := coalesce(public.jbool(new.data->>'accountantApproved'), false);
+  adm_now boolean := coalesce(public.jbool(new.data->>'adminApproved'), false);
+begin
+  if auth.uid() is null then return new; end if;
+  if acc_now and not acc_was and not public.has_task('verify_payments') then
+    raise exception 'Only the person assigned "Verify member payments" can check share conversions.';
+  end if;
+  if adm_now and not adm_was and not public.has_task('approve_payments') then
+    raise exception 'Only the person assigned "Approve member payments" can approve share conversions.';
+  end if;
+  if new.data->>'status' = 'APPROVED' and (tg_op = 'INSERT' or old.data->>'status' is distinct from 'APPROVED') and not (acc_now and adm_now) then
+    raise exception 'A share conversion needs both the Accountant check and the Admin approval.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_share_conversion on public.share_conversions;
+create trigger guard_share_conversion before insert or update on public.share_conversions
+  for each row execute function public.guard_share_conversion();
+
+-- Membership applications: Secretary vetting + Admin approval; applicants change only contact details
+create or replace function public.guard_application() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  sec_was boolean := case when tg_op = 'UPDATE' then coalesce(public.jbool(old.data->>'secretaryApproved'), false) else false end;
+  adm_was boolean := case when tg_op = 'UPDATE' then coalesce(public.jbool(old.data->>'adminApproved'), false) else false end;
+  sec_now boolean := coalesce(public.jbool(new.data->>'secretaryApproved'), false);
+  adm_now boolean := coalesce(public.jbool(new.data->>'adminApproved'), false);
+begin
+  if tg_op = 'UPDATE' then new.user_id := old.user_id; end if;   -- the login an application belongs to never changes
+  if auth.uid() is null or coalesce(current_setting('app.bypass_guard', true), '') = 'on' then return new; end if;
+  if not public.sacco_records() then
+    if tg_op = 'INSERT' then raise exception 'Use the sign-up page to apply.'; end if;
+    new.data := old.data || jsonb_strip_nulls(jsonb_build_object(
+      'fullName', new.data->'fullName', 'phone', new.data->'phone', 'photoUrl', new.data->'photoUrl'));
+    return new;
+  end if;
+  if sec_now and not sec_was and not (public.has_task('member_registration') or public.has_task('kyc_review')) then
+    raise exception 'Only the Secretary (member registration) can vet applications.';
+  end if;
+  if adm_now and not adm_was and not public.is_admin() then
+    raise exception 'Only the Admin can authorise a new member.';
+  end if;
+  if new.data->>'status' = 'APPROVED' and (tg_op = 'INSERT' or old.data->>'status' is distinct from 'APPROVED')
+     and not (sec_now and adm_now and coalesce(new.data->>'memberId', '') <> '') then
+    raise exception 'An application is approved only after both the Secretary and the Admin approve it.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_application_self_edit on public.member_applications;
+drop function if exists public.guard_application_self_edit();
+drop trigger if exists guard_application on public.member_applications;
+create trigger guard_application before insert or update on public.member_applications
+  for each row execute function public.guard_application();
+
+-- Only the Admin can reopen a closed month
+create or replace function public.guard_period_reopen() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is not null and new.data->>'status' = 'REOPENED' and old.data->>'status' is distinct from 'REOPENED' and not public.is_admin() then
+    raise exception 'Only the Admin can reopen a closed month.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_period_reopen on public.period_closes;
+create trigger guard_period_reopen before update on public.period_closes
+  for each row execute function public.guard_period_reopen();
+
+-- Only the Admin can change roles, member links, emails or deactivate a login
+create or replace function public.guard_profile_edit() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or public.is_admin() or coalesce(current_setting('app.bypass_guard', true), '') = 'on' then
+    return new;
+  end if;
+  new.role := old.role;
+  new.member_id := old.member_id;
+  new.active := old.active;
+  new.email := old.email;
+  new.full_name := regexp_replace(coalesce(new.full_name, ''), '[<>]', '', 'g');
+  new.phone := regexp_replace(coalesce(new.phone, ''), '[<>]', '', 'g');
+  return new;
+end $$;
+drop trigger if exists guard_profile_edit on public.profiles;
+create trigger guard_profile_edit before update on public.profiles
+  for each row execute function public.guard_profile_edit();
+
+-- Sets a confirmed login's role. Keeps at least one Admin and stops an Admin removing their own access.
+create or replace function public.set_profile_role(p_email text, p_role public.app_role, p_active boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is not null and lower(p_email) = public.my_email() and public.is_admin() and (p_role <> 'ADMIN' or not p_active) then
+    raise exception 'You cannot remove your own Admin access. Ask another Admin to do it.';
+  end if;
+  perform set_config('app.bypass_guard', 'on', true);
+  update public.profiles p set role = p_role, active = p_active
+   where p.email = lower(p_email)
+     and exists (select 1 from auth.users u where u.id = p.id and u.email_confirmed_at is not null);
+  perform set_config('app.bypass_guard', 'off', true);
+  if auth.uid() is not null and not exists (select 1 from public.profiles where role = 'ADMIN' and active) then
+    raise exception 'There must always be at least one active Admin.';
+  end if;
+end $$;
 
 -- Link a confirmed login to the member record with the same email
 create or replace function public.link_member_by_email(p_user uuid) returns void
@@ -552,20 +847,34 @@ begin
   end if;
 end $$;
 
--- New login → profile. Emails listed in the staff directory get their staff role.
+-- Staff role from the directory, applied only once the email address is confirmed
+create or replace function public.apply_directory_role(p_user uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare s record; e text;
+begin
+  select lower(email) into e from auth.users where id = p_user and email_confirmed_at is not null;
+  if e is null then return; end if;
+  select role, coalesce(active, true) as active into s from public.staff where email = e order by seq limit 1;
+  if found and s.role in ('ADMIN','ACCOUNTANT','SECRETARY','BOARD_MEMBER','FARM_WORKER') then
+    perform set_config('app.bypass_guard', 'on', true);
+    update public.profiles set role = s.role::public.app_role, active = s.active where id = p_user;
+    perform set_config('app.bypass_guard', 'off', true);
+  end if;
+end $$;
+
+-- New login → profile (always starts as MEMBER; staff roles only after the email is confirmed)
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
-declare r text;
 begin
-  select role into r from public.staff where email = lower(new.email) and coalesce(active, true) order by seq limit 1;
   insert into public.profiles (id, email, full_name, phone, role)
   values (
     new.id, lower(new.email),
-    coalesce(new.raw_user_meta_data->>'full_name', ''),
-    new.raw_user_meta_data->>'phone',
-    case when r in ('ADMIN','ACCOUNTANT','SECRETARY','BOARD_MEMBER','FARM_WORKER') then r::public.app_role else 'MEMBER'::public.app_role end
+    regexp_replace(coalesce(new.raw_user_meta_data->>'full_name', ''), '[<>]', '', 'g'),
+    regexp_replace(coalesce(new.raw_user_meta_data->>'phone', ''), '[<>]', '', 'g'),
+    'MEMBER'
   )
   on conflict (id) do nothing;
+  perform public.apply_directory_role(new.id);
   perform public.link_member_by_email(new.id);
   return new;
 end $$;
@@ -577,6 +886,7 @@ create or replace function public.handle_user_confirmed() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if new.email_confirmed_at is not null and old.email_confirmed_at is null then
+    perform public.apply_directory_role(new.id);
     perform public.link_member_by_email(new.id);
   end if;
   return new;
@@ -585,29 +895,31 @@ drop trigger if exists on_auth_user_confirmed on auth.users;
 create trigger on_auth_user_confirmed after update of email_confirmed_at on auth.users
   for each row execute function public.handle_user_confirmed();
 
--- Admin adds / edits staff in Settings → their login gets that role
+-- Admin adds / edits / removes staff in Settings → their login's role follows
 create or replace function public.apply_staff_role() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if new.role in ('ADMIN','ACCOUNTANT','SECRETARY','BOARD_MEMBER','FARM_WORKER') then
-    perform set_config('app.bypass_guard', 'on', true);
-    update public.profiles
-       set role = new.role::public.app_role,
-           active = coalesce(new.active, true),
-           full_name = coalesce(nullif(full_name, ''), new.name)
-     where email = new.email;
-    perform set_config('app.bypass_guard', 'off', true);
+  if tg_op = 'DELETE' then
+    if old.email is not null then perform public.set_profile_role(old.email, 'MEMBER', true); end if;
+    return old;
+  end if;
+  if tg_op = 'UPDATE' and old.email is not null and old.email is distinct from new.email then
+    perform public.set_profile_role(old.email, 'MEMBER', true);
+  end if;
+  if new.email is not null and new.role in ('ADMIN','ACCOUNTANT','SECRETARY','BOARD_MEMBER','FARM_WORKER') then
+    perform public.set_profile_role(new.email, new.role::public.app_role, coalesce(new.active, true));
   end if;
   return new;
 end $$;
 drop trigger if exists apply_staff_role on public.staff;
-create trigger apply_staff_role after insert or update on public.staff
+create trigger apply_staff_role after insert or update or delete on public.staff
   for each row execute function public.apply_staff_role();
 
--- A member record whose email matches a confirmed login is linked to it
+-- A member record created or edited by staff is linked to the confirmed login with the same email
 create or replace function public.link_new_member() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
+  if auth.uid() is not null and not public.is_staff() then return new; end if;
   if new.email is not null and new.email <> '' then
     perform set_config('app.bypass_guard', 'on', true);
     update public.profiles p set member_id = new.member_id
@@ -638,24 +950,35 @@ create trigger on_application_approved after insert or update on public.member_a
   for each row execute function public.on_application_approved();
 
 -- ════════════════════════════════════════════════════════════════════════════
---  5. SIGN-UP: an application is only accepted with complete KYC
+--  6. SIGN-UP: an application is only accepted with complete KYC
 -- ════════════════════════════════════════════════════════════════════════════
 create or replace function public.submit_membership_application(p_user_id uuid, p_application jsonb)
 returns text
 language plpgsql security definer set search_path = public as $$
 declare
   u record;
-  k jsonb := coalesce(p_application->'kyc', '{}'::jsonb);
+  app jsonb;
+  k jsonb;
   missing text;
   app_id text;
 begin
-  select id, email, created_at into u from auth.users where id = p_user_id;
+  if p_application is null or jsonb_typeof(p_application) <> 'object' then raise exception 'Invalid application'; end if;
+  if octet_length(p_application::text) > 6000000 then raise exception 'The photos are too large. Use smaller images.'; end if;
+  app := regexp_replace(p_application::text, '[<>]', '', 'g')::jsonb;
+  k := case when jsonb_typeof(app->'kyc') = 'object' then app->'kyc' else '{}'::jsonb end;
+
+  select id, email, created_at, email_confirmed_at into u from auth.users where id = p_user_id;
   if not found then raise exception 'Account not found'; end if;
-  -- allowed right after sign-up (before the email is confirmed) or by the signed-in applicant
-  if auth.uid() is distinct from p_user_id and u.created_at < now() - interval '2 hours' then
+  -- allowed for a brand-new, not yet confirmed account (right after sign-up) or by the signed-in applicant
+  if auth.uid() is distinct from p_user_id
+     and (u.email_confirmed_at is not null or u.created_at < now() - interval '2 hours') then
     raise exception 'Sign in to complete your application';
   end if;
-  if lower(coalesce(p_application->>'email', '')) <> lower(u.email) then
+  -- members and staff never need an application
+  if exists (select 1 from public.profiles where id = p_user_id and (role <> 'MEMBER' or member_id is not null)) then
+    raise exception 'This account already has access';
+  end if;
+  if lower(coalesce(app->>'email', '')) <> lower(u.email) then
     raise exception 'The application email does not match the account';
   end if;
   if exists (select 1 from public.member_applications where user_id = p_user_id and status <> 'REJECTED') then
@@ -664,7 +987,7 @@ begin
 
   select string_agg(f, ', ') into missing
     from unnest(array['fullName','phone','dob','gender']) f
-   where coalesce(trim(p_application->>f), '') = '';
+   where coalesce(trim(app->>f), '') = '';
   if missing is not null then raise exception 'Missing personal details: %', missing; end if;
 
   select string_agg(f, ', ') into missing
@@ -672,21 +995,24 @@ begin
                       'sourceOfFunds','nextOfKinName','nextOfKinRelationship','nextOfKinPhone','idFrontImage','selfieImage']) f
    where coalesce(trim(k->>f), '') = '';
   if missing is not null then raise exception 'KYC incomplete: %', missing; end if;
+  if (k->>'idFrontImage') not like 'data:image/%' or (k->>'selfieImage') not like 'data:image/%' then
+    raise exception 'The ID photo and selfie must be images.';
+  end if;
 
   app_id := 'REG-' || lpad(nextval('public.member_application_no')::text, 4, '0');
+  perform set_config('app.bypass_guard', 'on', true);
   insert into public.member_applications (id, user_id, data)
   values (app_id, p_user_id,
-          (p_application - 'password') || jsonb_build_object(
+          (app - 'password') || jsonb_build_object(
             'id', app_id, 'email', lower(u.email), 'status', 'PENDING_APPROVAL',
             'secretaryApproved', false, 'adminApproved', false, 'memberId', null,
             'userId', p_user_id, 'submittedAt', to_char(now(), 'YYYY-MM-DD')));
+  perform set_config('app.bypass_guard', 'off', true);
   return app_id;
 end $$;
-revoke all on function public.submit_membership_application(uuid, jsonb) from public;
-grant execute on function public.submit_membership_application(uuid, jsonb) to anon, authenticated;
 
 -- ════════════════════════════════════════════════════════════════════════════
---  6. ACCESS RULES (Row Level Security)
+--  7. ACCESS RULES (Row Level Security)
 -- ════════════════════════════════════════════════════════════════════════════
 do $$
 declare t text;
@@ -708,91 +1034,124 @@ begin
   end loop;
 end $$;
 
--- Profiles
+-- Profiles: your own; staff see all; only the Admin changes roles (trigger above)
 create policy profiles_read on public.profiles for select to authenticated
-  using (id = auth.uid() or public.is_staff());
+  using (id = (select auth.uid()) or (select public.is_staff()));
 create policy profiles_update on public.profiles for update to authenticated
-  using (id = auth.uid() or public.is_admin()) with check (id = auth.uid() or public.is_admin());
+  using (id = (select auth.uid()) or (select public.is_admin())) with check (id = (select auth.uid()) or (select public.is_admin()));
 
 do $$
 declare t text;
 begin
-  -- a member sees only their own rows; staff see everything
+  -- reading: a member sees only their own rows; staff see everything
   foreach t in array array['members','kyc_submissions','payment_requests','share_conversions','loans','transactions','investors','mobile_money_payments']
   loop
-    execute format('create policy %1$s_read on public.%1$I for select to authenticated using (public.is_staff() or member_id = public.my_member_id())', t);
+    execute format('create policy %1$s_read on public.%1$I for select to authenticated using ((select public.is_staff()) or member_id = (select public.my_member_id()))', t);
   end loop;
-  -- staff (not the Board) add, change and remove records
-  foreach t in array array['members','kyc_submissions','payment_requests','share_conversions','loans','transactions','investors',
-    'dividends','period_closes','sms_messages','cattle','milk_logs','cow_milk_records','health_records','breeding_records','feed_inventory']
+  foreach t in array array['dividends','period_closes','sms_messages','staff','task_assignments']
   loop
-    execute format('create policy %1$s_staff_insert on public.%1$I for insert to authenticated with check (public.can_write())', t);
-    execute format('create policy %1$s_staff_update on public.%1$I for update to authenticated using (public.can_write()) with check (public.can_write())', t);
-    execute format('create policy %1$s_staff_delete on public.%1$I for delete to authenticated using (public.can_write())', t);
+    execute format('create policy %1$s_read on public.%1$I for select to authenticated using ((select public.is_staff()))', t);
   end loop;
-  -- staff-only reading
-  foreach t in array array['dividends','period_closes','sms_messages']
+  foreach t in array array['cattle','milk_logs','cow_milk_records','health_records','breeding_records','feed_inventory','app_settings']
   loop
-    execute format('create policy %1$s_read on public.%1$I for select to authenticated using (public.is_staff())', t);
+    execute format('create policy %1$s_read on public.%1$I for select to authenticated using ((select public.is_staff()) or (select public.is_approved_member()))', t);
   end loop;
-  -- farm records: every signed-in user can read
+
+  -- writing, by area of work
+  foreach t in array array['members','kyc_submissions','sms_messages']
+  loop
+    execute format('create policy %1$s_write_ins on public.%1$I for insert to authenticated with check ((select public.sacco_records()))', t);
+    execute format('create policy %1$s_write_upd on public.%1$I for update to authenticated using ((select public.sacco_records())) with check ((select public.sacco_records()))', t);
+    execute format('create policy %1$s_write_del on public.%1$I for delete to authenticated using ((select public.sacco_finance()) or (select public.is_admin()))', t);
+  end loop;
+  foreach t in array array['payment_requests','share_conversions','loans','investors','transactions']
+  loop
+    execute format('create policy %1$s_write_ins on public.%1$I for insert to authenticated with check ((select public.sacco_finance()))', t);
+    execute format('create policy %1$s_write_upd on public.%1$I for update to authenticated using ((select public.sacco_finance())) with check ((select public.sacco_finance()))', t);
+    execute format('create policy %1$s_write_del on public.%1$I for delete to authenticated using ((select public.sacco_finance()))', t);
+  end loop;
   foreach t in array array['cattle','milk_logs','cow_milk_records','health_records','breeding_records','feed_inventory']
   loop
-    execute format('create policy %1$s_read on public.%1$I for select to authenticated using (true)', t);
+    execute format('create policy %1$s_write_ins on public.%1$I for insert to authenticated with check ((select public.farm_writer()))', t);
+    execute format('create policy %1$s_write_upd on public.%1$I for update to authenticated using ((select public.farm_writer())) with check ((select public.farm_writer()))', t);
+    execute format('create policy %1$s_write_del on public.%1$I for delete to authenticated using ((select public.farm_writer()))', t);
   end loop;
-  -- reference data: everyone signed in reads, only the Admin changes
   foreach t in array array['staff','task_assignments','app_settings']
   loop
-    execute format('create policy %1$s_read on public.%1$I for select to authenticated using (true)', t);
-    execute format('create policy %1$s_admin_insert on public.%1$I for insert to authenticated with check (public.is_admin())', t);
-    execute format('create policy %1$s_admin_update on public.%1$I for update to authenticated using (public.is_admin()) with check (public.is_admin())', t);
-    execute format('create policy %1$s_admin_delete on public.%1$I for delete to authenticated using (public.is_admin())', t);
+    execute format('create policy %1$s_admin_ins on public.%1$I for insert to authenticated with check ((select public.is_admin()))', t);
+    execute format('create policy %1$s_admin_upd on public.%1$I for update to authenticated using ((select public.is_admin())) with check ((select public.is_admin()))', t);
+    execute format('create policy %1$s_admin_del on public.%1$I for delete to authenticated using ((select public.is_admin()))', t);
   end loop;
 end $$;
 
--- What a member can do from their own portal
+-- Month-end close and dividends: only the people assigned those tasks
+create policy period_closes_write_ins on public.period_closes for insert to authenticated with check ((select public.has_task('month_end_close')));
+create policy period_closes_write_upd on public.period_closes for update to authenticated
+  using ((select public.has_task('month_end_close')) or (select public.is_admin())) with check ((select public.has_task('month_end_close')) or (select public.is_admin()));
+create policy period_closes_write_del on public.period_closes for delete to authenticated using ((select public.is_admin()));
+create policy dividends_write_ins on public.dividends for insert to authenticated with check ((select public.has_task('dividends')));
+create policy dividends_write_upd on public.dividends for update to authenticated
+  using ((select public.has_task('dividends'))) with check ((select public.has_task('dividends')));
+create policy dividends_write_del on public.dividends for delete to authenticated using ((select public.is_admin()));
+
+-- The farm posts its own milk sales, vet and feed costs to the ledger (and nothing else)
+create policy transactions_farm_ins on public.transactions for insert to authenticated
+  with check ((select public.farm_writer()) and member_id is null
+              and (reference like 'MLK-%' or reference like 'VET-%' or reference like 'FEED-%' or reference like 'FD-PUR-%'));
+create policy transactions_farm_upd on public.transactions for update to authenticated
+  using ((select public.farm_writer()) and member_id is null
+         and (reference like 'MLK-%' or reference like 'VET-%' or reference like 'FEED-%' or reference like 'FD-PUR-%'))
+  with check ((select public.farm_writer()) and member_id is null
+              and (reference like 'MLK-%' or reference like 'VET-%' or reference like 'FEED-%' or reference like 'FD-PUR-%'));
+create policy transactions_farm_del on public.transactions for delete to authenticated
+  using ((select public.farm_writer()) and member_id is null
+         and (reference like 'MLK-%' or reference like 'VET-%' or reference like 'FEED-%' or reference like 'FD-PUR-%'));
+
+-- What a member can do from their own portal (requests are cleaned by triggers above)
 create policy members_self_update on public.members for update to authenticated
-  using (member_id = public.my_member_id()) with check (member_id = public.my_member_id());
-
+  using (member_id = (select public.my_member_id())) with check (member_id = (select public.my_member_id()));
 create policy payment_requests_member_insert on public.payment_requests for insert to authenticated
-  with check (member_id = public.my_member_id() and status = 'PENDING_VERIFICATION'
-              and data->>'verifiedBy' is null and data->>'approvedBy' is null);
+  with check (member_id = (select public.my_member_id()) and status = 'PENDING_VERIFICATION');
 create policy payment_requests_member_update on public.payment_requests for update to authenticated
-  using (member_id = public.my_member_id() and status = 'PENDING_VERIFICATION')
-  with check (member_id = public.my_member_id() and status = 'PENDING_VERIFICATION'
-              and data->>'verifiedBy' is null and data->>'approvedBy' is null);
-
+  using (member_id = (select public.my_member_id()) and status = 'PENDING_VERIFICATION')
+  with check (member_id = (select public.my_member_id()) and status = 'PENDING_VERIFICATION');
 create policy kyc_member_insert on public.kyc_submissions for insert to authenticated
-  with check (member_id = public.my_member_id() and status = 'PENDING' and data->>'reviewedBy' is null);
-
+  with check (member_id = (select public.my_member_id()) and status = 'PENDING');
 create policy share_conversions_member_insert on public.share_conversions for insert to authenticated
-  with check (member_id = public.my_member_id() and status = 'PENDING'
-              and coalesce(public.jbool(data->>'accountantApproved'), false) = false
-              and coalesce(public.jbool(data->>'adminApproved'), false) = false);
+  with check (member_id = (select public.my_member_id()) and status = 'PENDING');
 
--- Applications: the applicant sees and edits their own (contact details only); staff manage them
+-- Applications: the applicant sees their own; staff with member tasks manage them
 create policy member_applications_read on public.member_applications for select to authenticated
-  using (public.is_staff() or user_id = auth.uid());
+  using ((select public.is_staff()) or user_id = (select auth.uid()));
 create policy member_applications_staff_insert on public.member_applications for insert to authenticated
-  with check (public.can_write());
+  with check ((select public.sacco_records()));
 create policy member_applications_update on public.member_applications for update to authenticated
-  using (public.can_write() or user_id = auth.uid()) with check (public.can_write() or user_id = auth.uid());
+  using ((select public.sacco_records()) or user_id = (select auth.uid()))
+  with check ((select public.sacco_records()) or user_id = (select auth.uid()));
 create policy member_applications_admin_delete on public.member_applications for delete to authenticated
-  using (public.is_admin());
+  using ((select public.is_admin()));
 
--- Audit trail: everyone signed in adds entries; Admin and Board read; nobody edits
+-- Audit trail: everyone signed in adds entries (stamped with their real identity); Admin and Board read
 create policy audit_insert on public.audit_log for insert to authenticated with check (true);
 create policy audit_read on public.audit_log for select to authenticated
-  using (public.my_role() in ('ADMIN', 'BOARD_MEMBER'));
+  using ((select public.my_role()) in ('ADMIN', 'BOARD_MEMBER'));
 
--- Visitors who are not signed in get nothing (they can only call the sign-up function)
+-- Privileges: visitors who are not signed in get no tables; nobody can empty a table through the API
 revoke all on all tables in schema public from anon;
+revoke truncate, references, trigger on all tables in schema public from authenticated;
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 
+-- Internal helpers cannot be called directly through the API
+revoke execute on function public.link_member_by_email(uuid) from public, anon, authenticated;
+revoke execute on function public.apply_directory_role(uuid) from public, anon, authenticated;
+revoke execute on function public.set_profile_role(text, public.app_role, boolean) from public, anon, authenticated;
+revoke all on function public.submit_membership_application(uuid, jsonb) from public;
+grant execute on function public.submit_membership_application(uuid, jsonb) to anon, authenticated;
+
 -- ════════════════════════════════════════════════════════════════════════════
---  7. REALTIME — changes reach every open portal immediately
+--  8. REALTIME — changes reach every open portal immediately (access rules still apply)
 -- ════════════════════════════════════════════════════════════════════════════
 do $$
 declare t text;
@@ -811,7 +1170,7 @@ begin
 end $$;
 
 -- ════════════════════════════════════════════════════════════════════════════
---  8. REPORT VIEWS (handy in the Supabase table editor; they follow the same access rules)
+--  9. REPORT VIEWS (handy in the Supabase table editor; they follow the same access rules)
 -- ════════════════════════════════════════════════════════════════════════════
 create or replace view public.v_member_balances with (security_invoker = true) as
   select seq as no, member_id, name, phone, email, status, shares, savings, join_date
@@ -828,15 +1187,8 @@ create or replace view public.v_loan_book with (security_invoker = true) as
   select seq as no, loan_number, member_id, data->>'memberName' as member_name, principal, interest_rate,
          principal_paid, interest_paid, outstanding_balance, status
     from public.loans order by seq;
+revoke all on public.v_member_balances, public.v_income_expense_by_month, public.v_loan_book from anon;
 
 -- ════════════════════════════════════════════════════════════════════════════
---  9. FIRST ADMIN — create your own login (Authentication → Users → Add user,
---     tick "Auto confirm"), then run once with that email:
---
---     update public.profiles set role = 'ADMIN' where email = 'admin@diasporaconnectt.com';
---
---  Other staff: the staff directory (Settings → Task Assignments → Add staff) decides
---  their role. Create their login under Authentication → Users and the role is applied
---  automatically. Existing members: create a login with the member's email and it is
---  linked to their member record automatically.
+--  10. ROLES ARE SET IN SUPABASE, NEVER IN THE APP CODE — see supabase/roles.sql
 -- ════════════════════════════════════════════════════════════════════════════

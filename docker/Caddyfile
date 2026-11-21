@@ -1,7 +1,22 @@
 # Diaspora Connect - Caddy Reverse Proxy Configuration
+#
+# Security headers. The Content-Security-Policy only lets the browser run the site's own
+# scripts and talk to Supabase and the API, so injected code cannot run or send data away.
+(security_headers) {
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+        Cross-Origin-Opener-Policy "same-origin-allow-popups"
+        -Server
+    }
+}
 
 # 1. Public Website & SPA Portals
 diasporaconnectt.com {
+    import security_headers
     root * /var/www/html
     encode gzip zstd
     file_server
@@ -10,32 +25,37 @@ diasporaconnectt.com {
     try_files {path} /index.html
 
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-        Referrer-Policy "strict-origin-when-cross-origin"
+        Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cbohtkesgaxuixbdsucw.supabase.co wss://cbohtkesgaxuixbdsucw.supabase.co https://api.diasporaconnectt.com https://cloudflareinsights.com; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
     }
+
+    # never serve source maps or dotfiles
+    @hidden path *.map /.* /.env*
+    respond @hidden 404
 }
 
 # www → apex
 www.diasporaconnectt.com {
+    import security_headers
     redir https://diasporaconnectt.com{uri} permanent
 }
 
-# 2. NestJS REST API & WebSockets
+# 2. NestJS API (mobile money, SMS, AI advisor)
 api.diasporaconnectt.com {
+    import security_headers
     encode gzip zstd
 
+    # requests larger than 3 MB are refused before they reach the API
+    request_body {
+        max_size 3MB
+    }
+
     reverse_proxy backend:4000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
 
-    # Security headers (CORS is answered by the API itself — do not add CORS headers here)
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
     }
 }
-

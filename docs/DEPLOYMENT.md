@@ -42,8 +42,10 @@
 4. **First Admin:** **Authentication → Users → Add user**, enter your email and a strong password, and tick
    **Auto confirm user**. Then in the SQL Editor run:
    ```sql
-   update public.profiles set role = 'ADMIN' where email = 'admin@diasporaconnectt.com';
+   update public.profiles set role = 'ADMIN' where email = lower('your-email@example.com');
    ```
+   Roles are kept only in Supabase, never in the app code. All the role commands are in
+   [`supabase/roles.sql`](../supabase/roles.sql).
 5. **The app starts empty.** There is no sample data. Add members (Members → Add member, or approved sign-ups),
    cattle, milk records and so on in the portal. If sample records reached the database earlier, run
    [`supabase/clear-data.sql`](../supabase/clear-data.sql) once in the SQL Editor; it empties every record table
@@ -147,6 +149,9 @@ never trusted on their own: the API always re-checks the status with the provide
 > Send a test from the sandbox simulator to confirm it.
 
 ## 5. Production checklist
+
+The full security list (every attack, what stops it, and the settings only you can switch on) is in
+[`docs/SECURITY.md`](SECURITY.md).
 
 - [ ] `supabase/schema.sql` has been run, and the first Admin's role is set.
 - [ ] **Confirm email** is on, and the signup template includes `{{ .Token }}`.

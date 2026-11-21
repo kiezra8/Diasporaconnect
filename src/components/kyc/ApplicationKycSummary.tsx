@@ -30,7 +30,7 @@ export default function ApplicationKycSummary({ app }: { app: any }) {
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
-            {images.filter(([, src]) => !!src && src.startsWith('data:')).map(([label, src]) => (
+            {images.filter(([, src]) => !!src && /^data:image\/(jpeg|png|webp);base64,/.test(src)).map(([label, src]) => (
               <a key={label} href={src} target="_blank" rel="noreferrer" className="block">
                 <img src={src} alt={label} className="w-24 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
                 <span className="block text-[10px] text-slate-400 mt-0.5">{label}</span>

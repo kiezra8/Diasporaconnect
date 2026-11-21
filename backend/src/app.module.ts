@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { SupabaseService } from './supabase/supabase.service';
 import { SupabaseAuthGuard } from './auth/supabase-auth.guard';
@@ -18,7 +20,18 @@ import { HealthController } from './health.controller';
  * Sign-in and all SACCO data live in Supabase (Auth + Postgres).
  */
 @Module({
+  imports: [
+    // Rate limit per IP address: at most 60 requests a minute (stricter limits on single endpoints)
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
+  ],
   controllers: [AiController, NotificationsController, PaymentsController, HealthController],
-  providers: [SupabaseService, SupabaseAuthGuard, AiService, SmsService, PaymentsService],
+  providers: [
+    SupabaseService,
+    SupabaseAuthGuard,
+    AiService,
+    SmsService,
+    PaymentsService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

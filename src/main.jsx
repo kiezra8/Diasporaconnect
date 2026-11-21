@@ -18,10 +18,21 @@ const applySession = () => {
   // old demo sign-ins (not from Supabase) are no longer valid
   if (s && !s.backend) { clearSession(); return; }
   SaccoFarmStore.setActor(s ? { name: s.fullName, role: s.role, email: s.email } : { name: 'Visitor', role: 'PUBLIC' });
-  if (s?.backend) database.start(); else database.stop();
+  if (s?.backend) database.start();
+  else { database.stop(); database.forgetLocalData(); }
 };
 applySession();
 window.addEventListener('dc_auth_change', applySession);
+
+// The database refused a change (not allowed for this user): say so; the real data is put back
+let lastRejection = '';
+window.addEventListener('dc_db_rejected', (e) => {
+  const msg = e.detail?.message || 'You are not allowed to make this change.';
+  if (msg === lastRejection) return;
+  lastRejection = msg;
+  setTimeout(() => { lastRejection = ''; }, 3000);
+  window.alert(`Not saved: ${msg}`);
+});
 
 // Keep the portal session in step with Supabase (token refresh, sign-out in another tab)
 supabase.auth.onAuthStateChange((event, sbSession) => {

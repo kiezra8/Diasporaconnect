@@ -3,21 +3,24 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json* tsconfig.json ./
-RUN npm install
+RUN npm ci --no-audit --no-fund
 
 COPY src ./src/
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+COPY --from=builder --chown=node:node /app/package.json ./
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/dist ./dist
 
 ENV NODE_ENV=production
 EXPOSE 4000
+
+# run as the unprivileged "node" user, never as root
+USER node
 
 # Data and sign-in live in Supabase; this API only handles mobile money, SMS and the AI advisor
 CMD ["node", "dist/main"]
