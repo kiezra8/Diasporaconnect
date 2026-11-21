@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ApplicationKycSummary from '../../components/kyc/ApplicationKycSummary';
 import { useNavigate, Link } from 'react-router-dom';
-import { getSession, clearSession } from '../../services/api';
+import { getSession, clearSession, api } from '../../services/api';
 import AccessDenied from '../../components/AccessDenied';
 import { applyTheme, getTheme } from '../../services/theme';
 import PortalBottomNav from '../../components/PortalBottomNav';
@@ -90,6 +90,10 @@ export default function SecretaryPortal() {
   const [ninOrPassport, setNinOrPassport] = useState('');
   const [occupation, setOccupation] = useState('');
   const [nextOfKin, setNextOfKin] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registering, setRegistering] = useState(false);
+  const [registerError, setRegisterError] = useState('');
+  const [createdLogin, setCreatedLogin] = useState<{ name: string; email: string; password: string } | null>(null);
 
   // Financial request statuses (Sec. can see status, NOT amounts or balances)
   const requestStatuses = SaccoFarmStore.getPaymentRequests().map(r => ({
@@ -185,15 +189,34 @@ export default function SecretaryPortal() {
     };
   }, []);
 
-  const handleRegisterMember = (e: React.FormEvent) => {
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    const bytes = crypto.getRandomValues(new Uint32Array(12));
+    let p = Array.from(bytes, b => chars[b % chars.length]).join('');
+    if (!/[0-9]/.test(p)) p = p.slice(0, 11) + String(bytes[0] % 10);
+    if (!/[A-Za-z]/.test(p)) p = 'K' + p.slice(1);
+    setLoginPassword(p);
+  };
+
+  const handleRegisterMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !phone) return;
+    if (!fullName || !phone || !email || !loginPassword || registering) return;
+    setRegisterError('');
+    setRegistering(true);
+    try {
+      await api.createMemberLogin(email, loginPassword, fullName, phone);
+    } catch (err: any) {
+      setRegisterError(err?.message || 'Could not create the login.');
+      setRegistering(false);
+      return;
+    }
+    setRegistering(false);
 
     SaccoFarmStore.addMember({
       memberId: '',
       name: fullName,
       phone,
-      email,
+      email: email.toLowerCase().trim(),
       nin: ninOrPassport,
       category: `Diaspora (${country})`,
       joinDate: new Date().toISOString().split('T')[0],
@@ -203,7 +226,9 @@ export default function SecretaryPortal() {
       adminFee: 50000, shares: 0,
     });
 
-    notify(`New member ${fullName} registered. Pending Admin activation and KYC verification.`);
+    setCreatedLogin({ name: fullName, email: email.toLowerCase().trim(), password: loginPassword });
+    notify(`${fullName} registered. Their login is ready.`);
+    setLoginPassword('');
     setFullName(''); setEmail(''); setPhone(''); setNinOrPassport(''); setOccupation(''); setNextOfKin('');
     reloadData();
   };
@@ -429,6 +454,30 @@ export default function SecretaryPortal() {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">Sign-in Password *</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        required
+                        minLength={10}
+                        autoComplete="new-password"
+                        value={loginPassword}
+                        onChange={e => setLoginPassword(e.target.value)}
+                        placeholder="At least 10 characters, letters and numbers"
+                        className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 font-mono text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                      />
+                      <button type="button" onClick={generatePassword} className="px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300 hover:border-emerald-500">
+                        Generate
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Give the member this email and password to sign in.</p>
+                  </div>
+
+                  {registerError && (
+                    <p className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-semibold">{registerError}</p>
+                  )}
+
                   {/* Document upload note */}
                   <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
                     <div className="flex items-start gap-3">
@@ -442,12 +491,35 @@ export default function SecretaryPortal() {
                     </div>
                   </div>
 
-                  <button type="submit" className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-slate-900 dark:text-white font-extrabold text-sm transition shadow-lg flex items-center justify-center gap-2">
+                  <button type="submit" disabled={registering} className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-slate-900 dark:text-white font-extrabold text-sm transition shadow-lg flex items-center justify-center gap-2">
                     <UserPlus className="w-4 h-4" />
-                    Register Member (Pending KYC Activation)
+                    {registering ? 'Creating login…' : 'Register Member (Pending KYC Activation)'}
                   </button>
                 </form>
               </div>
+              {createdLogin && (
+                <div className="bg-white dark:bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 shadow-xl space-y-3 text-xs">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Login ready for {createdLogin.name}</p>
+                      <p className="text-slate-500 dark:text-slate-400">Give these to the member. They sign in at diasporaconnectt.com/signin.</p>
+                    </div>
+                    <button onClick={() => setCreatedLogin(null)} aria-label="Close" className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                    <span className="font-bold text-slate-500">Email</span><span className="font-mono text-slate-900 dark:text-white break-all">{createdLogin.email}</span>
+                    <span className="font-bold text-slate-500">Password</span><span className="font-mono text-slate-900 dark:text-white break-all">{createdLogin.password}</span>
+                  </div>
+                  <button
+                    onClick={() => { navigator.clipboard?.writeText(`Diaspora Connect sign-in
+Email: ${createdLogin.email}
+Password: ${createdLogin.password}`).then(() => notify('Copied.')).catch(() => {}); }}
+                    className="w-full py-2.5 rounded-2xl border border-emerald-500/40 text-emerald-700 dark:text-emerald-400 font-bold hover:bg-emerald-500/10"
+                  >
+                    Copy email and password
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

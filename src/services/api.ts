@@ -1,7 +1,8 @@
 /**
  * Diaspora Connect - Enterprise API Client Service
  */
-import { supabase, accessToken } from './supabase';
+import { createClient } from '@supabase/supabase-js';
+import { supabase, accessToken, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.diasporaconnectt.com';
 // Sign-in is Supabase Auth.
@@ -169,6 +170,27 @@ export const api = {
     const applicationId = await api.submitApplication(data.user.id, { ...app, email });
     if (data.session) await supabase.auth.signOut(); // no portal access until approved
     return { applicationId, needsEmailConfirmation: !data.session };
+  },
+
+  /** Secretary / Admin: create a member's login with an email and password they hand to the member.
+   *  Uses a separate, throw-away client so the staff member stays signed in. */
+  async createMemberLogin(email: string, password: string, fullName: string, phone: string): Promise<void> {
+    const e = (email || '').toLowerCase().trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error('Enter a valid email.');
+    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      throw new Error('Password: at least 10 characters, with letters and numbers.');
+    }
+    const temp = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'dc-member-login-create' },
+    });
+    const { data, error } = await temp.auth.signUp({
+      email: e, password, options: { data: { full_name: fullName, phone } },
+    });
+    if (error) throw new Error(/registered|exists/i.test(error.message) ? `${e} already has a login.` : error.message);
+    if (!data.user || (data.user.identities && data.user.identities.length === 0)) throw new Error(`${e} already has a login.`);
+    if (data.session) await temp.auth.signOut();
+    const { error: actErr } = await supabase.rpc('staff_activate_member_login', { p_email: e });
+    if (actErr) throw new Error(actErr.message);
   },
 
   async submitApplication(userId: string, app: MembershipApplication): Promise<string> {

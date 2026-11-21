@@ -1094,6 +1094,31 @@ begin
   return app_id;
 end $$;
 
+-- Secretary / Admin registers a member and gives them an email + password to sign in with.
+-- The app creates the login (normal sign-up), then this marks its email as confirmed so the
+-- member can sign in straight away. Only for a brand-new login that has never been used and
+-- is not a staff email, so it cannot be used to take over an account or create staff.
+create or replace function public.staff_activate_member_login(p_email text) returns void
+language plpgsql security definer set search_path = public as $$
+declare u record; e text := lower(trim(coalesce(p_email, '')));
+begin
+  if not public.has_task('member_registration') then
+    raise exception 'Only the Secretary or Admin can create member logins.';
+  end if;
+  select id, created_at, email_confirmed_at, last_sign_in_at into u from auth.users where lower(email) = e;
+  if not found then raise exception 'No login was created for %.', e; end if;
+  if u.email_confirmed_at is not null or u.last_sign_in_at is not null or u.created_at < now() - interval '15 minutes' then
+    raise exception '% already has a login. The member can use "Forgot password?" on the sign-in page.', e;
+  end if;
+  if exists (select 1 from public.staff where lower(email) = e) then
+    raise exception '% is a staff email. Staff logins are created by the Admin in Supabase.', e;
+  end if;
+  if exists (select 1 from public.profiles where id = u.id and role <> 'MEMBER') then
+    raise exception '% is not a member login.', e;
+  end if;
+  update auth.users set email_confirmed_at = now() where id = u.id;   -- links the member record by email
+end $$;
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  7. ACCESS RULES (Row Level Security)
 -- ════════════════════════════════════════════════════════════════════════════
@@ -1232,6 +1257,8 @@ revoke execute on function public.apply_directory_role(uuid) from public, anon, 
 revoke execute on function public.set_profile_role(text, public.app_role, boolean) from public, anon, authenticated;
 revoke all on function public.submit_membership_application(uuid, jsonb) from public;
 grant execute on function public.submit_membership_application(uuid, jsonb) to anon, authenticated;
+revoke all on function public.staff_activate_member_login(text) from public, anon;
+grant execute on function public.staff_activate_member_login(text) to authenticated;
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  8. REALTIME — changes reach every open portal immediately (access rules still apply)

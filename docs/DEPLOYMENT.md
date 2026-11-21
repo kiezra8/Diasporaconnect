@@ -59,7 +59,10 @@
 6. **Other staff:** in the portal go to **Settings → Task Assignments → Add staff** and add each person with
    their role. Then create their login under **Authentication → Users → Add user** (auto confirm). The role is
    applied automatically. Assign their tasks in the same Settings page.
-7. **Existing members:** create a login with the member's email (**Add user**, or **Invite user** so they
+7. **Members added by the Secretary:** Secretary portal → **Register Member** → fill in the email and a
+   sign-in password (or tap **Generate**) → Register. The login works straight away; give the member the
+   email and password shown. They can change it any time with **Forgot password?**.
+   **Existing members** (another way): create a login with the member's email (**Add user**, or **Invite user** so they
    choose their own password). It is linked to their member record automatically by email.
 8. **New members** use **Sign Up** on the website. They cannot finish without completing KYC (ID, address,
    occupation, source of funds, next of kin, ID photo and a selfie holding the ID). The database itself refuses an
