@@ -153,7 +153,7 @@ export default function SignUp() {
       <div className="h-36 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden hover:border-emerald-500 transition">
         {f[k] ? <img src={f[k]} alt={label} className="h-full w-full object-cover" /> : <Camera className="w-7 h-7 text-slate-400" />}
       </div>
-      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={pick(k)} />
+      <input type="file" accept="image/*" className="hidden" onChange={pick(k)} />
     </label>
   );
 

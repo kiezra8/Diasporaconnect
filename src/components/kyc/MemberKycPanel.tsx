@@ -115,7 +115,7 @@ export default function MemberKycPanel({ member, onNotify }: Props) {
       <div className="h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 flex items-center justify-center overflow-hidden hover:border-emerald-500 transition">
         {value ? <img src={value} alt={label} className="h-full w-full object-cover" /> : <span className="text-[11px] text-slate-500 px-3 text-center">{hint}</span>}
       </div>
-      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onChange} />
+      <input type="file" accept="image/*" className="hidden" onChange={onChange} />
     </label>
   );
 
