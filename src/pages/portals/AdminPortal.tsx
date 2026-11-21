@@ -3186,7 +3186,8 @@ export default function AdminPortal() {
               {/* SECTION 2b: Member KYC Verification */}
               <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <KycReviewPanel
-                  reviewerName={`${session?.fullName || 'Administrator'} (Admin)`}
+                  reviewerName={session?.fullName || 'Administrator'}
+                  reviewerRole="Admin"
                   onNotify={notify}
                   guard={(desc, fn) => checkPermission(['ADMIN', 'SECRETARY'], desc, fn)}
                 />

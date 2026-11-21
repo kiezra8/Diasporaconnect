@@ -652,7 +652,7 @@ export default function SecretaryPortal() {
                 <p className="text-xs text-slate-500 dark:text-slate-400">Track identity verification and document submission status</p>
               </div>
 
-              <KycReviewPanel reviewerName={`${session?.fullName || 'Secretary'} (Secretary)`} onNotify={notify} />
+              <KycReviewPanel reviewerName={session?.fullName || 'Secretary'} reviewerRole="Secretary" onNotify={notify} />
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[

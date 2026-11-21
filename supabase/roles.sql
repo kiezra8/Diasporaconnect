@@ -54,8 +54,16 @@ update public.profiles set role = 'MEMBER' where email = lower('person@example.c
 --  BOARD_MEMBER role. All of them can read everything and none of them can change records.
 
 
+-- ── 3c. No KYC for a particular person (for example yourself) ───────────────
+--  Only possible here in Supabase; nobody can switch it on from the app.
+--  Their portal then shows "Verified". Nothing on screen mentions the exemption.
+update public.profiles set kyc_exempt = true  where email = lower('your-email@example.com');
+-- undo:
+update public.profiles set kyc_exempt = false where email = lower('your-email@example.com');
+
+
 -- ── 4. See who has which role ────────────────────────────────────────────────
-select seq as no, email, full_name, role, member_id, active, created_at
+select seq as no, email, full_name, role, member_id, active, kyc_exempt, created_at
   from public.profiles
  order by role, email;
 

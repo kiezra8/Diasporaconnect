@@ -30,15 +30,18 @@
 
 1. **Create the tables:** open **SQL Editor → New query**, paste the whole of
    [`supabase/schema.sql`](../supabase/schema.sql) and press **Run**. It is safe to run again later.
-2. **Email confirmation:** under **Authentication → Sign In / Providers → Email**, keep **Confirm email** on.
-   So that members can type a code instead of clicking a link, open **Authentication → Email Templates →
-   Confirm signup** and add this line to the template:
-   ```
-   Your code: {{ .Token }}
-   ```
-   (The link in the email also works.)
+2. **Email confirmation code (sent automatically at sign-up):**
+   - Authentication → Sign In / Providers → Email: keep **Confirm email** on.
+   - Authentication → Emails → Templates → **Confirm signup**: set the subject to
+     `Your Diaspora Connect code: {{ .Token }}` and paste the message from
+     [`supabase/email-templates/confirm-signup.html`](../supabase/email-templates/confirm-signup.html).
+   - Connect your own email sender (Authentication → Emails → SMTP Settings). Without it, Supabase only
+     delivers to your own team's addresses. See [EMAIL.md](EMAIL.md).
+   Supabase sends the code the moment someone submits the sign-up form, and again if they tap
+   "Send a new code".
 3. **Site URL:** under **Authentication → URL Configuration**, set the Site URL to `https://diasporaconnectt.com`
-   and add `https://diasporaconnectt.com/signin` to the redirect URLs.
+   and add `https://diasporaconnectt.com/signin` and `https://diasporaconnectt.com/reset-password` to the redirect URLs.
+   Every email setting (sign-up codes, password reset codes, sender, DNS) is listed in order in [EMAIL.md](EMAIL.md).
 4. **First Admin:** **Authentication → Users → Add user**, enter your email and a strong password, and tick
    **Auto confirm user**. Then in the SQL Editor run:
    ```sql

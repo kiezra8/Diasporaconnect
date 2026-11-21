@@ -1,14 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { SaccoFarmStore, KycSubmission } from '../../services/saccoFarmStore';
+import { getSession } from '../../services/api';
+
+/** "Jane Doe · Secretary" (older records stored "Jane Doe (Secretary)") */
+export function reviewerLabel(name?: string, role?: string): string {
+  if (!name) return role || '';
+  const m = name.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  const who = m ? m[1] : name;
+  const r = role || (m ? m[2] : '');
+  return r && r !== who ? `${who} · ${r}` : who;
+}
 
 interface Props {
   reviewerName: string;
+  reviewerRole: 'Secretary' | 'Admin';
   onNotify?: (msg: string) => void;
   guard?: (desc: string, action: () => void) => void;
 }
 
 /** Officer view: review member KYC submissions and verify or reject them. */
-export default function KycReviewPanel({ reviewerName, onNotify, guard }: Props) {
+export default function KycReviewPanel({ reviewerName, reviewerRole, onNotify, guard }: Props) {
+  const myEmail = (getSession()?.email || '').toLowerCase();
+  // nobody reviews their own KYC — another reviewer must do it
+  const isOwn = (k: KycSubmission) => {
+    const m = SaccoFarmStore.getMembers().find(x => x.memberId === k.memberId);
+    return !!myEmail && !!m?.email && m.email.toLowerCase() === myEmail;
+  };
+  const openReview = (k: KycSubmission) => {
+    setOpen(k);
+    if (k.status === 'PENDING' && !isOwn(k) && SaccoFarmStore.canPerform('kyc_review')) SaccoFarmStore.startKycReview(k.id, reviewerName, reviewerRole);
+  };
   const [list, setList] = useState<KycSubmission[]>(() => SaccoFarmStore.getKycSubmissions());
   const [open, setOpen] = useState<KycSubmission | null>(null);
   const [filter, setFilter] = useState<'PENDING' | 'ALL'>('PENDING');
@@ -35,7 +56,8 @@ export default function KycReviewPanel({ reviewerName, onNotify, guard }: Props)
         if (r === null) return;
         reason = r;
       }
-      if (SaccoFarmStore.reviewKyc(k.id, decision, reviewerName, reason)) {
+      if (isOwn(k)) { onNotify?.('This is your own KYC. Another reviewer must check it.'); return; }
+      if (SaccoFarmStore.reviewKyc(k.id, decision, reviewerName, reason, reviewerRole)) {
         onNotify?.(`${k.memberName}'s KYC ${decision === 'VERIFIED' ? 'verified' : 'rejected'}.`);
         setOpen(null);
       }
@@ -48,8 +70,8 @@ export default function KycReviewPanel({ reviewerName, onNotify, guard }: Props)
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Member KYC Verification</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Identity documents members submitted from their portal. Verifying updates the member record (NIN / ID number).</p>
+          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Member KYC</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Reviewing as {reviewerName} · {reviewerRole}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">{pending} pending</span>
@@ -74,8 +96,10 @@ export default function KycReviewPanel({ reviewerName, onNotify, guard }: Props)
                 <td className="p-3 text-slate-700 dark:text-slate-300">{k.idType}<span className="block font-mono text-[10px]">{k.idNumber}</span></td>
                 <td className="p-3 text-slate-700 dark:text-slate-300">{k.countryOfResidence}</td>
                 <td className="p-3 font-mono text-slate-500">{k.submittedAt}</td>
-                <td className="p-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusCls(k.status)}`}>{k.status}</span></td>
-                <td className="p-3 text-right"><button onClick={() => setOpen(k)} className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs">Review</button></td>
+                <td className="p-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusCls(k.status)}`}>{k.status}</span>
+                  {k.status === 'PENDING' && k.reviewingBy && <span className="block text-[10px] text-slate-500 mt-0.5">With {reviewerLabel(k.reviewingBy, k.reviewingRole)}</span>}
+                  {k.status !== 'PENDING' && k.reviewedBy && <span className="block text-[10px] text-slate-500 mt-0.5">By {reviewerLabel(k.reviewedBy, k.reviewedByRole)}</span>}</td>
+                <td className="p-3 text-right"><button onClick={() => openReview(k)} className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs">{isOwn(k) ? 'View' : 'Review'}</button></td>
               </tr>
             ))}
             {shown.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-slate-500">{filter === 'PENDING' ? 'No KYC submissions waiting for review.' : 'No members have submitted KYC yet.'}</td></tr>}
@@ -121,13 +145,16 @@ export default function KycReviewPanel({ reviewerName, onNotify, guard }: Props)
                 </div>
               ))}
             </dl>
-            {open.status === 'PENDING' ? (
-              <div className="flex justify-end gap-2">
+            {open.status === 'PENDING' && isOwn(open) ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300 font-semibold text-right">Your own KYC. Another reviewer will check it.</p>
+            ) : open.status === 'PENDING' ? (
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-[11px] text-slate-500 mr-auto">Reviewing as {reviewerName} · {reviewerRole}</span>
                 <button onClick={() => decide(open, 'REJECTED')} className="px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-bold text-xs">Reject</button>
                 <button onClick={() => decide(open, 'VERIFIED')} className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs">Verify Identity</button>
               </div>
             ) : (
-              <p className="text-xs text-slate-500 text-right">{open.status} by {open.reviewedBy} on {open.reviewedAt}{open.rejectionReason ? ` — ${open.rejectionReason}` : ''}</p>
+              <p className="text-xs text-slate-500 text-right">{open.status === 'VERIFIED' ? 'Verified' : 'Returned'} by {reviewerLabel(open.reviewedBy, open.reviewedByRole)} · {open.reviewedAt}{open.rejectionReason ? ` — ${open.rejectionReason}` : ''}</p>
             )}
           </div>
         </div>

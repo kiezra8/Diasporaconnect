@@ -161,8 +161,11 @@ export interface KycSubmission {
   submittedAt: string;
   status: Exclude<KycStatus, 'NOT_SUBMITTED'>;
   reviewedBy?: string;
+  reviewedByRole?: string;   // Secretary / Admin
   reviewedAt?: string;
   rejectionReason?: string;
+  reviewingBy?: string;      // who has opened it for checking
+  reviewingRole?: string;
 }
 
 // ── Member payment requests (deposits & withdrawals) — maker / checker / approver ──
@@ -738,6 +741,7 @@ export const SaccoFarmStore = {
         submittedAt: app.submittedAt || nowStamp(),
         status: 'VERIFIED',
         reviewedBy: approver,
+        reviewedByRole: approver,
         reviewedAt: nowStamp(),
       });
       setStored(STORAGE_KEYS.KYC, list);
@@ -1145,12 +1149,23 @@ export const SaccoFarmStore = {
     return { success: true, msg: 'KYC documents submitted. You will be notified once an officer reviews them.' };
   },
 
-  reviewKyc: (id: string, decision: 'VERIFIED' | 'REJECTED', reviewer: string, reason?: string): boolean => {
+  /** A reviewer opens a submission: the member then sees who is checking it. */
+  startKycReview: (id: string, reviewer: string, role: string): void => {
+    const list = SaccoFarmStore.getKycSubmissions();
+    const k = list.find(x => x.id === id);
+    if (!k || k.status !== 'PENDING' || (k.reviewingBy === reviewer && k.reviewingRole === role)) return;
+    k.reviewingBy = reviewer;
+    k.reviewingRole = role;
+    SaccoFarmStore.saveKycSubmissions(list);
+  },
+
+  reviewKyc: (id: string, decision: 'VERIFIED' | 'REJECTED', reviewer: string, reason?: string, role?: string): boolean => {
     const list = SaccoFarmStore.getKycSubmissions();
     const k = list.find(x => x.id === id);
     if (!k || k.status !== 'PENDING') return false;
     k.status = decision;
     k.reviewedBy = reviewer;
+    k.reviewedByRole = role;
     k.reviewedAt = nowStamp();
     if (decision === 'REJECTED') k.rejectionReason = reason || 'Documents could not be verified';
     SaccoFarmStore.saveKycSubmissions(list);
@@ -2390,6 +2405,7 @@ const AUDITED: Record<string, { entity: string; id?: (a: any[], r: any) => strin
   rejectPaymentRequest: { entity: 'PaymentRequest', id: (a) => a[0], describe: (a) => `Rejected payment request ${a[0]}: ${a[1] || ''}` },
   activateApplication: { entity: 'Member', id: (a) => a[0]?.id, describe: (a) => `Membership application ${a[0]?.id} for ${a[0]?.fullName} approved — member created` },
   submitKyc: { entity: 'KYC', id: (a) => a[0]?.memberId, describe: (a) => `${a[0]?.memberName} submitted KYC (${a[0]?.idType})` },
+  startKycReview: { entity: 'KYC', id: (a) => a[0], describe: (a) => `KYC ${a[0]} opened for review by ${a[1]} (${a[2]})` },
   reviewKyc: { entity: 'KYC', id: (a) => a[0], describe: (a) => `KYC ${a[0]} marked ${a[1]}${a[3] ? `: ${a[3]}` : ''}` },
   addInvestor: { entity: 'Investor', id: (_a, r) => r?.id, describe: (a) => `Added Money Maker investor ${a[0]?.name}` },
   recordInvestorPayment: { entity: 'Investor', id: (a) => a[0], describe: (a) => `Investor ${a[0]} paid ${ugxT(a[1])}` },

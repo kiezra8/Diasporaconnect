@@ -15,6 +15,8 @@ export interface UserSession {
   token: string;
   /** true when signed in with Supabase (shared database, mobile money, SMS, AI) */
   backend?: boolean;
+  /** set in Supabase only (profiles.kyc_exempt): this person does not go through KYC */
+  kycExempt?: boolean;
 }
 
 const SESSION_KEY = 'dc_user_session';
@@ -143,6 +145,7 @@ export const api = {
       memberNumber: profile.member_id || undefined,
       token,
       backend: true,
+      kycExempt: profile.kyc_exempt === true,
     };
     setSession(userSession);
     return { session: userSession, redirectTo: REDIRECT_BY_ROLE[profile.role] || '/member' };
@@ -199,6 +202,46 @@ export const api = {
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw new Error('Your sign-in expired. Please sign in again.');
     return api.completeSignIn(data.session.user.id, data.session.access_token);
+  },
+
+  // ── Forgot password ──────────────────────────────────────────────────────
+  /** Emails a reset code (and link). Says nothing about whether the account exists. */
+  async sendPasswordReset(email: string) {
+    const clean = (email || '').toLowerCase().trim();
+    if (!/^\S+@\S+\.\S+$/.test(clean)) throw new Error('Enter a valid email address.');
+    const { error } = await supabase.auth.resetPasswordForEmail(clean, { redirectTo: `${window.location.origin}/reset-password` });
+    if (error && /rate|seconds|too many/i.test(error.message)) throw new Error('Please wait a minute before asking for another code.');
+    if (error && !/not found|no user/i.test(error.message)) throw new Error(error.message);
+  },
+
+  /** Checks the 6-digit reset code; returns true when the account also needs its two-step code. */
+  async verifyResetCode(email: string, code: string): Promise<boolean> {
+    const { error } = await supabase.auth.verifyOtp({ email: email.toLowerCase().trim(), token: code.trim(), type: 'recovery' });
+    if (error) throw new Error(/expired|invalid/i.test(error.message) ? 'That code is wrong or has expired. Ask for a new one.' : error.message);
+    return api.needsMfaStepUp();
+  },
+
+  /** Staff accounts confirm the reset with their authenticator code too. */
+  async needsMfaStepUp(): Promise<boolean> {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    return data?.nextLevel === 'aal2' && data?.currentLevel !== 'aal2';
+  },
+
+  async mfaStepUp(code: string) {
+    const clean = (code || '').replace(/[^0-9]/g, '');
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const factor = (factors?.totp || [])[0];
+    if (!factor) return;
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code: clean });
+    if (error) throw new Error(/invalid|expired/i.test(error.message) ? 'That code is wrong or has expired. Try the newest code.' : error.message);
+  },
+
+  /** Saves the new password, then signs out so the person signs in fresh. */
+  async setNewPassword(password: string) {
+    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) throw new Error('Use at least 10 characters, with letters and numbers.');
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw new Error(/same|different/i.test(error.message) ? 'Choose a password you have not used before.' : error.message);
+    await supabase.auth.signOut();
   },
 
   async confirmEmail(email: string, code: string) {

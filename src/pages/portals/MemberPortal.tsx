@@ -95,6 +95,8 @@ export default function MemberPortal() {
   const [shareConversionRequests, setShareConversionRequests] = useState<ShareConversionRequest[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<MemberPaymentRequest[]>([]);
   const [kycStatus, setKycStatus] = useState<string>('NOT_SUBMITTED');
+  // set in Supabase only (profiles.kyc_exempt); the app cannot change it
+  const kycExempt = getSession()?.kycExempt === true;
 
   // Edit Profile Form State
   const [editName, setEditName] = useState('');
@@ -186,8 +188,7 @@ export default function MemberPortal() {
     if (session && members.length > 0) {
       const match = members.find(m =>
         (session.memberNumber && (m.memberId === session.memberNumber || m.id === session.memberNumber)) ||
-        (session.email && m.email && m.email.toLowerCase() === session.email.toLowerCase()) ||
-        (session.fullName && (m.name.toLowerCase().includes(session.fullName.toLowerCase()) || session.fullName.toLowerCase().includes(m.name.toLowerCase())))
+        (session.email && m.email && m.email.toLowerCase() === session.email.toLowerCase())
       );
       if (match) {
         setSelectedMemberId(match.id);
@@ -196,7 +197,8 @@ export default function MemberPortal() {
   }, [members, session]);
 
   // Determine current active member
-  const currentMember: SaccoMember = members.find(m => m.id === selectedMemberId || m.memberId === selectedMemberId) || members[0] || {
+  // Staff can see every member, so fall back to the first record only for a member login (which sees only its own)
+  const currentMember: SaccoMember = members.find(m => m.id === selectedMemberId || m.memberId === selectedMemberId) || (session?.role === 'MEMBER' ? members[0] : undefined) || {
     id: session?.memberNumber || '',
     memberId: session?.memberNumber || '',
     name: session?.fullName || '',
@@ -231,7 +233,7 @@ export default function MemberPortal() {
   };
 
   useEffect(() => {
-    setKycStatus(SaccoFarmStore.getKycStatus(currentMember.memberId));
+    setKycStatus(kycExempt ? 'EXEMPT' : SaccoFarmStore.getKycStatus(currentMember.memberId));
   }, [currentMember.memberId, members, transactions, paymentRequests]);
 
   const memberPhoto = (session as any)?.photoUrl || getRegisteredPhoto() || currentMember.avatar || getMemberPhoto(currentMember.name);
@@ -558,7 +560,7 @@ export default function MemberPortal() {
       alert('Please enter a valid withdrawal amount.');
       return;
     }
-    if (SaccoFarmStore.getKycStatus(currentMember.memberId) !== 'VERIFIED') {
+    if (!kycExempt && SaccoFarmStore.getKycStatus(currentMember.memberId) !== 'VERIFIED') {
       alert('Please complete "Verify My Identity (KYC)" before requesting a withdrawal.');
       setShowWithdrawModal(false);
       setActiveTab('kyc');
@@ -775,8 +777,8 @@ export default function MemberPortal() {
                 <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-500" />
                 <span>Verify Identity (KYC)</span>
               </span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${kycStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : kycStatus === 'PENDING' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300' : 'bg-rose-500/20 text-rose-600 dark:text-rose-300'}`}>
-                {kycStatus === 'VERIFIED' ? 'VERIFIED' : kycStatus === 'PENDING' ? 'REVIEW' : kycStatus === 'REJECTED' ? 'REDO' : 'TO DO'}
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${kycStatus === 'VERIFIED' || kycStatus === 'EXEMPT' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : kycStatus === 'PENDING' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300' : 'bg-rose-500/20 text-rose-600 dark:text-rose-300'}`}>
+                {kycStatus === 'EXEMPT' || kycStatus === 'VERIFIED' ? 'VERIFIED' : kycStatus === 'PENDING' ? 'REVIEW' : kycStatus === 'REJECTED' ? 'REDO' : 'TO DO'}
               </span>
             </button>
 
@@ -1701,9 +1703,14 @@ export default function MemberPortal() {
           )}
 
           {/* VIEW: KYC SELF-VERIFICATION */}
-          {activeTab === 'kyc' && (
+          {activeTab === 'kyc' && (kycExempt ? (
+            <div className="rounded-2xl p-5 border-2 border-emerald-500/40 bg-emerald-500/10">
+              <p className="text-base font-extrabold text-slate-900 dark:text-white">✓ Verified</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Your identity is already verified.</p>
+            </div>
+          ) : (
             <MemberKycPanel member={currentMember} onNotify={notify} />
-          )}
+          ))}
 
           {/* My deposit / withdrawal requests and where they are in the approval chain */}
           {(activeTab === 'deposit' || activeTab === 'withdraw') && (

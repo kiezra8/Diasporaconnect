@@ -13,6 +13,8 @@ import FarmLife from './pages/FarmLife';
 import Blog from './pages/Blog';
 import Contact from './pages/Contact';
 import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
+import ResetPassword from './pages/ResetPassword';
 import Images from './pages/Images';
 import Planning from './pages/Planning';
 
@@ -58,7 +60,9 @@ export default function App() {
     '/board',
     '/secretary',
     '/accountant',
-    '/farm'
+    '/farm',
+    '/signup',
+    '/reset-password'
   ];
 
   const isPortalRoute = portalPaths.some(path =>
@@ -92,6 +96,9 @@ export default function App() {
         <Route path="/contact.html" element={<Contact />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signin.html" element={<SignIn />} />
+        <Route path="/signup" element={<Navigate to="/signup/details" replace />} />
+        <Route path="/signup/:step" element={<SignUp />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/images" element={<Images />} />
         <Route path="/images.html" element={<Images />} />
         <Route path="/planning" element={<Planning />} />
@@ -119,7 +126,7 @@ export default function App() {
       </React.Suspense>
 
       {/* Universal Bottom Navigation Bar for the Whole Website */}
-      <GlobalBottomNav />
+      {!location.pathname.startsWith('/signup') && !location.pathname.startsWith('/reset-password') && <GlobalBottomNav />}
     </>
   );
 }

@@ -423,7 +423,7 @@ export const database = {
     if (active && meta.owner === uid) return;
 
     // The role saved in this browser could have been edited; the database's record is the truth
-    const { data: profile, error: profileError } = await supabase.from('profiles').select('role, member_id, active, full_name, email').eq('id', uid).maybeSingle();
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('role, member_id, active, full_name, email, kyc_exempt').eq('id', uid).maybeSingle();
     if (!profileError) {
       if (!profile || !profile.active || (profile.role === 'MEMBER' && !profile.member_id)) { clearSession(); return; }
       if (profile.role !== 'MEMBER') {
@@ -431,8 +431,8 @@ export const database = {
         const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (aal?.currentLevel !== 'aal2') { clearSession(); return; }
       }
-      if (profile.role !== s.role || (profile.member_id || undefined) !== (s.memberNumber || undefined)) {
-        setSession({ ...s, role: profile.role, memberNumber: profile.member_id || undefined });
+      if (profile.role !== s.role || (profile.member_id || undefined) !== (s.memberNumber || undefined) || (profile.kyc_exempt === true) !== (s.kycExempt === true)) {
+        setSession({ ...s, role: profile.role, memberNumber: profile.member_id || undefined, kycExempt: profile.kyc_exempt === true });
         window.location.reload();
         return;
       }

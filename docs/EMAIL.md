@@ -1,56 +1,108 @@
-# Email for diasporaconnectt.com: SPF, DKIM, DMARC
+# Email codes: what to put where
 
-## What the domain has today (checked 21 Nov 2026)
+Members get a **6-digit code by email** when they sign up and when they reset a password. Supabase sends
+these automatically. You only need to set it up once, in this order.
 
-| Record | Status | What it means |
+**Your domain today (checked 21 Nov 2026):** no SPF, no DKIM, no DMARC and no MX record for
+`diasporaconnectt.com`. So right now emails from the SACCO would go to spam, anyone could fake them,
+and `info@diasporaconnectt.com` cannot receive mail. Steps 1 and 2 fix that.
+
+---
+
+## Step 1: an email sending service
+
+Supabase's built-in mailer only delivers to your own team's addresses, a few an hour. Members would get
+nothing. Create a free account with **one** of these and add the domain `diasporaconnectt.com`:
+
+| Service | SMTP host | Port | Username | Password |
+|---|---|---|---|---|
+| **Resend** (simplest) | `smtp.resend.com` | `465` | `resend` | your Resend API key |
+| **Brevo** | `smtp-relay.brevo.com` | `587` | your Brevo login email | your Brevo SMTP key |
+| **ZeptoMail** (Zoho) | `smtp.zeptomail.com` | `587` | `emailapikey` | your ZeptoMail token |
+
+The service then shows you DNS records to add: that's step 2. Check the values on the service's own SMTP
+page; they are the source of truth.
+
+## Step 2: DNS records in Cloudflare
+
+Cloudflare → `diasporaconnectt.com` → **DNS → Records → Add record**. Copy the exact values your sending
+service shows. The shape is:
+
+| What | Type | Name | Content | Proxy |
+|---|---|---|---|---|
+| **SPF**: who may send as you | TXT | `@` (or what the service says, e.g. `send`) | `v=spf1 include:<service domain> ~all` | — |
+| **DKIM**: proves emails are genuine | TXT or CNAME | e.g. `resend._domainkey` | copied from the service | **DNS only** (grey cloud) |
+| **DMARC**: tells others to reject fakes | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:dmarc@diasporaconnectt.com; adkim=s; aspf=s` | — |
+
+Rules:
+- Only **one** SPF record per name. If you also do step 6, combine both into one:
+  `v=spf1 include:_spf.mx.cloudflare.net include:<service domain> ~all`
+- Press **Verify** in the sending service. It turns green when the records are found (minutes, sometimes an hour).
+- After 2 weeks of normal sending, change DMARC `p=none` to `p=quarantine`, later to `p=reject`.
+
+## Step 3: Supabase → Authentication → Emails → **SMTP Settings**
+
+Turn on **Enable custom SMTP** and fill in:
+
+| Field | Put |
+|---|---|
+| Sender email | `no-reply@diasporaconnectt.com` |
+| Sender name | `Diaspora Connect SACCO` |
+| Host / Port / Username / Password | from the table in step 1 |
+| Minimum interval between emails | `60` seconds (default) |
+
+Save.
+
+## Step 4: Supabase → Authentication → Emails → **Templates**
+
+The ready-made messages are in this repository. Open each template, set the subject, then paste the whole
+file (below its top comment) into **Message body**:
+
+| Template | Subject | Message body |
 |---|---|---|
-| **SPF** (`v=spf1 …` TXT on `diasporaconnectt.com`) | ❌ missing | Nothing says which servers may send mail as `@diasporaconnectt.com`. Anyone can pretend to be you. |
-| **DKIM** (`…._domainkey` TXT/CNAME) | ❌ none found | Mail from you can't be proved genuine, so it tends to land in spam. |
-| **DMARC** (`_dmarc` TXT) | ❌ missing | Receivers have no instruction to reject fake mail claiming to be from you. |
-| **MX** (where mail is received) | ❌ missing | `info@diasporaconnectt.com` (shown on the Contact page) **cannot receive email** at the moment. |
+| **Confirm signup** | `Your Diaspora Connect code: {{ .Token }}` | [`supabase/email-templates/confirm-signup.html`](../supabase/email-templates/confirm-signup.html) |
+| **Reset Password** | `Your Diaspora Connect reset code: {{ .Token }}` | [`supabase/email-templates/reset-password.html`](../supabase/email-templates/reset-password.html) |
 
-The DNS is managed in **Cloudflare**, so all the records below are added in Cloudflare → your domain → **DNS → Records**.
+Leave **Magic Link** and **Invite user** as they are; the app doesn't use them.
 
-## Why this matters for the app
+`{{ .Token }}` is the 6-digit code; `{{ .ConfirmationURL }}` is the one-tap link. Keep both exactly as written.
 
-Sign-up confirmation codes, invitations and password resets are sent by **Supabase Auth**. Supabase's
-built-in mailer is only for testing: it sends very few emails an hour, and only to your own team's
-addresses. **Members would not receive their sign-up codes.** So before launch, connect your own
-sending service using your domain. Then SPF, DKIM and DMARC make those emails trusted.
+## Step 5: the remaining Supabase settings
 
-## Step 1: choose a sending service
+| Where | Setting | Put |
+|---|---|---|
+| Authentication → Sign In / Providers → **Email** | Confirm email | **On** |
+| same page | Email OTP length | **6** (the app's code boxes expect 6 digits) |
+| same page | Email OTP expiration | `3600` (1 hour) |
+| same page | Minimum password length | `10`, and require letters and digits |
+| Authentication → **URL Configuration** | Site URL | `https://diasporaconnectt.com` |
+| same page | Redirect URLs | `https://diasporaconnectt.com/signin` and `https://diasporaconnectt.com/reset-password` (add `http://localhost:5173/**` while testing) |
+| Authentication → **Rate Limits** | Emails sent per hour | raise to what your sending service allows (e.g. `100`+) |
 
-Any of these works with Supabase (Authentication → Emails → **SMTP Settings**): **Resend**, **Brevo**,
-**ZeptoMail (Zoho)** or **Amazon SES**. Add the domain `diasporaconnectt.com` in that service. It then shows
-you the exact SPF and DKIM values to copy into Cloudflare.
+## Step 6 (optional): receive mail at info@diasporaconnectt.com
 
-## Step 2: add the records in Cloudflare
+Cloudflare → **Email → Email Routing** (free) → forward `info@diasporaconnectt.com` to your Gmail.
+Cloudflare adds the MX records itself. Merge its SPF into your one SPF record (see step 2).
 
-| Type | Name | Value | Notes |
-|---|---|---|---|
-| TXT | `@` | `v=spf1 include:<your provider's SPF domain> ~all` | **Only one SPF record per name.** If you also use Cloudflare Email Routing (step 4), combine both: `v=spf1 include:_spf.mx.cloudflare.net include:<provider> ~all`. Some providers (e.g. Resend) ask for SPF on a sub-domain such as `send`; follow what they show. |
-| TXT or CNAME | `<selector>._domainkey` | copied exactly from the provider | Usually 1 to 3 records. Set Cloudflare's proxy to **DNS only** (grey cloud) for CNAMEs. |
-| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:dmarc@diasporaconnectt.com; adkim=s; aspf=s; pct=100` | Start with `p=none` (report only). |
+---
 
-After 2 weeks with no problems, change DMARC to `p=quarantine`, and later to `p=reject`, so fake
-"Diaspora Connect" emails are blocked.
+## Test it (5 minutes)
 
-## Step 3: connect Supabase
+1. Sign up on the website with your own personal email. A code should arrive within a minute. Type it in.
+2. On the sign-in page, tap **Forgot password?**, enter that email, type in the code, and set a new password.
+3. In Gmail, open one of the emails → ⋮ → **Show original**. It should say **SPF: PASS, DKIM: PASS, DMARC: PASS**.
 
-Supabase → Authentication → Emails → **SMTP Settings** → enable custom SMTP:
-- Sender email: `no-reply@diasporaconnectt.com`, sender name: `Diaspora Connect SACCO`
-- Host, port (465 or 587), username and password: from your sending service
-- Then Authentication → **Rate Limits**: raise "emails sent per hour" to what your provider allows.
+If no email arrives: check spam; check Supabase → **Logs → Auth** for the error; check that the sending
+service shows the domain as verified.
 
-Send yourself a sign-up test, open the email, and use "Show original" (Gmail). It should say
-**SPF: PASS, DKIM: PASS, DMARC: PASS**.
+## Passwords: all handled by Supabase
 
-## Step 4 (optional): receive mail at info@diasporaconnectt.com
+Supabase creates every code, emails it, checks it and saves the new password. The app only shows the
+boxes to type into. Nothing is sent by our own server.
 
-Cloudflare → **Email → Email Routing** (free) forwards `info@…` to a Gmail address. It adds the MX
-records and asks you to include `_spf.mx.cloudflare.net` in your one SPF record (see step 2).
-
-## Check it
-
-- Gmail "Show original" on a test email: SPF, DKIM and DMARC all PASS.
-- Or <https://mxtoolbox.com/SuperTool.aspx>: look up `spf:diasporaconnectt.com`, `dmarc:diasporaconnectt.com`.
+- **Someone forgot their password:** sign-in page → **Forgot password?** → Supabase emails a code → they
+  choose a new password. Staff also enter their two-step code.
+- **You want to send someone a reset:** Supabase → Authentication → Users → open the person →
+  **Send password recovery**. They get the same code email.
+- **New staff logins:** Supabase → Authentication → Users → **Add user** (tick Auto confirm, any long
+  temporary password), then ask them to use **Forgot password?** to set their own.

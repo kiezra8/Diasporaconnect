@@ -62,6 +62,8 @@ create table if not exists public.profiles (
   updated_at  timestamptz not null default now()
 );
 create index if not exists profiles_member_idx on public.profiles (member_id);
+-- No KYC needed for this person. Set only in Supabase (SQL Editor / table editor), never from the app.
+alter table public.profiles add column if not exists kyc_exempt boolean not null default false;
 
 -- Two-step login: true when this session was confirmed with an authenticator-app code.
 -- Staff powers only work in such a session; a staff password alone opens nothing.
@@ -723,6 +725,33 @@ begin
   end loop;
 end $$;
 
+-- Nobody checks or approves their own records (a staff member who is also a SACCO member)
+create or replace function public.is_own_member(p_member_id text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.members m
+                  where m.member_id = p_member_id and m.email is not null and m.email = public.my_email())
+$$;
+
+-- KYC: only the people assigned "Review member KYC" decide, and never on their own KYC
+create or replace function public.guard_kyc_review() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then return new; end if;
+  if new.data->>'status' in ('VERIFIED', 'REJECTED')
+     and (tg_op = 'INSERT' or old.data->>'status' is distinct from new.data->>'status') then
+    if not public.has_task('kyc_review') then
+      raise exception 'Only the people assigned "Review member KYC" can verify or return KYC.';
+    end if;
+    if public.is_own_member(coalesce(new.member_id, new.data->>'memberId')) then
+      raise exception 'You cannot review your own KYC. Another reviewer must do it.';
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_kyc_review on public.kyc_submissions;
+create trigger guard_kyc_review before insert or update on public.kyc_submissions
+  for each row execute function public.guard_kyc_review();
+
 -- Deposits / withdrawals: verify first, then approve, each by the person assigned that task
 create or replace function public.guard_payment_workflow() returns trigger
 language plpgsql security definer set search_path = public as $$
@@ -731,6 +760,9 @@ declare
   now_status text := new.data->>'status';
 begin
   if auth.uid() is null or now_status is not distinct from was then return new; end if;
+  if now_status in ('VERIFIED_AWAITING_ADMIN', 'APPROVED', 'REJECTED') and public.is_own_member(coalesce(new.member_id, new.data->>'memberId')) then
+    raise exception 'You cannot verify or approve your own request. Another officer must do it.';
+  end if;
   if now_status = 'VERIFIED_AWAITING_ADMIN' then
     if not public.has_task('verify_payments') then
       raise exception 'Only the person assigned "Verify member payments" can verify this request.';
@@ -768,6 +800,9 @@ declare
   adm_now boolean := coalesce(public.jbool(new.data->>'adminApproved'), false);
 begin
   if auth.uid() is null then return new; end if;
+  if ((acc_now and not acc_was) or (adm_now and not adm_was)) and public.is_own_member(coalesce(new.member_id, new.data->>'memberId')) then
+    raise exception 'You cannot approve your own share conversion. Another officer must do it.';
+  end if;
   if acc_now and not acc_was and not public.has_task('verify_payments') then
     raise exception 'Only the person assigned "Verify member payments" can check share conversions.';
   end if;
@@ -799,6 +834,9 @@ begin
     new.data := old.data || jsonb_strip_nulls(jsonb_build_object(
       'fullName', new.data->'fullName', 'phone', new.data->'phone', 'photoUrl', new.data->'photoUrl'));
     return new;
+  end if;
+  if ((sec_now and not sec_was) or (adm_now and not adm_was)) and new.user_id = auth.uid() then
+    raise exception 'You cannot approve your own application.';
   end if;
   if sec_now and not sec_was and not (public.has_task('member_registration') or public.has_task('kyc_review')) then
     raise exception 'Only the Secretary (member registration) can vet applications.';
@@ -835,6 +873,8 @@ create trigger guard_period_reopen before update on public.period_closes
 create or replace function public.guard_profile_edit() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
+  -- KYC exemption is decided in Supabase only: nobody can change it through the app
+  if auth.uid() is not null then new.kyc_exempt := old.kyc_exempt; end if;
   if auth.uid() is null or public.is_admin() or coalesce(current_setting('app.bypass_guard', true), '') = 'on' then
     return new;
   end if;

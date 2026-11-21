@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SaccoFarmStore, SaccoMember, KycSubmission } from '../../services/saccoFarmStore';
+import { reviewerLabel } from './KycReviewPanel';
 
 /** Shrinks a photo to a small JPEG data URL so several fit in browser storage. */
 export function compressImage(file: File, maxSide = 900, quality = 0.7): Promise<string> {
@@ -122,7 +123,7 @@ export default function MemberKycPanel({ member, onNotify }: Props) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Verify My Identity (KYC)</h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">SACCO regulations require every member to verify their identity before withdrawals and loans are processed.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Needed before withdrawals and loans.</p>
       </div>
 
       <div className={`rounded-2xl p-4 border-2 ${
@@ -135,11 +136,15 @@ export default function MemberKycPanel({ member, onNotify }: Props) {
           {status === 'VERIFIED' ? '✓ Verified' : status === 'PENDING' ? 'Under review' : status === 'REJECTED' ? '✗ Not approved' : 'Not yet submitted'}
         </p>
         {latest && (
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-            {latest.idType} {latest.idNumber} · submitted {latest.submittedAt}
-            {latest.reviewedBy && ` · reviewed by ${latest.reviewedBy} on ${latest.reviewedAt}`}
+          <p className="text-sm text-slate-700 dark:text-slate-200 mt-1">
+            {status === 'PENDING' && (latest.reviewingBy
+              ? <>Being reviewed by <strong>{reviewerLabel(latest.reviewingBy, latest.reviewingRole)}</strong></>
+              : <>Waiting for the <strong>Secretary</strong> or <strong>Admin</strong></>)}
+            {status === 'VERIFIED' && <>Verified by <strong>{reviewerLabel(latest.reviewedBy, latest.reviewedByRole)}</strong></>}
+            {status === 'REJECTED' && <>Returned by <strong>{reviewerLabel(latest.reviewedBy, latest.reviewedByRole)}</strong></>}
           </p>
         )}
+        {latest && <p className="text-[11px] text-slate-500 mt-0.5">{latest.idType} · {latest.reviewedAt || latest.submittedAt}</p>}
         {status === 'REJECTED' && latest?.rejectionReason && <p className="text-xs text-rose-600 dark:text-rose-400 font-bold mt-1">Reason: {latest.rejectionReason}</p>}
         {status === 'REJECTED' && !resubmit && (
           <button onClick={() => setResubmit(true)} className="mt-3 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">Submit again</button>
