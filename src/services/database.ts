@@ -52,6 +52,12 @@ const BY_KEY = new Map(TABLES.map(t => [t.key, t]));
 const BY_TABLE = new Map(TABLES.map(t => [t.table, t]));
 const SETTING_KEY_BY_NAME = new Map(Object.entries(SETTINGS).map(([k, v]) => [v, k]));
 const WRITER_ROLES = ['ADMIN', 'ACCOUNTANT', 'SECRETARY', 'FARM_WORKER'];
+// The only lists a member's portal uses; members never download the rest
+const MEMBER_KEYS = new Set<string>([
+  STORAGE_KEYS.MEMBERS, STORAGE_KEYS.TRANSACTIONS, STORAGE_KEYS.PAYMENT_REQUESTS,
+  STORAGE_KEYS.SHARE_CONVERSIONS, STORAGE_KEYS.KYC, STORAGE_KEYS.LOANS,
+]);
+const isHidden = (cfg: TableCfg) => role === 'MEMBER' && !MEMBER_KEYS.has(cfg.key);
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 const stable = (v: any): string => {
@@ -94,6 +100,7 @@ const announce = () => {
 let active = false;
 let connected = false;
 let role = '';
+let memberId = '';
 let channel: ReturnType<typeof supabase.channel> | null = null;
 const ready = new Set<string>();              // keys loaded from the server for this user
 const pushTimers: Record<string, ReturnType<typeof setTimeout>> = {};
@@ -131,8 +138,9 @@ async function fetchRows(cfg: TableCfg): Promise<Row[]> {
 }
 
 /** Replace this browser's copy of a list with the server's, keeping local changes not yet saved. */
-async function pullTable(cfg: TableCfg, keepLocalChanges: boolean) {
-  const remote = await fetchRows(cfg);
+async function pullTable(cfg: TableCfg, keepLocalChanges: boolean, prefetched?: Row[]) {
+  if (isHidden(cfg)) return;
+  const remote = prefetched ?? await fetchRows(cfg);
   const local: Row[] = Array.isArray(readLocal(cfg.key)) ? readLocal(cfg.key) : [];
   const known = meta.rows[cfg.key] || {};
   const nextMeta: Record<string, string> = {};
@@ -316,13 +324,32 @@ async function onRemoteChange(payload: any) {
 
 function subscribe() {
   if (channel) supabase.removeChannel(channel);
-  channel = supabase
-    .channel('dc-database')
-    .on('postgres_changes', { event: '*', schema: 'public' }, payload => { onRemoteChange(payload).catch(() => {}); })
-    .subscribe(status => {
-      if (status === 'SUBSCRIBED') connected = true;
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') connected = false;
-    });
+  let ch = supabase.channel(`dc-database-${memberId || 'staff'}`);
+  if (role === 'MEMBER' && memberId) {
+    // a member listens only to changes to their own records (keeps the system fast with thousands online)
+    for (const cfg of TABLES) {
+      if (isHidden(cfg) || cfg.appendOnly) continue;
+      ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: cfg.table, filter: `member_id=eq.${memberId}` },
+        payload => { onRemoteChange(payload).catch(() => {}); });
+    }
+    ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, payload => { onRemoteChange(payload).catch(() => {}); });
+  } else {
+    ch = ch.on('postgres_changes', { event: '*', schema: 'public' }, payload => { onRemoteChange(payload).catch(() => {}); });
+  }
+  channel = ch.subscribe(status => {
+    if (status === 'SUBSCRIBED') connected = true;
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') connected = false;
+  });
+}
+
+// Runs at most `limit` requests at a time
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) { const i = next++; out[i] = await fn(items[i]); }
+  }));
+  return out;
 }
 
 // ── start / stop ────────────────────────────────────────────────────────────
@@ -337,10 +364,26 @@ async function loadEverything(uid: string) {
     if (!foundSettings.has(key) && role === 'ADMIN' && readLocal(key) !== undefined) await pushSetting(key);
   }
 
-  for (const cfg of TABLES) {
+  // lists this user never sees (members): nothing to download
+  for (const cfg of TABLES.filter(isHidden)) {
+    ready.add(cfg.key);
+    meta.rows[cfg.key] ||= {};
+    if (!cfg.appendOnly || !sameUser) writeLocal(cfg.key, []); // nothing from a previous user stays on this device
+    else await schedulePush(cfg.key); // a member's own audit entries are still sent
+  }
+  const visible = TABLES.filter(cfg => !isHidden(cfg));
+
+  // returning device: send what was changed here while away, then download everything in parallel
+  for (const cfg of visible) {
+    if (sameUser && cfg.key in meta.rows) { ready.add(cfg.key); await schedulePush(cfg.key); }
+  }
+  const remotes = await mapLimit(visible, 6, cfg => fetchRows(cfg));
+
+  for (let vi = 0; vi < visible.length; vi++) {
+    const cfg = visible[vi];
     const firstTime = !sameUser || !(cfg.key in meta.rows);
     if (firstTime) {
-      const remote = await fetchRows(cfg);
+      const remote = remotes[vi];
       const local: Row[] = Array.isArray(readLocal(cfg.key)) ? readLocal(cfg.key) : [];
       if (!remote.length && role === 'ADMIN' && local.length) {
         // empty database: the Admin's records become the starting data
@@ -357,9 +400,7 @@ async function loadEverything(uid: string) {
       if (stable(remote) !== stable(local)) { writeLocal(cfg.key, remote); announce(); }
       saveMeta();
     } else {
-      ready.add(cfg.key);
-      await schedulePush(cfg.key);       // send what was changed here while away
-      await pullTable(cfg, true);
+      await pullTable(cfg, true, remotes[vi]);
     }
   }
   saveMeta();
@@ -385,6 +426,11 @@ export const database = {
     const { data: profile, error: profileError } = await supabase.from('profiles').select('role, member_id, active, full_name, email').eq('id', uid).maybeSingle();
     if (!profileError) {
       if (!profile || !profile.active || (profile.role === 'MEMBER' && !profile.member_id)) { clearSession(); return; }
+      if (profile.role !== 'MEMBER') {
+        // staff sessions must have passed two-step login
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.currentLevel !== 'aal2') { clearSession(); return; }
+      }
       if (profile.role !== s.role || (profile.member_id || undefined) !== (s.memberNumber || undefined)) {
         setSession({ ...s, role: profile.role, memberNumber: profile.member_id || undefined });
         window.location.reload();
@@ -394,6 +440,7 @@ export const database = {
 
     active = true;
     role = s.role;
+    memberId = role === 'MEMBER' ? (s.memberNumber || '') : '';
     ready.clear();
     loadMeta();
     try {
@@ -408,7 +455,15 @@ export const database = {
     database.flushSms();
     if (!retryTimer) {
       retryTimer = setInterval(() => { if (active) flushAll(); }, 30000);
-      window.addEventListener('online', () => { if (active) { flushAll(); TABLES.forEach(t => pullTable(t, true).catch(() => {})); } });
+      // back online: wait a random few seconds so thousands of devices don't reload at the same moment
+      window.addEventListener('online', () => {
+        if (!active) return;
+        setTimeout(() => {
+          if (!active) return;
+          flushAll();
+          mapLimit(TABLES.filter(t => !isHidden(t)), 4, t => pullTable(t, true).catch(() => {}));
+        }, Math.random() * 15000);
+      });
       window.addEventListener('dc_sms_queued', (e: any) => { if (active) sendSms(e.detail); });
     }
   },

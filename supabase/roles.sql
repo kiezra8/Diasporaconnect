@@ -45,6 +45,15 @@ update public.profiles set role = 'MEMBER' where email = lower('person@example.c
 -- to stop a login altogether, also delete it in Authentication → Users.
 
 
+-- ── 3b. Two-step login ───────────────────────────────────────────────────────
+--  Every staff role (Admin, Accountant, Secretary, Board, Farm) must use two-step login.
+--  The first time they sign in, the app shows a QR code to scan with an authenticator app.
+--  Lost phone: Authentication → Users → open the person → delete their MFA factor.
+--  They set it up again at their next sign-in.
+--  The Board can have as many members as you like: give each one their own login and the
+--  BOARD_MEMBER role. All of them can read everything and none of them can change records.
+
+
 -- ── 4. See who has which role ────────────────────────────────────────────────
 select seq as no, email, full_name, role, member_id, active, created_at
   from public.profiles

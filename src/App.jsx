@@ -16,13 +16,13 @@ import SignIn from './pages/SignIn';
 import Images from './pages/Images';
 import Planning from './pages/Planning';
 
-// Enterprise Category Portals & Systems
-import MemberPortal from './pages/portals/MemberPortal';
-import AdminPortal from './pages/portals/AdminPortal';
-import BoardPortal from './pages/portals/BoardPortal';
-import SecretaryPortal from './pages/portals/SecretaryPortal';
-import AccountantPortal from './pages/portals/AccountantPortal';
-import FarmPortal from './pages/portals/FarmPortal';
+// Enterprise Category Portals & Systems (each loads only when opened, so the website stays light)
+const MemberPortal = React.lazy(() => import('./pages/portals/MemberPortal'));
+const AdminPortal = React.lazy(() => import('./pages/portals/AdminPortal'));
+const BoardPortal = React.lazy(() => import('./pages/portals/BoardPortal'));
+const SecretaryPortal = React.lazy(() => import('./pages/portals/SecretaryPortal'));
+const AccountantPortal = React.lazy(() => import('./pages/portals/AccountantPortal'));
+const FarmPortal = React.lazy(() => import('./pages/portals/FarmPortal'));
 import AccessDenied from './components/AccessDenied';
 import { getSession } from './services/api';
 
@@ -72,6 +72,7 @@ export default function App() {
       {/* Render Public Navbar ONLY on marketing/public pages */}
       {!isPortalRoute && <Navbar />}
 
+      <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Loading…</div>}>
       <Routes>
         {/* Public Website Routes */}
         <Route path="/" element={<Home />} />
@@ -115,6 +116,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </React.Suspense>
 
       {/* Universal Bottom Navigation Bar for the Whole Website */}
       <GlobalBottomNav />

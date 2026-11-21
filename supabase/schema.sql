@@ -63,10 +63,17 @@ create table if not exists public.profiles (
 );
 create index if not exists profiles_member_idx on public.profiles (member_id);
 
+-- Two-step login: true when this session was confirmed with an authenticator-app code.
+-- Staff powers only work in such a session; a staff password alone opens nothing.
+create or replace function public.mfa_ok() returns boolean
+language sql stable as $$
+  select coalesce(auth.jwt()->>'aal', '') = 'aal2'
+$$;
+
 -- Helpers used by the access rules (security definer so they can read profiles)
 create or replace function public.my_role() returns public.app_role
 language sql stable security definer set search_path = public as $$
-  select role from public.profiles where id = auth.uid() and active
+  select role from public.profiles where id = auth.uid() and active and (role = 'MEMBER' or public.mfa_ok())
 $$;
 
 create or replace function public.my_member_id() returns text
@@ -76,18 +83,18 @@ $$;
 
 create or replace function public.is_staff() returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((select role <> 'MEMBER' from public.profiles where id = auth.uid() and active), false)
+  select coalesce((select role <> 'MEMBER' from public.profiles where id = auth.uid() and active), false) and public.mfa_ok()
 $$;
 
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((select role = 'ADMIN' from public.profiles where id = auth.uid() and active), false)
+  select coalesce((select role = 'ADMIN' from public.profiles where id = auth.uid() and active), false) and public.mfa_ok()
 $$;
 
 -- Staff who may change SACCO / farm records (the Board is read-only)
 create or replace function public.can_write() returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((select role in ('ADMIN', 'ACCOUNTANT', 'SECRETARY', 'FARM_WORKER') from public.profiles where id = auth.uid() and active), false)
+  select coalesce((select role in ('ADMIN', 'ACCOUNTANT', 'SECRETARY', 'FARM_WORKER') from public.profiles where id = auth.uid() and active), false) and public.mfa_ok()
 $$;
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -485,7 +492,7 @@ language plpgsql stable security definer set search_path = public as $$
 declare me record;
 begin
   select role, lower(email) as email into me from public.profiles where id = auth.uid() and active;
-  if not found or me.role = 'MEMBER' then return false; end if;
+  if not found or me.role = 'MEMBER' or not public.mfa_ok() then return false; end if;
   if me.role = 'ADMIN' then return true; end if;
   if exists (select 1 from public.task_assignments where id = p_task) then
     return exists (
@@ -529,6 +536,35 @@ $$;
 -- ════════════════════════════════════════════════════════════════════════════
 --  5. TRIGGERS
 -- ════════════════════════════════════════════════════════════════════════════
+
+-- member_id is a normal column kept up to date by a trigger (not a generated column), because
+-- Realtime only sees normal columns — members' portals listen only for changes to their own member_id.
+create or replace function public.set_member_id() returns trigger
+language plpgsql as $$
+begin
+  if tg_table_name = 'members' then
+    new.member_id := coalesce(new.data->>'memberId', new.id);
+  elsif tg_table_name = 'transactions' then
+    new.member_id := coalesce(
+      nullif(new.data->>'memberId', ''),
+      substring((coalesce(new.data->>'description', '') || ' ' || coalesce(new.data->>'reference', '') || ' ' || coalesce(new.data->>'category', '')) from 'DC-[0-9]+'));
+  else
+    new.member_id := new.data->>'memberId';
+  end if;
+  return new;
+end $$;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['members','kyc_submissions','payment_requests','share_conversions','loans','transactions','investors'] loop
+    if exists (select 1 from pg_attribute where attrelid = format('public.%I', t)::regclass and attname = 'member_id' and attgenerated = 's') then
+      execute format('alter table public.%I alter column member_id drop expression', t);
+    end if;
+    execute format('drop trigger if exists set_member_id on public.%I', t);
+    execute format('create trigger set_member_id before insert or update on public.%I for each row execute function public.set_member_id()', t);
+  end loop;
+end $$;
 
 -- Every save: server time and the real user are stamped; text can never carry HTML or
 -- script tags (so nothing typed in can run in a report); oversized records are refused.

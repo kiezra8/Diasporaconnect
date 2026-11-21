@@ -6,7 +6,7 @@ import { applyTheme, getTheme } from '../../services/theme';
 import PortalBottomNav from '../../components/PortalBottomNav';
 import AccountingWorkspace from '../../components/accounting/AccountingWorkspace';
 import MyTasksCard from '../../components/settings/MyTasksCard';
-import { SaccoFarmStore, CattleAnimal, MilkLogRecord, CowHealthRecord, FeedInventoryItem, buildTrialBalance } from '../../services/saccoFarmStore';
+import { SaccoFarmStore, CattleAnimal, MilkLogRecord, CowHealthRecord, FeedInventoryItem, buildTrialBalance, getMemberPhoto } from '../../services/saccoFarmStore';
 import {
   Briefcase,
   Users,
@@ -115,17 +115,23 @@ export default function BoardPortal() {
             </button>
           </div>
 
-          {/* Board Chairperson Profile Widget */}
+          {/* Signed-in Board member */}
           <div className={`p-3 rounded-2xl border space-y-2 ${isDark ? 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
             <div className="flex items-center gap-3">
-              <img
-                src="/images/nyanzi_edrine.jpg"
-                alt="Mr. Nyanzi Edrine"
-                className="w-11 h-11 rounded-xl object-cover border border-emerald-500/40 shadow-md shrink-0"
-              />
+              {getMemberPhoto(session?.fullName || '') ? (
+                <img
+                  src={getMemberPhoto(session?.fullName || '')}
+                  alt={session?.fullName || 'Board member'}
+                  className="w-11 h-11 rounded-xl object-cover border border-emerald-500/40 shadow-md shrink-0"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-xl bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 font-extrabold text-sm flex items-center justify-center border border-emerald-500/40 shrink-0">
+                  {(session?.fullName || 'B').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
-                <p className={`text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>Mr. Nyanzi Edrine</p>
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">Board Chairperson</p>
+                <p className={`text-xs font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{session?.fullName || 'Board member'}</p>
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">Board Member</p>
                 <span className="inline-block px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold">
                   Governance Oversight
                 </span>
@@ -705,27 +711,7 @@ export default function BoardPortal() {
           {activeTab === 'governance' && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white">Board Resolutions &amp; Statutory Records</h3>
-              <div className="space-y-3">
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <div>
-                    <h5 className="font-bold text-slate-900 dark:text-white text-xs">Resolution #2026-14: Q3 Surplus Dividend Authorization</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Approved by Chairperson Mr. Nyanzi Edrine &middot; August 2026</p>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
-                    EXECUTED
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <div>
-                    <h5 className="font-bold text-slate-900 dark:text-white text-xs">Resolution #2026-15: Farmland Acreage Capitalization (Nakasongola)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Approved by Full Board Quorum &middot; September 2026</p>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-400 text-[10px] font-bold">
-                    IN PROGRESS
-                  </span>
-                </div>
-              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">No board resolutions have been recorded yet.</p>
             </div>
           )}
         </main>

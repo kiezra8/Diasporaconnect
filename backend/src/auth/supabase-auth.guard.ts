@@ -29,6 +29,13 @@ export class SupabaseAuthGuard implements CanActivate {
     const { data: profile } = await this.supabase.db.from('profiles').select('email, role, member_id, full_name, active').eq('id', data.user.id).maybeSingle();
     if (!profile || !profile.active) throw new ForbiddenException('This account is not active.');
 
+    // Staff must have completed two-step login in this session (token already verified by Supabase above)
+    if (profile.role !== 'MEMBER') {
+      let aal = '';
+      try { aal = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')).aal || ''; } catch { aal = ''; }
+      if (aal !== 'aal2') throw new UnauthorizedException('Two-step login is required for staff. Please sign in again.');
+    }
+
     const user: AuthUser = { id: data.user.id, email: profile.email, role: profile.role, memberId: profile.member_id, fullName: profile.full_name || profile.email };
     req.user = user;
 

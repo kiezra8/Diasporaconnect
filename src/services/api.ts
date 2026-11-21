@@ -50,7 +50,7 @@ const REDIRECT_BY_ROLE: Record<string, string> = {
 
 /** Sign-in outcomes the sign-in page shows its own screen for. */
 export class AuthFlowError extends Error {
-  constructor(public code: 'EMAIL_NOT_CONFIRMED' | 'APPLICATION_PENDING' | 'APPLICATION_REJECTED' | 'NO_APPLICATION', message: string, public extra: any = {}) {
+  constructor(public code: 'EMAIL_NOT_CONFIRMED' | 'APPLICATION_PENDING' | 'APPLICATION_REJECTED' | 'NO_APPLICATION' | 'MFA_REQUIRED' | 'MFA_ENROLL', message: string, public extra: any = {}) {
     super(message);
   }
 }
@@ -108,6 +108,21 @@ export const api = {
       throw new Error('This account has been deactivated. Contact the SACCO office.');
     }
 
+    // Staff: two-step login (authenticator app) is required before the portal opens
+    if (profile.role !== 'MEMBER') {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.currentLevel !== 'aal2') {
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        const verified = (factors?.totp || [])[0];
+        if (verified) {
+          throw new AuthFlowError('MFA_REQUIRED', 'Enter the 6-digit code from your authenticator app.', { factorId: verified.id, userId });
+        }
+        throw new AuthFlowError('MFA_ENROLL', 'Staff accounts need two-step login. Set it up once with an authenticator app.', { userId, email: profile.email });
+      }
+      const { data: fresh } = await supabase.auth.getSession();
+      if (fresh.session?.access_token) token = fresh.session.access_token;
+    }
+
     if (profile.role === 'MEMBER' && !profile.member_id) {
       const { data: app } = await supabase.from('member_applications').select('id,data,status')
         .eq('user_id', userId).order('seq', { ascending: false }).limit(1).maybeSingle();
@@ -157,6 +172,33 @@ export const api = {
     const { data, error } = await supabase.rpc('submit_membership_application', { p_user_id: userId, p_application: app });
     if (error) throw new Error(error.message);
     return data as string;
+  },
+
+  /** Staff, first sign-in: create an authenticator-app factor and return its QR code. */
+  async startMfaEnrollment(): Promise<{ factorId: string; qrCode: string; secret: string }> {
+    // remove half-finished set-ups from earlier attempts
+    const { data: list } = await supabase.auth.mfa.listFactors();
+    for (const f of list?.all || []) {
+      if (f.factor_type === 'totp' && f.status !== 'verified') await supabase.auth.mfa.unenroll({ factorId: f.id });
+    }
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: `Diaspora Connect ${new Date().toISOString().slice(0, 16)}`,
+      issuer: 'Diaspora Connect SACCO',
+    });
+    if (error || !data) throw new Error(error?.message || 'Could not start two-step login set-up.');
+    return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
+  },
+
+  /** Staff: check the 6-digit code (set-up or every sign-in), then open the portal. */
+  async verifyMfa(factorId: string, code: string): Promise<{ session: UserSession; redirectTo: string }> {
+    const clean = (code || '').replace(/\D/g, '');
+    if (clean.length !== 6) throw new Error('Enter the 6-digit code from your authenticator app.');
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: clean });
+    if (error) throw new Error(/invalid|expired/i.test(error.message) ? 'That code is wrong or has expired. Try the newest code.' : error.message);
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw new Error('Your sign-in expired. Please sign in again.');
+    return api.completeSignIn(data.session.user.id, data.session.access_token);
   },
 
   async confirmEmail(email: string, code: string) {

@@ -47,6 +47,11 @@ export default function SignIn() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [pendingUserId, setPendingUserId] = useState('');
+  // two-step login (staff)
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [mfaQr, setMfaQr] = useState('');
+  const [mfaSecret, setMfaSecret] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -96,6 +101,17 @@ export default function SignIn() {
         if (err.code === 'EMAIL_NOT_CONFIRMED') { setMode('verify'); setErrorMessage(err.message); }
         else if (err.code === 'APPLICATION_PENDING') { setActiveRegApp(err.extra.application); setMode('pending_approval'); }
         else if (err.code === 'APPLICATION_REJECTED') setErrorMessage(err.message);
+        else if (err.code === 'MFA_REQUIRED') { setMfaFactorId(err.extra.factorId); setMfaCode(''); setMode('mfa_verify'); }
+        else if (err.code === 'MFA_ENROLL') {
+          try {
+            const f = await api.startMfaEnrollment();
+            setMfaFactorId(f.factorId); setMfaQr(f.qrCode); setMfaSecret(f.secret); setMfaCode('');
+            setMode('mfa_enroll');
+          } catch (e2) {
+            await supabase.auth.signOut();
+            setErrorMessage(e2?.message || 'Could not start two-step login set-up.');
+          }
+        }
         else if (err.code === 'NO_APPLICATION') {
           setPendingUserId(err.extra.userId);
           setEmail(err.extra.email || email);
@@ -180,6 +196,29 @@ export default function SignIn() {
     } finally {
       setBusy(false);
     }
+  };
+
+  // ── Two-step login (staff) ────────────────────────────────────────────────
+  const handleMfaSubmit = async (e) => {
+    e.preventDefault();
+    resetMessages();
+    setBusy(true);
+    try {
+      const res = await api.verifyMfa(mfaFactorId, mfaCode);
+      setMfaQr(''); setMfaSecret(''); setMfaCode(''); setPassword('');
+      navigate(res.redirectTo);
+    } catch (err) {
+      setErrorMessage(err?.message || 'Could not check the code.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelMfa = async () => {
+    await supabase.auth.signOut();
+    setMfaFactorId(''); setMfaQr(''); setMfaSecret(''); setMfaCode('');
+    setMode('signin');
+    resetMessages();
   };
 
   // ── Email confirmation ────────────────────────────────────────────────────
@@ -384,6 +423,61 @@ export default function SignIn() {
               Already have an account?{' '}
               <button type="button" onClick={async () => { if (mode === 'complete') await supabase.auth.signOut(); setMode('signin'); resetMessages(); }}
                 className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">Sign In</button>
+            </div>
+          </form>
+        )}
+
+        {/* ── TWO-STEP LOGIN: code ── */}
+        {mode === 'mfa_verify' && (
+          <form onSubmit={handleMfaSubmit} className="space-y-4">
+            <div className="text-center space-y-1">
+              <ShieldCheck className="w-8 h-8 mx-auto text-emerald-600" />
+              <h3 className="text-sm font-extrabold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>Two-step login</h3>
+              <p className="text-xs text-slate-500">Open your authenticator app and enter the 6-digit code for Diaspora Connect.</p>
+            </div>
+            <input type="text" inputMode="numeric" maxLength={6} required autoFocus autoComplete="one-time-code" placeholder="000000"
+              value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/[^0-9]/g, ''))}
+              className="w-full text-center font-mono text-xl font-bold tracking-[6px] py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              style={{ backgroundColor: isDark ? '#020617' : '#f8fafc', borderColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#34d399' : '#059669' }} />
+            <button type="submit" disabled={busy} className={btnCls}>{busy ? 'Checking…' : 'Continue'}</button>
+            <div className="text-center text-xs text-slate-500">
+              Lost your phone? Ask the Admin to reset your two-step login.{' '}
+              <button type="button" onClick={cancelMfa} className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">Cancel</button>
+            </div>
+          </form>
+        )}
+
+        {/* ── TWO-STEP LOGIN: first-time set-up ── */}
+        {mode === 'mfa_enroll' && (
+          <form onSubmit={handleMfaSubmit} className="space-y-4">
+            <div className="text-center space-y-1">
+              <ShieldCheck className="w-8 h-8 mx-auto text-emerald-600" />
+              <h3 className="text-sm font-extrabold" style={{ color: isDark ? '#ffffff' : '#0f172a' }}>Set up two-step login</h3>
+              <p className="text-xs text-slate-500">Staff accounts need a code from your phone at every sign-in.</p>
+            </div>
+            <ol className="text-xs text-slate-500 space-y-1 list-decimal pl-4">
+              <li>Install an authenticator app (Google Authenticator, Microsoft Authenticator or Authy).</li>
+              <li>In the app, add an account and scan this code.</li>
+              <li>Enter the 6-digit code the app shows.</li>
+            </ol>
+            {mfaQr && (
+              <div className="flex justify-center">
+                <img src={mfaQr} alt="Two-step login QR code" className="w-44 h-44 bg-white p-2 rounded-xl border border-slate-200" />
+              </div>
+            )}
+            {mfaSecret && (
+              <p className="text-[11px] text-center text-slate-500">
+                Can't scan? Type this key in the app:<br />
+                <span className="font-mono font-bold break-all select-all" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>{mfaSecret}</span>
+              </p>
+            )}
+            <input type="text" inputMode="numeric" maxLength={6} required autoFocus autoComplete="one-time-code" placeholder="000000"
+              value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/[^0-9]/g, ''))}
+              className="w-full text-center font-mono text-xl font-bold tracking-[6px] py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              style={{ backgroundColor: isDark ? '#020617' : '#f8fafc', borderColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#34d399' : '#059669' }} />
+            <button type="submit" disabled={busy} className={btnCls}>{busy ? 'Checking…' : 'Turn on two-step login'}</button>
+            <div className="text-center text-xs">
+              <button type="button" onClick={cancelMfa} className="font-bold text-slate-500 hover:underline">Cancel</button>
             </div>
           </form>
         )}

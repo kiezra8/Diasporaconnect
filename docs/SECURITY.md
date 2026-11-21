@@ -49,8 +49,14 @@ This is the most likely real-world attack.
 | Keep using a login after the person leaves | Set them inactive or remove them in Settings → Task Assignments. Their access ends straight away. |
 | Read data left on a shared computer | On sign-out, the copy of SACCO records kept in the browser is erased. Only changes not yet saved are kept, until they are sent. |
 
-**Remaining risk:** someone who steals the *Admin* password has Admin powers. Protect that account
-best: use a long unique password and two-step login on your email (and, recommended, see "Next step").
+**Two-step login is required for every staff account** (Admin, Accountant, Secretary, Board, Farm).
+After the password, staff enter a 6-digit code from an authenticator app on their phone. The first time,
+the sign-in page walks them through setting it up with a QR code. This is enforced in three places:
+the sign-in page, the database (a staff session without the code sees and changes nothing), and the API
+server. **A stolen staff password alone opens nothing.** Members sign in with a password only.
+
+**Remaining risk:** someone who has both the Admin's password and their phone has Admin powers. Keep
+the phone locked, and turn on two-step login for your email too.
 
 ## 3. A member (or anyone who signs up) reaching other people's data or money
 
@@ -137,18 +143,24 @@ Elsewhere:
 - [ ] Give each staff member their own login. Never share one login.
 - [ ] Check the audit trail (Settings → Audit Trail) every week.
 
-## Next step I recommend
+## Two-step login: what to do
 
-**Two-step login (MFA) for staff.** Supabase supports authenticator-app codes. With it, a stolen staff
-password alone is not enough to sign in, and the database can require two-step login for every money
-action. It needs a new screen in the app to set it up, so I haven't switched it on yet. Say the word and
-I'll build it.
+- In Supabase → Authentication → **Multi-Factor**, make sure **TOTP (authenticator app)** is enabled.
+- **A staff member lost their phone:** Supabase → Authentication → Users → open that person → delete their
+  MFA factor. At their next sign-in they set it up again with the QR code.
+- **You (the Admin) lost your phone:** the same, done by you in the Supabase dashboard. That is why your
+  Supabase account itself must have its own two-step login and a safe recovery method.
+
+## Email (SPF, DKIM, DMARC)
+
+None of the three is set up for `diasporaconnectt.com` yet, so anyone can send email pretending to be
+the SACCO, and sign-up emails would land in spam. The steps are in [EMAIL.md](EMAIL.md).
 
 ---
 
 ## Checks
 
-- **Database access rules:** 124 automated checks, run in a local copy of Postgres. They cover each attack in sections 1 to 5 with a stranger, a member, an applicant, and accountant, secretary, farm worker, Board and Admin logins. They pass on a fresh install, on a second run of the file, and on an upgrade over the previous version. They don't replace a test against your real Supabase project.
+- **Database access rules:** 144 automated checks, run in a local copy of Postgres. They cover each attack in sections 1 to 5 with a stranger, a member, an applicant, and accountant, secretary, farm worker, two Board members and Admin logins, plus staff sessions without two-step login. They pass on a fresh install, on a second run of the file, and on an upgrade over the previous version. They don't replace a test against your real Supabase project.
 - **API:** started locally; checked that requests without a valid sign-in are refused, security headers are sent, and rate limits apply.
 - **Both apps** build, and `npm audit` reports 0 known vulnerabilities in what runs in production.
 - **Web server config:** I couldn't check the Caddy file on this computer, so `deploy.sh` now checks it on the server before restarting anything.
