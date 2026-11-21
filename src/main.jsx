@@ -15,6 +15,8 @@ initTheme();
 // Who is acting (for the audit trail) + open the shared Supabase database when signed in
 const applySession = () => {
   const s = getSession();
+  // old demo sign-ins (not from Supabase) are no longer valid
+  if (s && !s.backend) { clearSession(); return; }
   SaccoFarmStore.setActor(s ? { name: s.fullName, role: s.role, email: s.email } : { name: 'Visitor', role: 'PUBLIC' });
   if (s?.backend) database.start(); else database.stop();
 };

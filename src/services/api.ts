@@ -4,8 +4,7 @@
 import { supabase, accessToken } from './supabase';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.diasporaconnectt.com';
-// Sign-in is Supabase Auth. The built-in demo accounts work only when VITE_ALLOW_DEMO_LOGIN=true (for testing).
-const ALLOW_DEMO_LOGIN = import.meta.env.VITE_ALLOW_DEMO_LOGIN === 'true';
+// Sign-in is Supabase Auth.
 
 export interface UserSession {
   id: string;
@@ -39,46 +38,6 @@ export function clearSession() {
   supabase.auth.signOut().catch(() => {});
   window.dispatchEvent(new Event('dc_auth_change'));
 }
-
-// Authorized System Accounts & Credentials
-export const VALID_CREDENTIALS: Record<string, { role: UserSession['role']; fullName: string; memberNumber?: string; passwords: string[] }> = {
-  'admin@diasporaconnectt.com': {
-    role: 'ADMIN',
-    fullName: 'Ezra Kisakye (System Administrator)',
-    passwords: ['Admin@2026', '88888888'],
-  },
-  'israelezrakisakye@gmail.com': {
-    role: 'ADMIN',
-    fullName: 'Ezra Kisakye (System Administrator)',
-    passwords: ['Admin@2026', '88888888'],
-  },
-  'secretary@diasporaconnectt.com': {
-    role: 'SECRETARY',
-    fullName: 'Mr. Halera John Bahati (Secretary)',
-    passwords: ['Secretary@2026', '88888888'],
-  },
-  'accountant@diasporaconnectt.com': {
-    role: 'ACCOUNTANT',
-    fullName: 'Mrs. Miriam Halera (Chief Accountant)',
-    passwords: ['Accountant@2026', '88888888'],
-  },
-  'board@diasporaconnectt.com': {
-    role: 'BOARD_MEMBER',
-    fullName: 'Mr. Nyanzi Edrine (Board Chair)',
-    passwords: ['Board@2026', '88888888'],
-  },
-  'farm@diasporaconnectt.com': {
-    role: 'FARM_WORKER',
-    fullName: 'Mugisha Joseph (Farm Manager)',
-    passwords: ['Farm@2026', '88888888'],
-  },
-  'member@diasporaconnectt.com': {
-    role: 'MEMBER',
-    fullName: 'David Mukasa (UK Chapter Member)',
-    memberNumber: 'DC-MBR-00104',
-    passwords: ['Member@2026', '88888888'],
-  },
-};
 
 const REDIRECT_BY_ROLE: Record<string, string> = {
   ADMIN: '/admin',
@@ -122,21 +81,6 @@ export const api = {
     }
     if (!cleanPass) {
       throw new Error('Please enter your password.');
-    }
-
-    // Built-in demo accounts (only when VITE_ALLOW_DEMO_LOGIN=true — never in production)
-    const demo = VALID_CREDENTIALS[cleanEmail];
-    if (ALLOW_DEMO_LOGIN && demo && demo.passwords.includes(cleanPass)) {
-      const userSession: UserSession = {
-        id: `usr-${Date.now()}`,
-        email: cleanEmail,
-        fullName: demo.fullName,
-        role: demo.role,
-        memberNumber: demo.memberNumber,
-        token: `dc-auth-token-${Date.now()}`,
-      };
-      setSession(userSession);
-      return { session: userSession, redirectTo: REDIRECT_BY_ROLE[demo.role] || '/member' };
     }
 
     // Supabase Auth

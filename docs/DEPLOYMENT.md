@@ -44,9 +44,10 @@
    ```sql
    update public.profiles set role = 'ADMIN' where email = 'admin@diasporaconnectt.com';
    ```
-5. **Copy your current records to the database:** sign in to the portal as that Admin **in the browser that
-   holds your current data**. While the database is empty, the Admin's records are copied in automatically on
-   first sign-in. This only happens once.
+5. **The app starts empty.** There is no sample data. Add members (Members → Add member, or approved sign-ups),
+   cattle, milk records and so on in the portal. If sample records reached the database earlier, run
+   [`supabase/clear-data.sql`](../supabase/clear-data.sql) once in the SQL Editor; it empties every record table
+   and keeps the logins.
 6. **Other staff:** in the portal go to **Settings → Task Assignments → Add staff** and add each person with
    their role. Then create their login under **Authentication → Users → Add user** (auto confirm). The role is
    applied automatically. Assign their tasks in the same Settings page.
@@ -55,9 +56,13 @@
 8. **New members** use **Sign Up** on the website. They cannot finish without completing KYC (ID, address,
    occupation, source of funds, next of kin, ID photo and a selfie holding the ID). The database itself refuses an
    application with missing KYC. The application goes to the Secretary and the Admin. Once both approve, the
-   member gets the next member number (DC-008, DC-009 …), their KYC is recorded as verified, and they can sign in.
+   member gets the next member number (DC-001, DC-002 …), their KYC is recorded as verified, and they can sign in.
 9. **Backups:** **Database → Backups**: confirm daily backups. Point-in-time recovery is recommended for
    financial data.
+10. **SSL enforcement:** under **Database → Settings → SSL Configuration**, turn on **Enforce SSL on incoming
+    connections**. The app is not affected: the website and the API only connect to Supabase over HTTPS, and
+    refuse to start with a non-HTTPS Supabase address. Any tool you connect directly to Postgres (for example
+    pgAdmin or DBeaver) must then use `sslmode=require`.
 
 ### Useful SQL
 
@@ -145,7 +150,7 @@ never trusted on their own: the API always re-checks the status with the provide
 
 - [ ] `supabase/schema.sql` has been run, and the first Admin's role is set.
 - [ ] **Confirm email** is on, and the signup template includes `{{ .Token }}`.
-- [ ] `VITE_ALLOW_DEMO_LOGIN=false` in `.env.production`, so only Supabase accounts can sign in.
+- [ ] **Enforce SSL** is on in Supabase (§1.10).
 - [ ] Every staff member has their own login and a role in the staff directory.
 - [ ] Supabase backups are on.
 - [ ] MTN, Airtel and SMS have been tested in sandbox, and the callback URLs are registered.

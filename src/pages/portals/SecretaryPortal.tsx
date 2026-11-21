@@ -92,39 +92,17 @@ export default function SecretaryPortal() {
   const [nextOfKin, setNextOfKin] = useState('');
 
   // Financial request statuses (Sec. can see status, NOT amounts or balances)
-  const [requestStatuses] = useState([
-    {
-      reqId: 'REQ-DEP-9021',
-      member: 'David Mukasa (DC-006)',
-      type: 'Deposit Notification',
-      timestamp: '2026-11-12 08:45',
-      status: 'VERIFIED_BY_ACCOUNTANT',
-      workflowStep: 'Awaiting Final Admin Authorization',
-    },
-    {
-      reqId: 'REQ-WTH-8819',
-      member: 'Amara Okello (DC-007)',
-      type: 'Withdrawal Notification',
-      timestamp: '2026-11-12 09:15',
-      status: 'PENDING_ACCOUNTANT_REVIEW',
-      workflowStep: 'In Accountant Compliance Queue',
-    },
-    {
-      reqId: 'REQ-LN-7742',
-      member: 'Mr. Nyanzi Edrine (DC-001)',
-      type: 'Loan Application',
-      timestamp: '2026-11-11 14:30',
-      status: 'APPROVED',
-      workflowStep: 'Disbursed & Active',
-    },
-  ]);
+  const requestStatuses = SaccoFarmStore.getPaymentRequests().map(r => ({
+    reqId: r.id,
+    member: `${r.memberName} (${r.memberId})`,
+    type: r.kind === 'DEPOSIT' ? 'Deposit Notification' : 'Withdrawal Notification',
+    timestamp: r.submittedAt,
+    status: r.status === 'VERIFIED_AWAITING_ADMIN' ? 'VERIFIED_BY_ACCOUNTANT' : r.status === 'PENDING_VERIFICATION' ? 'PENDING_ACCOUNTANT_REVIEW' : r.status,
+    workflowStep: r.status === 'APPROVED' ? 'Approved & Posted' : r.status === 'REJECTED' ? 'Rejected' : r.status === 'VERIFIED_AWAITING_ADMIN' ? 'Awaiting Final Admin Authorization' : 'In Accountant Compliance Queue',
+  }));
 
   // Operational notices
-  const [notices, setNotices] = useState([
-    { id: 'NT-001', title: 'General Meeting — Q4 2026', date: '2026-11-20', body: 'Quarterly general member meeting scheduled for November 20th at 3:00 PM EAT via Zoom. Agenda: Farm performance, loan book update, elections.', priority: 'HIGH' },
-    { id: 'NT-002', title: 'KYC Document Reminder', date: '2026-11-15', body: 'Members DC-MBR-00106 and DC-MBR-00108 have outstanding KYC documents. Please follow up for NIN/Passport copies.', priority: 'MEDIUM' },
-    { id: 'NT-003', title: 'New Member Onboarding Batch', date: '2026-11-01', body: 'Three new member registrations pending document collection. Coordinate with Admin for account activation.', priority: 'LOW' },
-  ]);
+  const [notices, setNotices] = useState<{ id: string; title: string; date: string; body: string; priority: string }[]>([]);
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeBody, setNoticeBody] = useState('');
   const [noticePriority, setNoticePriority] = useState<'HIGH' | 'MEDIUM' | 'LOW'>('MEDIUM');

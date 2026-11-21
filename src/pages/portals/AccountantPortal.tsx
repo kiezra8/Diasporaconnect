@@ -916,14 +916,14 @@ export default function AccountantPortal() {
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Bank Statement Reconciliation</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Stanbic Bank Statement Balance</span>
-                    <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">UGX 218,400,000</div>
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400">Reconciled as of 2026-11-12</p>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Bank Balance (ledger)</span>
+                    <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">UGX {SaccoFarmStore.getFinancials().moneyInBank.toLocaleString()}</div>
+                    <p className="text-[11px] text-slate-500">Compare with the bank statement</p>
                   </div>
                   <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Centenary Bank Operational Account</span>
-                    <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">UGX 124,100,000</div>
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400">Reconciled as of 2026-11-12</p>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Petty Cash Balance (ledger)</span>
+                    <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">UGX {SaccoFarmStore.getFinancials().pettyCash.toLocaleString()}</div>
+                    <p className="text-[11px] text-slate-500">Compare with the cash count</p>
                   </div>
                 </div>
 

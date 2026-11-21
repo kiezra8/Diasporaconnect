@@ -6,7 +6,7 @@ import { applyTheme, getTheme } from '../../services/theme';
 import PortalBottomNav from '../../components/PortalBottomNav';
 import AccountingWorkspace from '../../components/accounting/AccountingWorkspace';
 import MyTasksCard from '../../components/settings/MyTasksCard';
-import { SaccoFarmStore, CattleAnimal, MilkLogRecord, CowHealthRecord, FeedInventoryItem } from '../../services/saccoFarmStore';
+import { SaccoFarmStore, CattleAnimal, MilkLogRecord, CowHealthRecord, FeedInventoryItem, buildTrialBalance } from '../../services/saccoFarmStore';
 import {
   Briefcase,
   Users,
@@ -33,6 +33,10 @@ import {
 export default function BoardPortal() {
   const navigate = useNavigate();
   const session = getSession();
+  const fin = SaccoFarmStore.getFinancials();
+  const tb = buildTrialBalance(SaccoFarmStore.getTransactions());
+  const since30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const milk30 = Math.round(SaccoFarmStore.getMilkLogs().filter(l => l.date >= since30).reduce((s, l) => s + (Number(l.netSold) || 0), 0));
 
   if (session && session.role === 'MEMBER') {
     return <AccessDenied message="You have no access to this field." backPath="/member" />;
@@ -327,18 +331,18 @@ export default function BoardPortal() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800$2">
                   <span className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold block mb-1">Total Cooperative Assets</span>
-                  <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">UGX 1.84 Billion</div>
-                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">+16.4% YoY Growth</span>
+                  <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">UGX {(fin.moneyInBank + fin.pettyCash + SaccoFarmStore.getLoans().filter(l => l.status === 'ACTIVE').reduce((s, l) => s + l.outstandingBalance, 0)).toLocaleString()}</div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Cash, bank and loans out</span>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800$2">
                   <span className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold block mb-1">Member Equity Capital</span>
-                  <div className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 font-mono">UGX 640,000,000</div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">2,560 Issued Shares</span>
+                  <div className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 font-mono">UGX {fin.totalSharesValue.toLocaleString()}</div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{fin.totalShares.toLocaleString()} Issued Shares</span>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800$2">
                   <span className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold block mb-1">Commercial Dairy Output</span>
-                  <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 font-mono">63,900 Liters / mo</div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">100% Off-take Brookside</span>
+                  <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 font-mono">{milk30.toLocaleString()} Liters</div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Last 30 days</span>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800$2">
                   <span className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold block mb-1">Active Loan Book</span>
@@ -382,46 +386,26 @@ export default function BoardPortal() {
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800 text-[10px]">
-                      <th className="py-2.5 px-3">Account Code</th>
-                      <th className="py-2.5 px-3">Account Title</th>
-                      <th className="py-2.5 px-3">Category</th>
+                      <th className="py-2.5 px-3 w-10">#</th>
+                      <th className="py-2.5 px-3">Account</th>
                       <th className="py-2.5 px-3 text-right">Debit (UGX)</th>
                       <th className="py-2.5 px-3 text-right">Credit (UGX)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-[11px]">
-                    <tr>
-                      <td className="py-2.5 px-3 font-bold text-blue-700 dark:text-blue-400">1010</td>
-                      <td className="py-2.5 px-3 font-sans text-slate-200">Operating Cash &amp; Bank (Centenary / Stanbic)</td>
-                      <td className="py-2.5 px-3 font-sans text-emerald-700 dark:text-emerald-400 font-bold">ASSET</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">342,500,000</td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">0</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-3 font-bold text-blue-700 dark:text-blue-400">1100</td>
-                      <td className="py-2.5 px-3 font-sans text-slate-200">Luwero Commercial Cattle Herd Asset</td>
-                      <td className="py-2.5 px-3 font-sans text-emerald-700 dark:text-emerald-400 font-bold">ASSET</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">568,000,000</td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">0</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-3 font-bold text-blue-700 dark:text-blue-400">2010</td>
-                      <td className="py-2.5 px-3 font-sans text-slate-200">Ordinary Member Savings Deposits</td>
-                      <td className="py-2.5 px-3 font-sans text-rose-400 font-bold">LIABILITY</td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">0</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">420,500,000</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-3 font-bold text-blue-700 dark:text-blue-400">3010</td>
-                      <td className="py-2.5 px-3 font-sans text-slate-200">Member Share Capital (UGX 250,000/share)</td>
-                      <td className="py-2.5 px-3 font-sans text-blue-700 dark:text-blue-400 font-bold">EQUITY</td>
-                      <td className="py-2.5 px-3 text-right text-slate-500">0</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">490,000,000</td>
-                    </tr>
+                    {tb.rows.map((r, i) => (
+                      <tr key={r.account}>
+                        <td className="py-2.5 px-3 text-slate-400 dark:text-slate-500">{i + 1}</td>
+                        <td className="py-2.5 px-3 font-sans text-slate-700 dark:text-slate-200">{r.account}</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">{r.debit ? r.debit.toLocaleString() : '—'}</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">{r.credit ? r.credit.toLocaleString() : '—'}</td>
+                      </tr>
+                    ))}
+                    {tb.rows.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-slate-500 font-sans">No ledger entries yet.</td></tr>}
                     <tr className="bg-slate-50 dark:bg-slate-950 font-bold font-sans text-xs border-t border-slate-200 dark:border-slate-800">
-                      <td colSpan={3} className="py-3 px-3 uppercase text-slate-900 dark:text-white">Total Balanced Invariant</td>
-                      <td className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-400 font-mono">UGX 910,500,000</td>
-                      <td className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-400 font-mono">UGX 910,500,000</td>
+                      <td colSpan={2} className="py-3 px-3 uppercase text-slate-900 dark:text-white">Total {tb.balanced ? '(Balanced)' : '(Not balanced)'}</td>
+                      <td className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-400 font-mono">UGX {tb.totalDebit.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-400 font-mono">UGX {tb.totalCredit.toLocaleString()}</td>
                     </tr>
                   </tbody>
                 </table>

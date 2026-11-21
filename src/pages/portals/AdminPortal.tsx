@@ -429,13 +429,7 @@ export default function AdminPortal() {
   const calDateLitres = calDateLogs.reduce((s, l) => s + (l.netSold || 0), 0);
 
   // ── System Users (for Settings role management) ────────────────────────────
-  const [systemUsers] = useState([
-    { id: '1', name: session?.fullName || 'Ezra Kisakye', email: 'israelezrakisakye@gmail.com', role: 'ADMIN', active: true },
-    { id: '2', name: 'Mr. Nyanzi Edrine', email: 'board@diasporaconnectt.com', role: 'BOARD_MEMBER', active: true },
-    { id: '3', name: 'Mr. Halera John Bahati', email: 'secretary@diasporaconnectt.com', role: 'SECRETARY', active: true },
-    { id: '4', name: 'Mrs. Miriam Halera', email: 'accountant@diasporaconnectt.com', role: 'ACCOUNTANT', active: true },
-    { id: '5', name: 'Demo Member', email: 'member@diasporaconnectt.com', role: 'MEMBER', active: true },
-  ]);
+  const [systemUsers] = useState(() => SaccoFarmStore.getStaff());
   const [userRoles, setUserRoles] = useState<Record<string, string>>(() => {
     const roles: Record<string, string> = {};
     systemUsers.forEach(u => { roles[u.id] = u.role; });
@@ -538,7 +532,7 @@ export default function AdminPortal() {
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleAdminApproveConversion = (requestId: string) => {
     checkPermission(['ADMIN'], 'Authorizing share conversion request', () => {
-      const res = SaccoFarmStore.approveShareConversionRequest(requestId, 'ADMIN', 'Dr. David Kato (Admin)');
+      const res = SaccoFarmStore.approveShareConversionRequest(requestId, 'ADMIN', `${session?.fullName || 'Admin'} (Admin)`);
       if (res.success) {
         notify(res.msg);
         reloadData();

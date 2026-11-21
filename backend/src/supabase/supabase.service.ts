@@ -18,6 +18,10 @@ export class SupabaseService {
   get db(): SupabaseClient {
     if (!this.configured()) throw new ServiceUnavailableException('Supabase is not configured on the server (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).');
     if (!this.client) {
+      // SSL enforcement: only HTTPS connections to Supabase are allowed
+      if (!/^https:\/\//i.test(process.env.SUPABASE_URL!)) {
+        throw new ServiceUnavailableException('SUPABASE_URL must start with https:// (SSL is enforced).');
+      }
       this.client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
         auth: { persistSession: false, autoRefreshToken: false },
       });

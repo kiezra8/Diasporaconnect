@@ -11,19 +11,9 @@ const GOAL_COLORS = [
   '#f97316', // Orange
 ];
 
-const DEFAULT_GOALS = [
-  { id: 'goal-1', title: 'Building House', target: 50000000, allocatedPct: 40, color: '#10b981' },
-  { id: 'goal-2', title: 'Fixed Deposit', target: 20000000, allocatedPct: 25, color: '#f59e0b' },
-  { id: 'goal-3', title: 'Health Package', target: 5000000, allocatedPct: 15, color: '#3b82f6' },
-  { id: 'goal-4', title: 'Food & Bills', target: 3000000, allocatedPct: 10, color: '#ec4899' },
-  { id: 'goal-5', title: 'Emergency Fund', target: 10000000, allocatedPct: 10, color: '#8b5cf6' }
-];
+const DEFAULT_GOALS = [];
 
-const DEFAULT_EXPENSES = [
-  { id: 'exp-1', title: 'Groceries', amount: 45000, category: 'Food', date: new Date().toISOString().split('T')[0] },
-  { id: 'exp-2', title: 'Transport', amount: 35000, category: 'Commute', date: new Date().toISOString().split('T')[0] },
-  { id: 'exp-3', title: 'Utilities', amount: 80000, category: 'Bills', date: new Date(Date.now() - 86400000).toISOString().split('T')[0] }
-];
+const DEFAULT_EXPENSES = [];
 
 export default function Planning() {
   const [activeTab, setActiveTab] = useState('savings'); // 'savings' | 'expenses'
@@ -36,12 +26,12 @@ export default function Planning() {
   // Base amounts
   const [monthlyDeposit, setMonthlyDeposit] = useState(() => {
     const saved = localStorage.getItem('dc_planning_monthly_savings');
-    return saved ? Number(saved) : 2500000;
+    return saved ? Number(saved) : 0;
   });
 
   const [currentSavingsBalance, setCurrentSavingsBalance] = useState(() => {
     const saved = localStorage.getItem('dc_planning_savings_balance');
-    return saved ? Number(saved) : 25000000;
+    return saved ? Number(saved) : 0;
   });
 
   // Goals State

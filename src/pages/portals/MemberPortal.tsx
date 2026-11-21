@@ -197,24 +197,24 @@ export default function MemberPortal() {
 
   // Determine current active member
   const currentMember: SaccoMember = members.find(m => m.id === selectedMemberId || m.memberId === selectedMemberId) || members[0] || {
-    id: 'DC-001',
-    memberId: 'DC-001',
-    name: 'Mr. Nyanzi Edrine',
-    phone: '+256 772 100 200',
-    email: 'edrine.nyanzi@diasporaconnectt.com',
-    nin: 'CM840291024KLA',
-    category: 'Founding Member / Board Chair',
-    joinDate: '2024-01-15',
+    id: session?.memberNumber || '',
+    memberId: session?.memberNumber || '',
+    name: session?.fullName || '',
+    phone: '',
+    email: session?.email || '',
+    nin: '',
+    category: '',
+    joinDate: '',
     status: 'ACTIVE',
-    avatar: '/images/nyanzi_edrine.jpg',
-    jan: 1500000, feb: 1500000, mar: 1500000, apr: 1500000, may: 1500000, jun: 1500000,
-    jul: 1500000, aug: 1500000, sep: 1500000, oct: 1500000, nov: 1500000, dec: 1500000,
-    total: 18000000,
-    adminFee: 50000,
-    savings: 17950000,
-    shares: 48,
-    sharesValue: 12000000,
-    withdrawable: 16500000
+    avatar: '',
+    jan: 0, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
+    jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0,
+    total: 0,
+    adminFee: 0,
+    savings: 0,
+    shares: 0,
+    sharesValue: 0,
+    withdrawable: 0
   };
 
   const getRegisteredPhoto = () => {

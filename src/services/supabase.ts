@@ -7,6 +7,11 @@ export const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL || 'https:
 export const SUPABASE_ANON_KEY: string = import.meta.env.VITE_SUPABASE_ANON_KEY
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNib2h0a2VzZ2F4dWl4YmRzdWN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxOTI5NzQsImV4cCI6MjExMDc2ODk3NH0.aMzi4NDm2_5RWYDqe6KCwgDYFH9tioRsN5uFaymE7XQ';
 
+// SSL enforcement: the app only ever connects to Supabase over HTTPS / secure WebSockets (wss)
+if (!/^https:\/\//i.test(SUPABASE_URL)) {
+  throw new Error(`Supabase must be reached over HTTPS (SSL). Got: ${SUPABASE_URL}`);
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   realtime: { params: { eventsPerSecond: 20 } },

@@ -300,7 +300,6 @@ export default function SignIn() {
                 <div key={n} className="flex items-center gap-2">
                   <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${step === n ? 'bg-emerald-600 text-white' : step > n ? 'bg-emerald-500/15 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
                     {step > n ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
-                    <span>{n}. {label}</span>
                   </div>
                   {n < stepCount && <span className="w-4 h-px bg-slate-300 dark:bg-slate-700" />}
                 </div>

@@ -7,6 +7,9 @@ async function bootstrap() {
   if (process.env.NODE_ENV === 'production' && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
     throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in production.');
   }
+  if (process.env.SUPABASE_URL && !/^https:\/\//i.test(process.env.SUPABASE_URL)) {
+    throw new Error('SUPABASE_URL must start with https:// (SSL is enforced).');
+  }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
