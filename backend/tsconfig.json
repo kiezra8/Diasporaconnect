@@ -17,6 +17,25 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "prisma",
+    "src/accounting",
+    "src/sacco",
+    "src/farm",
+    "src/state",
+    "src/audit",
+    "src/prisma",
+    "src/support",
+    "src/auth/auth.controller.ts",
+    "src/auth/auth.service.ts",
+    "src/auth/jwt.strategy.ts",
+    "src/auth/roles.guard.ts",
+    "src/auth/roles.decorator.ts"
+  ]
 }
-

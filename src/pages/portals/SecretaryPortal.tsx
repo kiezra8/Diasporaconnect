@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import ApplicationKycSummary from '../../components/kyc/ApplicationKycSummary';
 import { useNavigate, Link } from 'react-router-dom';
 import { getSession, clearSession } from '../../services/api';
 import AccessDenied from '../../components/AccessDenied';
 import { applyTheme, getTheme } from '../../services/theme';
 import PortalBottomNav from '../../components/PortalBottomNav';
 import { SaccoFarmStore, SaccoMember } from '../../services/saccoFarmStore';
+import KycReviewPanel from '../../components/kyc/KycReviewPanel';
+import MyTasksCard from '../../components/settings/MyTasksCard';
 import {
   UserCheck,
   UserPlus,
@@ -41,6 +44,9 @@ export interface PendingMemberApplication {
   adminApproved: boolean;
   submittedAt: string;
   memberId?: string;
+  dob?: string;
+  gender?: string;
+  kyc?: any;
 }
 
 export default function SecretaryPortal() {
@@ -147,23 +153,7 @@ export default function SecretaryPortal() {
           targetName = app.fullName;
           const newSecApproved = true;
           const isFullyApproved = app.adminApproved && newSecApproved;
-          const assignedId = app.memberId || `DC-00${Math.floor(7 + Math.random() * 20)}`;
-          if (isFullyApproved) {
-            SaccoFarmStore.addMember({
-              memberId: assignedId,
-              name: app.fullName,
-              phone: app.phone,
-              category: app.chapter ? `Diaspora (${app.chapter})` : 'Ordinary Member',
-              shares: 4,
-              adminFee: 50000,
-              email: app.email,
-              nin: `CM${Math.floor(10000000 + Math.random() * 90000000)}Z`,
-              joinDate: new Date().toISOString().split('T')[0],
-              status: 'ACTIVE',
-              jan: 2050000, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
-              jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
-            });
-          }
+          const assignedId = isFullyApproved ? SaccoFarmStore.activateApplication(app, 'Secretary').memberId : app.memberId;
           return {
             ...app,
             secretaryApproved: newSecApproved,
@@ -413,6 +403,7 @@ export default function SecretaryPortal() {
           {/* ── TAB: REGISTER ──────────────────────────────────────────── */}
           {activeTab === 'register' && (
             <div className="space-y-6">
+              <MyTasksCard actor={{ name: session?.fullName || 'Staff', role: session?.role || 'SECRETARY', email: session?.email }} />
               <div>
                 <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Register New Member</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Complete member profile — account will be activated by Admin after KYC verification</p>
@@ -537,6 +528,7 @@ export default function SecretaryPortal() {
                             <div><span className="text-slate-400">Chapter:</span> {app.chapter}</div>
                           </div>
 
+                          <ApplicationKycSummary app={app} />
                           {app.reason && (
                             <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80">
                               <span className="font-semibold text-slate-700 dark:text-slate-300">Reason / Interest:</span> {app.reason}
@@ -640,15 +632,15 @@ export default function SecretaryPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-800/50">
-                      <tr>
+                      <tr><th className="text-slate-500 dark:text-slate-400 py-3 px-4 w-10">#</th>
                         {['Member ID', 'Name', 'Phone', 'Email', 'Country / Category', 'Join Date', 'Status'].map(h => (
                           <th key={h} className="text-left text-slate-500 dark:text-slate-400 font-semibold py-3 px-4">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {filteredMembers.map(m => (
-                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {filteredMembers.map((m, __n) => (
+                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-3 px-4 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-mono font-bold">{m.memberId}</td>
                           <td className="py-3 px-4 font-semibold"><button onClick={() => { setSelectedMember(m); setShowMemberModal(true); }} className="font-bold text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-700 dark:text-emerald-400 underline-offset-2 hover:underline cursor-pointer text-left">{m.name}</button></td>
                           <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">{m.phone}</td>
@@ -681,6 +673,8 @@ export default function SecretaryPortal() {
                 <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">KYC Document Management</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Track identity verification and document submission status</p>
               </div>
+
+              <KycReviewPanel reviewerName={`${session?.fullName || 'Secretary'} (Secretary)`} onNotify={notify} />
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[

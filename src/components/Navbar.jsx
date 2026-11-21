@@ -5,9 +5,17 @@ import { getSession } from '../services/api';
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [session, setSession] = useState(null);
   const navWrapRef = useRef(null);
   const hamburgerRef = useRef(null);
   const location = useLocation();
+
+  useEffect(() => {
+    const checkSession = () => setSession(getSession());
+    checkSession();
+    window.addEventListener('dc_auth_change', checkSession);
+    return () => window.removeEventListener('dc_auth_change', checkSession);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 30);
@@ -128,12 +136,12 @@ export default function Navbar() {
 
         <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <NavLink
-            to="/signin"
+            to={session ? (session.role === 'ADMIN' ? '/admin' : session.role === 'ACCOUNTANT' ? '/accountant' : session.role === 'BOARD' ? '/board' : '/member') : '/signin'}
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
             style={{ fontWeight: '700', color: '#059669' }}
             onClick={handleNavClick}
           >
-            Login
+            {session ? 'Account' : 'Sign In'}
           </NavLink>
         </div>
       </div>

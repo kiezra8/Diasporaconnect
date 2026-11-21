@@ -1,67 +1,50 @@
-version: '3.8'
+# Diaspora Connect — production stack for the VPS (Contabo, Ubuntu + Docker)
+#
+#   Database:  Supabase (Auth + Postgres + Realtime) — no database container runs on the VPS
+#   API:       NestJS (this repo's /backend) — mobile money, SMS, AI advisor
+#   Web:       Caddy serves the built portal (../dist) and proxies api.<domain> → API, with automatic HTTPS
+#
+# Usage (on the VPS — or just run deploy/deploy.sh):
+#   cp backend/.env.example backend/.env   # fill in the Supabase service-role key, MTN, Airtel, Africa's Talking, Anthropic keys
+#   npm ci && npm run build                # builds ../dist with the settings in .env.production
+#   docker compose -f docker/docker-compose.yml up -d --build
+# See docs/DEPLOYMENT.md for the full walkthrough.
 
 services:
-  # Caddy Reverse Proxy with Automatic HTTPS
   caddy:
     image: caddy:2-alpine
-    restart: always
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      - ../dist:/var/www/html
+      - ../dist:/var/www/html:ro
     depends_on:
       - backend
 
-  # NestJS Enterprise API
   backend:
     build:
       context: ../backend
       dockerfile: ../docker/Dockerfile.backend
-    restart: always
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
     environment:
       - NODE_ENV=production
       - PORT=4000
-      - DATABASE_URL=postgresql://dc_admin:SecureDiasporaPass2026!@postgres:5432/diaspora_connect_db?schema=public
-      - JWT_SECRET=diaspora-connect-super-secure-production-jwt-token-key-2026
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-
-  # PostgreSQL 16 Enterprise Database
-  postgres:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_USER: dc_admin
-      POSTGRES_PASSWORD: SecureDiasporaPass2026!
-      POSTGRES_DB: diaspora_connect_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "4000"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dc_admin -d diaspora_connect_db"]
-      interval: 5s
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 30s
       timeout: 5s
       retries: 5
-
-  # Redis 7 Cache & BullMQ Queue
-  redis:
-    image: redis:7-alpine
-    restart: always
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
+      start_period: 40s
 
 volumes:
   caddy_data:
   caddy_config:
-  postgres_data:
-  redis_data:
-

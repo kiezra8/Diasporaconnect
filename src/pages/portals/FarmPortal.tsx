@@ -4,6 +4,8 @@ import { getSession, clearSession } from '../../services/api';
 import AccessDenied from '../../components/AccessDenied';
 import { applyTheme, getTheme } from '../../services/theme';
 import PortalBottomNav from '../../components/PortalBottomNav';
+import ReportBarChart from '../../components/charts/ReportBarChart';
+import MyTasksCard from '../../components/settings/MyTasksCard';
 import {
   SaccoFarmStore,
   CattleAnimal,
@@ -123,6 +125,7 @@ export default function FarmPortal() {
 
   const handleConfirmMarkSick = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SaccoFarmStore.canPerform('animal_health')) { notify(`Animal health records is assigned to: ${SaccoFarmStore.assigneeNames('animal_health')}.`); return; }
     if (!sicknessCow || !sicknessIllness.trim()) return;
     if (SaccoFarmStore.markCowSick) {
       SaccoFarmStore.markCowSick(sicknessCow.id, {
@@ -150,6 +153,7 @@ export default function FarmPortal() {
 
   const handleConfirmUseFeed = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SaccoFarmStore.canPerform('feeds_stock')) { notify(`Feeds & stock is assigned to: ${SaccoFarmStore.assigneeNames('feeds_stock')}.`); return; }
     if (!selectedFeedForUse || !feedUseQty) return;
     const q = Number(feedUseQty);
     if (isNaN(q) || q <= 0) return;
@@ -166,6 +170,7 @@ export default function FarmPortal() {
 
   const handleCreateFeed = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SaccoFarmStore.canPerform('feeds_stock')) { notify(`Feeds & stock is assigned to: ${SaccoFarmStore.assigneeNames('feeds_stock')}.`); return; }
     if (!feedTypeInput.trim()) return;
     const isFarmMade = feedSourceInput === 'FARM_MADE';
     const qty = Number(feedQtyInput) || 0;
@@ -234,7 +239,7 @@ export default function FarmPortal() {
 
   // ── Cattle Registry Search & Filter ────────────────────────────────────────
   const [cattleSearch, setCattleSearch] = useState('');
-  const [cattleStageFilter, setCattleStageFilter] = useState<'All' | 'Milking' | 'Pregnant' | 'Dry' | 'Heifer' | 'Calf' | 'Bull'>('All');
+  const [cattleStageFilter, setCattleStageFilter] = useState<'All' | 'Milking' | 'Pregnant' | 'Dry' | 'Heifer' | 'Calf' | 'Bull' | 'With Calf'>('All');
 
   // ── Selected Cow Modal for Clickable Actions (Edit, Delete, Female Milk) ───
   const [selectedCow, setSelectedCow] = useState<CattleAnimal | null>(null);
@@ -268,6 +273,8 @@ export default function FarmPortal() {
   const [newStage, setNewStage] = useState<'Milking' | 'Dry' | 'Pregnant' | 'Heifer' | 'Bull'>('Milking');
   const [newGender, setNewGender] = useState<'Female' | 'Male'>('Female');
   const [newWeight, setNewWeight] = useState('520');
+  const [newHasCalf, setNewHasCalf] = useState(false);
+  const [newCalfTag, setNewCalfTag] = useState('');
 
   // Health form
   const [hlCowTag, setHlCowTag] = useState('');
@@ -326,6 +333,7 @@ export default function FarmPortal() {
   // ── Save Cow Adjustments ──────────────────────────────────────────────────
   const handleUpdateCow = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SaccoFarmStore.canPerform('herd_register')) { notify(`The herd register is assigned to: ${SaccoFarmStore.assigneeNames('herd_register')}.`); return; }
     if (!selectedCow) return;
 
     const updated = SaccoFarmStore.updateCattle(selectedCow.id, {
@@ -360,6 +368,7 @@ export default function FarmPortal() {
   // ── Add Per-Cow Milk from Main Form ───────────────────────────────────────
   const handleAddPerCowMilk = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SaccoFarmStore.canPerform('milk_recording')) { notify(`Milk recording is assigned to: ${SaccoFarmStore.assigneeNames('milk_recording')}.`); return; }
     if (!selectedCowForMilk || !milkLitres) {
       alert('Please select a cow and enter milk litres.');
       return;
@@ -386,6 +395,7 @@ export default function FarmPortal() {
   // ── Add Per-Cow Milk inside Cow Modal ─────────────────────────────────────
   const handleAddModalQuickMilk = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SaccoFarmStore.canPerform('milk_recording')) { notify(`Milk recording is assigned to: ${SaccoFarmStore.assigneeNames('milk_recording')}.`); return; }
     if (!selectedCow || !modalQuickLitres) return;
     const litres = Number(modalQuickLitres);
     const price = 1650;
@@ -409,6 +419,7 @@ export default function FarmPortal() {
   // ── Register New Cattle ───────────────────────────────────────────────────
   const handleAddCattle = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SaccoFarmStore.canPerform('herd_register')) { notify(`The herd register is assigned to: ${SaccoFarmStore.assigneeNames('herd_register')}.`); return; }
     if (!newTag || !newName) return;
 
     SaccoFarmStore.addCattle({
@@ -421,7 +432,8 @@ export default function FarmPortal() {
       status: ['Healthy'],
       dob: '2023-01-10',
       weight: Number(newWeight),
-      hasCalf: false,
+      hasCalf: newGender === 'Female' && newHasCalf,
+      calfTag: newGender === 'Female' && newHasCalf ? newCalfTag.trim() || undefined : undefined,
       dailyAvgMilk: newStage === 'Milking' ? 20 : 0,
       sireDam: 'Sire: ABS Robust / Dam: Local Sahiwal',
       purchaseDate: new Date().toISOString().split('T')[0],
@@ -433,6 +445,8 @@ export default function FarmPortal() {
     notify(`Cattle ${newName} (${newTag}) added to herd!`);
     setNewTag('');
     setNewName('');
+    setNewHasCalf(false);
+    setNewCalfTag('');
     setShowAddCattleModal(false);
     reloadData();
   };
@@ -440,6 +454,7 @@ export default function FarmPortal() {
   // ── Log Health ────────────────────────────────────────────────────────────
   const handleAddHealth = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!SaccoFarmStore.canPerform('animal_health')) { notify(`Animal health records is assigned to: ${SaccoFarmStore.assigneeNames('animal_health')}.`); return; }
     if (!hlCowTag || !hlDiagnosis) return;
     const cow = cattle.find(c => c.tagNumber === hlCowTag);
 
@@ -496,7 +511,9 @@ export default function FarmPortal() {
       const match = c.tagNumber.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.breed.toLowerCase().includes(q);
       if (!match) return false;
     }
-    if (cattleStageFilter !== 'All' && c.stage !== cattleStageFilter) {
+    if (cattleStageFilter === 'With Calf') {
+      if (!c.hasCalf) return false;
+    } else if (cattleStageFilter !== 'All' && c.stage !== cattleStageFilter) {
       return false;
     }
     return true;
@@ -695,7 +712,7 @@ export default function FarmPortal() {
 
         <table>
           <thead>
-            <tr>
+            <tr><th>#</th>
               <th>Date</th>
               <th>Cow Tag</th>
               <th>Cow Name</th>
@@ -706,9 +723,8 @@ export default function FarmPortal() {
               <th>Recorder</th>
             </tr>
           </thead>
-          <tbody>
-            ${reportSubset.map(r => `
-              <tr>
+          <tbody>${reportSubset.map((r, __n) => `
+              <tr><td>${__n + 1}</td>
                 <td>${r.date}</td>
                 <td><b>${r.cowTag}</b></td>
                 <td>${r.cowName}</td>
@@ -720,7 +736,7 @@ export default function FarmPortal() {
               </tr>
             `).join('')}
             <tr class="total-row">
-              <td colspan="4">TOTAL AGGREGATED PRODUCTION</td>
+              <td colspan="5">TOTAL AGGREGATED PRODUCTION</td>
               <td style="text-align: right; font-family: monospace;">${totalLitres.toFixed(1)}L</td>
               <td colspan="2"></td>
               <td style="text-align: right; font-family: monospace; color: #065f46;">UGX ${totalRev.toLocaleString()}</td>
@@ -917,6 +933,24 @@ export default function FarmPortal() {
              ═══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'per_cow' && (
             <div className="space-y-6">
+              <MyTasksCard actor={{ name: session?.fullName || 'Staff', role: session?.role || 'FARM_WORKER', email: session?.email }} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <ReportBarChart
+                  title="Milk per day — last 14 days"
+                  data={Object.values(cowMilkRecords.reduce((acc, r) => { acc[r.date] = acc[r.date] || { date: r.date, litres: 0 }; acc[r.date].litres = Math.round((acc[r.date].litres + r.litres) * 10) / 10; return acc; }, {} as Record<string, { date: string; litres: number }>)).sort((a, b) => a.date.localeCompare(b.date)).slice(-14).map(d => ({ ...d, date: d.date.slice(5) }))}
+                  xKey="date"
+                  series={[{ key: 'litres', label: 'Litres' }]}
+                  format="litres"
+                />
+                <ReportBarChart
+                  title="Milk per cow (all records)"
+                  data={Object.values(cowMilkRecords.reduce((acc, r) => { const k = `${r.cowName} (${r.cowTag})`; acc[k] = acc[k] || { cow: k, litres: 0 }; acc[k].litres = Math.round((acc[k].litres + r.litres) * 10) / 10; return acc; }, {} as Record<string, { cow: string; litres: number }>)).sort((a, b) => b.litres - a.litres)}
+                  xKey="cow"
+                  series={[{ key: 'litres', label: 'Litres' }]}
+                  format="litres"
+                  horizontal
+                />
+              </div>
               {/* Top Stats */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
@@ -1192,7 +1226,7 @@ export default function FarmPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                      <tr>
+                      <tr><th className="p-3 w-10">#</th>
                         <th className="p-3">Date</th>
                         <th className="p-3">Cow Tag</th>
                         <th className="p-3">Cow Name</th>
@@ -1204,10 +1238,10 @@ export default function FarmPortal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-                      {filteredCowMilkRecords.map(r => {
+                      {filteredCowMilkRecords.map((r, __n) => {
                         const cow = cattle.find(c => c.tagNumber === r.cowTag);
                         return (
-                          <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                             <td className="p-3 text-slate-700 dark:text-slate-300">{r.date}</td>
                             <td className="p-3 font-bold text-emerald-700 dark:text-emerald-400">
                               <button
@@ -1241,7 +1275,7 @@ export default function FarmPortal() {
                       })}
                       {filteredCowMilkRecords.length > 0 && (
                         <tr className="bg-slate-50 dark:bg-slate-950 font-bold text-xs">
-                          <td colSpan={4} className="p-3 font-sans text-slate-900 dark:text-white">TOTAL FILTERED PRODUCTION</td>
+                          <td colSpan={5} className="p-3 font-sans text-slate-900 dark:text-white">TOTAL FILTERED PRODUCTION</td>
                           <td className="p-3 text-right font-black text-blue-700 dark:text-blue-400">
                             {filteredCowMilkRecords.reduce((s, r) => s + r.litres, 0).toFixed(1)}L
                           </td>
@@ -1269,6 +1303,21 @@ export default function FarmPortal() {
              ═══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'cattle' && (
             <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <ReportBarChart
+                  title="Herd by stage"
+                  data={['Milking', 'Pregnant', 'Dry', 'Heifer', 'Calf', 'Bull'].map(st => ({ stage: st, head: cattle.filter(c => c.stage === st).length }))}
+                  xKey="stage"
+                  series={[{ key: 'head', label: 'Head' }]}
+                />
+                <ReportBarChart
+                  title="Cows with a calf"
+                  subtitle={`${cattle.filter(c => c.hasCalf).length} cow(s) currently nursing`}
+                  data={[{ group: 'With calf', head: cattle.filter(c => c.hasCalf).length }, { group: 'Without calf', head: cattle.filter(c => c.gender === 'Female' && !c.hasCalf && c.stage !== 'Calf').length }]}
+                  xKey="group"
+                  series={[{ key: 'head', label: 'Cows' }]}
+                />
+              </div>
               {/* Header & Controls */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -1303,7 +1352,7 @@ export default function FarmPortal() {
                 </div>
 
                 <div className="flex items-center gap-1.5 overflow-x-auto">
-                  {(['All', 'Milking', 'Pregnant', 'Dry', 'Heifer', 'Calf', 'Bull'] as const).map(st => (
+                  {(['All', 'Milking', 'Pregnant', 'Dry', 'Heifer', 'Calf', 'Bull', 'With Calf'] as const).map(st => (
                     <button
                       key={st}
                       onClick={() => setCattleStageFilter(st)}
@@ -1356,6 +1405,11 @@ export default function FarmPortal() {
                         <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
                           {cow.breed} &middot; {cow.weight || 500} kg
                         </p>
+                        {cow.hasCalf && (
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
+                            With calf{cow.calfTag ? ` · ${cow.calfTag}` : ''}
+                          </span>
+                        )}
                       </div>
 
                       <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-mono">
@@ -1421,6 +1475,12 @@ export default function FarmPortal() {
              ═══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'health' && (
             <div className="space-y-6">
+              <ReportBarChart
+                title="Health records by type"
+                data={['Vaccination', 'Treatment', 'Deworming', 'Vet Visit', 'Mortality'].map(t => ({ type: t, records: healthRecords.filter(h => h.type === t).length }))}
+                xKey="type"
+                series={[{ key: 'records', label: 'Records' }]}
+              />
               <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Log Veterinary / Health Record</h3>
                 <form onSubmit={handleAddHealth} className="space-y-4 text-xs">
@@ -1508,7 +1568,7 @@ export default function FarmPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                      <tr>
+                      <tr><th className="p-3 w-10">#</th>
                         <th className="p-3">Date</th>
                         <th className="p-3">Cow Tag</th>
                         <th className="p-3">Name</th>
@@ -1519,8 +1579,8 @@ export default function FarmPortal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                      {healthRecords.map(h => (
-                        <tr key={h.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {healthRecords.map((h, __n) => (
+                        <tr key={h.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="p-3 text-slate-600 dark:text-slate-400 font-mono">{h.date}</td>
                           <td className="p-3 font-bold text-emerald-700 dark:text-emerald-400 font-mono">{h.tagNumber}</td>
                           <td className="p-3 font-bold text-slate-900 dark:text-white">{h.animalName}</td>
@@ -1542,6 +1602,13 @@ export default function FarmPortal() {
              ═══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'feeds' && (
             <div className="space-y-6">
+              <ReportBarChart
+                title="Feed stock on hand"
+                data={feeds.map(fd => ({ feed: `${fd.feedType} (${fd.unit})`, stock: fd.currentStock, minimum: fd.minStock }))}
+                xKey="feed"
+                series={[{ key: 'stock', label: 'In stock' }, { key: 'minimum', label: 'Minimum level' }]}
+                horizontal
+              />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Feeds Stock Register</h3>
@@ -1579,15 +1646,15 @@ export default function FarmPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-800/50">
-                      <tr>
+                      <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                         {['Feed Type', 'Source', 'Current Stock', 'Unit Cost', 'Total Value', 'Date Added', 'Actions'].map(h => (
                           <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {feeds.map(f => (
-                        <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {feeds.map((f, __n) => (
+                        <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-2.5 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{f.feedType}</td>
                           <td className="py-2.5 px-3">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1628,7 +1695,7 @@ export default function FarmPortal() {
                       ))}
                       {feeds.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="py-8 text-center text-slate-400 font-bold">
+                          <td colSpan={8} className="py-8 text-center text-slate-400 font-bold">
                             No feed inventory records yet. Click ADD FEED BATCH above.
                           </td>
                         </tr>
@@ -1648,10 +1715,10 @@ export default function FarmPortal() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Community &amp; Member Messaging</h3>
-                  <p className="text-xs text-slate-500">Live communication with farmers, SACCO members, and administrative staff</p>
+                  <p className="text-xs text-slate-500">Communication with farmers, SACCO members, and administrative staff</p>
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  SACCO Live Network
+                  SACCO Network
                 </span>
               </div>
               <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center space-y-4">
@@ -1840,7 +1907,7 @@ export default function FarmPortal() {
                     return (
                       <table className="w-full text-xs text-left">
                         <thead className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                          <tr>
+                          <tr><th className="p-2.5 w-10">#</th>
                             <th className="p-2.5">Date</th>
                             <th className="p-2.5">Diagnosis</th>
                             <th className="p-2.5">Symptoms &amp; Rx</th>
@@ -1850,7 +1917,7 @@ export default function FarmPortal() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
                           {cowSicknessEvents.map((rec, rIdx) => (
-                            <tr key={rec.id || rIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                            <tr key={rec.id || rIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-2.5 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{rIdx + 1}</td>
                               <td className="p-2.5 text-slate-500 font-bold">{rec.date}</td>
                               <td className="p-2.5 font-sans font-bold text-slate-900 dark:text-white">{rec.illness}</td>
                               <td className="p-2.5 font-sans text-slate-700 dark:text-slate-300">
@@ -1871,7 +1938,7 @@ export default function FarmPortal() {
                           ))}
                           {cowSicknessEvents.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="p-4 text-center text-slate-400 font-bold font-sans">
+                              <td colSpan={6} className="p-4 text-center text-slate-400 font-bold font-sans">
                                 Clean veterinary record! No sickness incidents recorded for {selectedCow.name}.
                               </td>
                             </tr>
@@ -2114,7 +2181,7 @@ export default function FarmPortal() {
                     return (
                       <table className="w-full text-xs text-left font-mono">
                         <thead className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                          <tr>
+                          <tr><th className="p-2.5 w-10">#</th>
                             <th className="p-2.5">Date</th>
                             <th className="p-2.5">Session</th>
                             <th className="p-2.5 text-right">Litres</th>
@@ -2123,8 +2190,8 @@ export default function FarmPortal() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                          {cowRecords.map(r => (
-                            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          {cowRecords.map((r, __n) => (
+                            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-2.5 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                               <td className="p-2.5">{r.date}</td>
                               <td className="p-2.5 font-sans font-bold text-blue-700 dark:text-blue-400">{r.session}</td>
                               <td className="p-2.5 text-right font-black text-slate-900 dark:text-white">{r.litres.toFixed(1)}L</td>
@@ -2144,7 +2211,7 @@ export default function FarmPortal() {
                           ))}
                           {cowRecords.length > 0 && (
                             <tr className="bg-slate-50 dark:bg-slate-950 font-bold">
-                              <td colSpan={2} className="p-2.5 font-sans">TOTAL PRODUCTION</td>
+                              <td colSpan={3} className="p-2.5 font-sans">TOTAL PRODUCTION</td>
                               <td className="p-2.5 text-right text-blue-700 dark:text-blue-400 font-black">{totalL.toFixed(1)}L</td>
                               <td className="p-2.5 text-right text-emerald-700 dark:text-emerald-400 font-black">UGX {totalUGX.toLocaleString()}</td>
                               <td></td>
@@ -2152,7 +2219,7 @@ export default function FarmPortal() {
                           )}
                           {cowRecords.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="p-4 text-center text-slate-500 font-bold font-sans">
+                              <td colSpan={6} className="p-4 text-center text-slate-500 font-bold font-sans">
                                 No milk records logged yet for {selectedCow.name}.
                               </td>
                             </tr>
@@ -2257,6 +2324,18 @@ export default function FarmPortal() {
                   />
                 </div>
               </div>
+
+              {newGender === 'Female' && (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 space-y-2">
+                  <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300">
+                    <input type="checkbox" checked={newHasCalf} onChange={e => setNewHasCalf(e.target.checked)} />
+                    This cow has a calf at foot
+                  </label>
+                  {newHasCalf && (
+                    <input value={newCalfTag} onChange={e => setNewCalfTag(e.target.value)} placeholder="Calf tag number" className="w-full bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 dark:text-white" />
+                  )}
+                </div>
+              )}
 
               <div className="pt-2 flex justify-end gap-2">
                 <button

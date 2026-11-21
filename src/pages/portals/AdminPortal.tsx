@@ -12,15 +12,29 @@ import {
   MilkLogRecord,
   CattleAnimal,
   MoneyMakerInvestor,
-  CoffeePurchaseBatch,
-  CoffeeSaleRecord,
-  CoffeeInventoryItem,
   CowMilkRecord,
   FeedInventoryItem,
   LoanRepaymentEntry,
   CowHealthRecord,
+  ShareConversionRequest,
+  MemberPaymentRequest,
+  classifyIncome,
+  toLedgerLines,
+  buildTrialBalance,
+  KycSubmission,
   getMemberPhoto,
 } from '../../services/saccoFarmStore';
+import AccountingWorkspace from '../../components/accounting/AccountingWorkspace';
+import PaymentRequestQueue from '../../components/approvals/PaymentRequestQueue';
+import KycReviewPanel from '../../components/kyc/KycReviewPanel';
+import SaccoAIAdvisor from '../../components/ai/SaccoAIAdvisor';
+import PeriodCloseDividends from '../../components/accounting/PeriodCloseDividends';
+import TaskAssignmentsPanel from '../../components/settings/TaskAssignmentsPanel';
+import AuditTrailPanel from '../../components/settings/AuditTrailPanel';
+import SmsCenterPanel from '../../components/settings/SmsCenterPanel';
+import ApplicationKycSummary from '../../components/kyc/ApplicationKycSummary';
+import ReportBarChart from '../../components/charts/ReportBarChart';
+import { htmlBarChart, PRINT_CHART_CSS } from '../../components/charts/printBarChart';
 import {
   LayoutDashboard,
   Users,
@@ -48,7 +62,6 @@ import {
   Lock,
   Unlock,
   Milk,
-  Coffee,
   Plus,
   Download,
   Printer,
@@ -67,6 +80,7 @@ import {
   Layers,
   Sparkles,
   Trash2,
+  Repeat,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -78,61 +92,10 @@ type TabId =
   | 'loans'
   | 'accounting'
   | 'farm'
-  | 'coffee'
   | 'reports'
   | 'approvals'
   | 'settings'
   | string;
-
-export interface CustomNavRecord {
-  id: string;
-  title: string;
-  category: string;
-  amount?: number;
-  quantity?: string;
-  location?: string;
-  date: string;
-  notes?: string;
-  [key: string]: any;
-}
-
-export interface CustomKpiBox {
-  id: string;
-  title: string;
-  value: string;
-  unit: string;
-}
-
-export interface CustomNavModule {
-  id: string;
-  label: string;
-  description: string;
-  allowedRoles: string[];
-  canManageRoles: string[];
-  createdBy: string;
-  createdAt: string;
-  records: CustomNavRecord[];
-  customBoxes?: CustomKpiBox[];
-  chosenFields?: {
-    hasAmount?: boolean;
-    hasQuantity?: boolean;
-    hasCategory?: boolean;
-    hasLocation?: boolean;
-    hasNotes?: boolean;
-  };
-}
-
-interface PendingApproval {
-  id: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'LOAN';
-  member: string;
-  memberId: string;
-  amount: number;
-  reference: string;
-  verifiedAt: string;
-  verifiedBy: string;
-  status: 'VERIFIED_AWAITING_ADMIN';
-}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n: number) => `UGX ${n.toLocaleString()}`;
@@ -165,6 +128,14 @@ export default function AdminPortal() {
 
   // ── Role & Authorization State ─────────────────────────────────────────────
   const [activeRole, setActiveRole] = useState<string>(() => session?.role || 'ADMIN');
+  // The audit trail and task permissions follow the role being used (including the role simulator)
+  useEffect(() => {
+    SaccoFarmStore.setActor({
+      name: session?.fullName || 'Administrator',
+      role: activeRole,
+      email: activeRole === (session?.role || 'ADMIN') ? session?.email : undefined,
+    });
+  }, [activeRole]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalData, setAuthModalData] = useState<{
     title: string;
@@ -186,41 +157,6 @@ export default function AdminPortal() {
   const [milkLogs, setMilkLogs] = useState<MilkLogRecord[]>([]);
   const [cattle, setCattle] = useState<CattleAnimal[]>([]);
   const [investors, setInvestors] = useState<MoneyMakerInvestor[]>([]);
-  const [coffeeBatches, setCoffeeBatches] = useState<CoffeePurchaseBatch[]>([]);
-  const [coffeeSales, setCoffeeSales] = useState<CoffeeSaleRecord[]>([]);
-  const [coffeeInventory, setCoffeeInventory] = useState<CoffeeInventoryItem[]>([]);
-
-  // ── Coffee UI state ────────────────────────────────────────────────────────
-  const [activeCoffeeSubTab, setActiveCoffeeSubTab] = useState<'inventory' | 'buying' | 'selling'>('inventory');
-
-  // Coffee buying form
-  const [cfFarmerName, setCfFarmerName] = useState('');
-  const [cfDistrict, setCfDistrict] = useState('Mbale (Mount Elgon)');
-  const [cfVariety, setCfVariety] = useState<'Arabica Bugisu AA' | 'Arabica Bugisu A' | 'Robusta Kasese Screen 18' | 'Robusta FAQ'>('Arabica Bugisu AA');
-  const [cfBags, setCfBags] = useState('50');
-  const [cfNetKg, setCfNetKg] = useState('3000');
-  const [cfMoisture, setCfMoisture] = useState('12.0');
-  const [cfPriceKg, setCfPriceKg] = useState('13500');
-  const [cfBatchCode, setCfBatchCode] = useState('');
-
-  // Coffee selling form
-  const [csBuyerName, setCsBuyerName] = useState('Rotterdam Commodity Exchange BV');
-  const [csMarketType, setCsMarketType] = useState<'Export Contract' | 'Domestic Roaster' | 'Regional Trade'>('Export Contract');
-  const [csDestination, setCsDestination] = useState('Rotterdam, Netherlands');
-  const [csVariety, setCsVariety] = useState<'Arabica Bugisu AA' | 'Arabica Bugisu A' | 'Robusta Kasese Screen 18' | 'Robusta FAQ'>('Arabica Bugisu AA');
-  const [csBags, setCsBags] = useState('100');
-  const [csNetKg, setCsNetKg] = useState('6000');
-  const [csPriceKg, setCsPriceKg] = useState('18500');
-  const [csContractRef, setCsContractRef] = useState('');
-
-  // Stock Adjustment Modal
-  const [showStockModal, setShowStockModal] = useState(false);
-  const [selectedStockItem, setSelectedStockItem] = useState<CoffeeInventoryItem | null>(null);
-  const [adjustDeltaKg, setAdjustDeltaKg] = useState('500');
-  const [adjustDeltaBags, setAdjustDeltaBags] = useState('8');
-  const [adjustAction, setAdjustAction] = useState<'add' | 'deduct'>('add');
-  const [adjustReason, setAdjustReason] = useState('Post-drying weight calibration');
-
   // ── UI state ───────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -246,35 +182,10 @@ export default function AdminPortal() {
   const [modalQuickSession, setModalQuickSession] = useState<'Morning' | 'Afternoon' | 'Evening'>('Morning');
   const [modalQuickDate, setModalQuickDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Coffee search state
-  const [coffeeBatchSearch, setCoffeeBatchSearch] = useState('');
-  const [coffeeSaleSearch, setCoffeeSaleSearch] = useState('');
-
   // ── Approvals queue ────────────────────────────────────────────────────────
-  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([
-    {
-      id: 'TX-9402',
-      type: 'DEPOSIT',
-      member: 'David Mukasa',
-      memberId: 'DC-006',
-      amount: 1500000,
-      reference: 'STN-WIRE-40192',
-      verifiedAt: '2026-11-12 09:30',
-      verifiedBy: 'Mrs. Miriam Halera (Accountant)',
-      status: 'VERIFIED_AWAITING_ADMIN',
-    },
-    {
-      id: 'TX-9405',
-      type: 'WITHDRAWAL',
-      member: 'Amara Okello',
-      memberId: 'DC-007',
-      amount: 2000000,
-      reference: 'WTH-740291',
-      verifiedAt: '2026-11-12 11:15',
-      verifiedBy: 'Mrs. Miriam Halera (Accountant)',
-      status: 'VERIFIED_AWAITING_ADMIN',
-    },
-  ]);
+  const [shareConversionRequests, setShareConversionRequests] = useState<ShareConversionRequest[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<MemberPaymentRequest[]>([]);
+  const [kycSubmissions, setKycSubmissions] = useState<KycSubmission[]>([]);
 
   const [memberApps, setMemberApps] = useState<any[]>([]);
 
@@ -285,53 +196,82 @@ export default function AdminPortal() {
   const [newMemberNin, setNewMemberNin] = useState('');
   const [newMemberCategory, setNewMemberCategory] = useState('Diaspora (United Kingdom)');
 
-  // ── Accounting form ────────────────────────────────────────────────────────
-  const [jrnlDebit, setJrnlDebit] = useState('Member Savings Account (3010)');
-  const [jrnlCredit, setJrnlCredit] = useState('Cash at Bank - Stanbic (1001)');
-  const [jrnlAmount, setJrnlAmount] = useState('');
-  const [jrnlNarration, setJrnlNarration] = useState('');
   // -- Global Navigation Search State -----------------------------------------
   const [globalNavSearch, setGlobalNavSearch] = useState('');
   const [showGlobalSearchDropdown, setShowGlobalSearchDropdown] = useState(false);
 
-  // -- Custom Navigation Modules (Configurable by Admin & Assigned Roles) ------
-  const [customModules, setCustomModules] = useState<CustomNavModule[]>(() => {
-    try {
-      const saved = localStorage.getItem('dc_custom_nav_modules');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [
-      {
-        id: 'mod-poultry',
-        label: 'Poultry & Feeds',
-        description: 'Commercial layer flock management, egg collections, and bird feeds inventory.',
-        allowedRoles: ['ALL'],
-        canManageRoles: ['ADMIN', 'FARM_WORKER', 'ACCOUNTANT'],
-        createdBy: 'System Administrator',
-        createdAt: '2024-03-01',
-        records: [
-          { id: 'REC-01', title: '500 Trays Grade-A Eggs Dispatched', category: 'Egg Offtake', amount: 6500000, date: '2024-03-10', notes: 'Quality Supermarkets Kampala' },
-          { id: 'REC-02', title: 'Layer Mash 50kg Bags (40 bags)', category: 'Feed Procured', amount: 3200000, date: '2024-03-08', notes: 'Ugachick Feeds Ltd' },
-        ]
-      },
-      {
-        id: 'mod-solar-irrigation',
-        label: 'Solar & Irrigation',
-        description: 'Pasture irrigation pumps, solar borehole power metrics, and equipment servicing.',
-        allowedRoles: ['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER'],
-        canManageRoles: ['ADMIN', 'FARM_WORKER'],
-        createdBy: 'System Administrator',
-        createdAt: '2024-03-05',
-        records: [
-          { id: 'REC-03', title: 'Submersible Pump Quarterly Servicing', category: 'Maintenance', amount: 450000, date: '2024-03-09', notes: 'Davis & Shirtliff Technical Team' },
-          { id: 'REC-04', title: '15,000L Storage Reservoir Refilled', category: 'Water Harvest', amount: 0, date: '2024-03-11', notes: 'Borehole capacity normal' }
-        ]
-      }
-    ];
-  });
-
   // ── Farm Sub-Tabs & Sickness Management ───────────────────────────────────
   const [farmSubTab, setFarmSubTab] = useState<'dairy' | 'feeds' | 'cows' | 'health'>('dairy');
+
+  // Dairy: per-cow milk record (feeds the daily milk log + milk income in the shared ledger)
+  const [showAddMilkModal, setShowAddMilkModal] = useState(false);
+  const [milkCowTag, setMilkCowTag] = useState('');
+  const [milkDate, setMilkDate] = useState(new Date().toISOString().split('T')[0]);
+  const [milkSession, setMilkSession] = useState<'Morning' | 'Afternoon' | 'Evening'>('Morning');
+  const [milkLitres, setMilkLitres] = useState('');
+  const [milkNotes, setMilkNotes] = useState('');
+
+  const handleAddMilkRecord = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cow = cattle.find(c => c.tagNumber === milkCowTag);
+    const litres = Number(milkLitres);
+    if (!cow || !litres || litres <= 0) return;
+    SaccoFarmStore.addCowMilkRecord({
+      cowTag: cow.tagNumber,
+      cowName: cow.name,
+      date: milkDate,
+      session: milkSession,
+      litres,
+      offtakerPrice: 1650,
+      recorder: session?.fullName || 'Admin',
+      notes: milkNotes.trim() || undefined,
+    });
+    notify(`Milk record saved: ${litres}L from ${cow.name} (${cow.tagNumber}), ${milkSession} ${milkDate}. Daily log and milk income updated.`);
+    setMilkLitres(''); setMilkNotes('');
+    setShowAddMilkModal(false);
+    reloadData();
+  };
+
+  // Cows: register a new animal
+  const [showAddCowModal, setShowAddCowModal] = useState(false);
+  const [newCowTag, setNewCowTag] = useState('');
+  const [newCowName, setNewCowName] = useState('');
+  const [newCowBreed, setNewCowBreed] = useState<CattleAnimal['breed']>('Friesian Cross');
+  const [newCowGender, setNewCowGender] = useState<'Female' | 'Male'>('Female');
+  const [newCowStage, setNewCowStage] = useState<CattleAnimal['stage']>('Milking');
+  const [newCowWeight, setNewCowWeight] = useState('450');
+  const [newCowDob, setNewCowDob] = useState('');
+  const [newCowHasCalf, setNewCowHasCalf] = useState(false);
+  const [newCowCalfTag, setNewCowCalfTag] = useState('');
+  const [cowCalfFilter, setCowCalfFilter] = useState<'all' | 'withCalf'>('all');
+
+  const handleAddCow = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCowName.trim()) return;
+    const added = SaccoFarmStore.addCattle({
+      tagNumber: newCowTag.trim(),
+      name: newCowName.trim(),
+      breed: newCowBreed,
+      gender: newCowGender,
+      ageCategory: newCowStage === 'Calf' ? 'Calf' : newCowStage === 'Heifer' ? 'Heifer' : newCowGender === 'Male' ? 'Bull' : 'Cow',
+      stage: newCowStage,
+      status: newCowStage === 'Pregnant' ? ['Healthy', 'Pregnant'] : ['Healthy'],
+      dob: newCowDob || new Date().toISOString().split('T')[0],
+      weight: Number(newCowWeight) || 0,
+      hasCalf: newCowGender === 'Female' && newCowHasCalf,
+      calfTag: newCowGender === 'Female' && newCowHasCalf ? newCowCalfTag.trim() || undefined : undefined,
+      dailyAvgMilk: 0,
+      sireDam: '',
+      purchaseDate: new Date().toISOString().split('T')[0],
+      purchasePrice: 0,
+      color: '',
+      notes: `Registered by ${session?.fullName || 'Admin'}.`,
+    });
+    notify(`${added.name} (${added.tagNumber}) added to the herd.`);
+    setNewCowTag(''); setNewCowName(''); setNewCowDob(''); setNewCowHasCalf(false); setNewCowCalfTag('');
+    setShowAddCowModal(false);
+    reloadData();
+  };
   const [showSicknessModal, setShowSicknessModal] = useState(false);
   const [sicknessCow, setSicknessCow] = useState<CattleAnimal | null>(null);
   const [sicknessIllness, setSicknessIllness] = useState('Mastitis');
@@ -382,137 +322,6 @@ export default function AdminPortal() {
     notify(`${cow.name} (${cow.tagNumber}) marked as HEALTHY. Recovery date logged.`);
   };
 
-  // ── Custom Module Custom Box Builder State ─────────────────────────────────
-  const [customKpiBoxes, setCustomKpiBoxes] = useState<Array<{ title: string; value: string; unit: string }>>([
-    { title: 'Total Volume', value: '1,500', unit: 'Bags' },
-    { title: 'Operating Cost', value: '4,500,000', unit: 'UGX' },
-  ]);
-  const [includeAmountBox, setIncludeAmountBox] = useState(true);
-  const [includeQuantityBox, setIncludeQuantityBox] = useState(true);
-  const [includeCategoryBox, setIncludeCategoryBox] = useState(true);
-  const [includeLocationBox, setIncludeLocationBox] = useState(true);
-  const [includeNotesBox, setIncludeNotesBox] = useState(true);
-
-  // New record extra fields
-  const [newRecQuantity, setNewRecQuantity] = useState('');
-  const [newRecLocation, setNewRecLocation] = useState('');
-
-  const [assignedModuleCreatorRoles, setAssignedModuleCreatorRoles] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('dc_module_creator_roles');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return ['ADMIN', 'ACCOUNTANT'];
-  });
-
-  const [showAddModuleModal, setShowAddModuleModal] = useState(false);
-  const [newModLabel, setNewModLabel] = useState('');
-  const [newModDesc, setNewModDesc] = useState('');
-  const [newModAllowedRoles, setNewModAllowedRoles] = useState<string[]>(['ALL']);
-  const [newModCanManageRoles, setNewModCanManageRoles] = useState<string[]>(['ADMIN']);
-  const [newModInitialTitle, setNewModInitialTitle] = useState('');
-  const [newModInitialCategory, setNewModInitialCategory] = useState('');
-  const [newModInitialAmount, setNewModInitialAmount] = useState('');
-
-  const [newRecTitle, setNewRecTitle] = useState('');
-  const [newRecCategory, setNewRecCategory] = useState('');
-  const [newRecAmount, setNewRecAmount] = useState('');
-  const [newRecDate, setNewRecDate] = useState(new Date().toISOString().split('T')[0]);
-  const [newRecNotes, setNewRecNotes] = useState('');
-
-  const saveCustomModules = (mods: CustomNavModule[]) => {
-    setCustomModules(mods);
-    localStorage.setItem('dc_custom_nav_modules', JSON.stringify(mods));
-  };
-
-  const handleCreateCustomModule = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newModLabel.trim()) return;
-    const slug = 'mod-' + newModLabel.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 24) + '-' + Date.now().toString().slice(-4);
-    const initialRecords: CustomNavRecord[] = newModInitialTitle.trim() ? [{
-      id: 'REC-' + Date.now().toString().slice(-4),
-      title: newModInitialTitle.trim(),
-      category: newModInitialCategory.trim() || 'General Entry',
-      amount: Number(newModInitialAmount) || 0,
-      date: new Date().toISOString().split('T')[0],
-      notes: 'Initial record on module creation'
-    }] : [];
-
-    const newModule: CustomNavModule = {
-      id: slug,
-      label: newModLabel.trim(),
-      description: newModDesc.trim() || 'Custom operational management module.',
-      allowedRoles: newModAllowedRoles.length > 0 ? newModAllowedRoles : ['ALL'],
-      canManageRoles: newModCanManageRoles.length > 0 ? newModCanManageRoles : ['ADMIN'],
-      createdBy: `${session?.fullName || 'Administrator'} (${activeRole})`,
-      createdAt: new Date().toISOString().split('T')[0],
-      records: initialRecords
-    };
-
-    newModule.customBoxes = customKpiBoxes.filter(b => b.title.trim()).map((b, bi) => ({
-      id: 'kpi_' + bi,
-      title: b.title.trim(),
-      value: b.value.trim() || '0',
-      unit: b.unit.trim()
-    }));
-    newModule.chosenFields = {
-      hasAmount: includeAmountBox,
-      hasQuantity: includeQuantityBox,
-      hasCategory: includeCategoryBox,
-      hasLocation: includeLocationBox,
-      hasNotes: includeNotesBox
-    };
-
-    const updated = [...customModules, newModule];
-    saveCustomModules(updated);
-    setActiveTab(slug);
-    setShowAddModuleModal(false);
-    setNewModLabel('');
-    setNewModDesc('');
-    setNewModInitialTitle('');
-    setNewModInitialCategory('');
-    setNewModInitialAmount('');
-    notify(`Module "${newModule.label}" created with custom boxes and added to navigation!`);
-  };
-
-  const handleDeleteCustomModule = (modId: string) => {
-    if (!confirm('Are you sure you want to delete this module from the navigation bar?')) return;
-    const updated = customModules.filter(m => m.id !== modId);
-    saveCustomModules(updated);
-    setActiveTab('dashboard');
-    notify('Navigation module deleted.');
-  };
-
-  const handleAddCustomRecord = (modId: string, e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRecTitle.trim()) return;
-    const rec: CustomNavRecord = {
-      id: 'REC-' + Date.now().toString().slice(-4),
-      title: newRecTitle.trim(),
-      category: newRecCategory.trim() || 'Operational Entry',
-      amount: Number(newRecAmount) || 0,
-      quantity: newRecQuantity.trim(),
-      location: newRecLocation.trim(),
-      date: newRecDate || new Date().toISOString().split('T')[0],
-      notes: newRecNotes.trim()
-    };
-    const updated = customModules.map(m => m.id === modId ? { ...m, records: [rec, ...m.records] } : m);
-    saveCustomModules(updated);
-    setNewRecTitle('');
-    setNewRecCategory('');
-    setNewRecAmount('');
-    setNewRecNotes('');
-    notify(`Record added to ${customModules.find(m => m.id === modId)?.label}`);
-  };
-
-  const handleDeleteCustomRecord = (modId: string, recId: string) => {
-    const updated = customModules.map(m => m.id === modId ? { ...m, records: m.records.filter(r => r.id !== recId) } : m);
-    saveCustomModules(updated);
-    notify('Record deleted.');
-  };
-
-  const canAddModule = activeRole === 'ADMIN' || assignedModuleCreatorRoles.includes(activeRole);
-
   // ── Share Par Value ────────────────────────────────────────────────────────
   const [shareParValue, setShareParValue] = useState<number>(() => SaccoFarmStore.getShareParValue ? SaccoFarmStore.getShareParValue() : 250000);
   const [shareParInput, setShareParInput] = useState<string>('250000');
@@ -535,7 +344,7 @@ export default function AdminPortal() {
   const [feedCostPerUnit, setFeedCostPerUnit] = useState('');
   const [feedNotes, setFeedNotes] = useState('');
   const [showSectionPdfModal, setShowSectionPdfModal] = useState(false);
-  const [pdfModalSection, setPdfModalSection] = useState<'milk' | 'members' | 'loans' | 'feeds' | 'cows' | 'health' | 'accounting' | 'coffee'>('milk');
+  const [pdfModalSection, setPdfModalSection] = useState<'milk' | 'members' | 'loans' | 'feeds' | 'cows' | 'health' | 'accounting'>('milk');
   const [pdfMilkPeriod, setPdfMilkPeriod] = useState<'today' | 'week' | 'month' | 'calendar' | 'all'>('month');
 
   const handleDeleteFeed = (id: string, name: string) => {
@@ -651,9 +460,9 @@ export default function AdminPortal() {
     setCattle(SaccoFarmStore.getCattle());
     setCowMilkRecords(SaccoFarmStore.getCowMilkRecords());
     setInvestors(SaccoFarmStore.getInvestors());
-    setCoffeeBatches(SaccoFarmStore.getCoffeeBatches());
-    setCoffeeSales(SaccoFarmStore.getCoffeeSales());
-    setCoffeeInventory(SaccoFarmStore.getCoffeeInventory());
+    setShareConversionRequests(SaccoFarmStore.getShareConversionRequests());
+    setPaymentRequests(SaccoFarmStore.getPaymentRequests());
+    setKycSubmissions(SaccoFarmStore.getKycSubmissions());
     if (SaccoFarmStore.getFeedInventory) setFeedsList(SaccoFarmStore.getFeedInventory());
     if (SaccoFarmStore.getAllHealthRecords) setHealthRecords(SaccoFarmStore.getAllHealthRecords());
     try {
@@ -696,15 +505,6 @@ export default function AdminPortal() {
   const totalIncome = transactions.filter(t => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = transactions.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
 
-  // Coffee computed
-  const totalCoffeePurchasedKg = coffeeBatches.reduce((s, b) => s + b.netWeightKg, 0);
-  const totalCoffeePurchasedUGX = coffeeBatches.reduce((s, b) => s + b.totalPayout, 0);
-  const totalCoffeeSoldKg = coffeeSales.reduce((s, c) => s + c.netWeightKg, 0);
-  const totalCoffeeSoldUGX = coffeeSales.reduce((s, c) => s + c.totalRevenue, 0);
-  const totalCoffeeInvKg = coffeeInventory.reduce((s, i) => s + i.totalKg, 0);
-  const totalCoffeeInvBags = coffeeInventory.reduce((s, i) => s + i.totalBags, 0);
-  const totalCoffeeInvValuation = coffeeInventory.reduce((s, i) => s + (i.totalKg * i.currentMarketPricePerKg), 0);
-
   // ── Role Authorization Gate Helper ──────────────────────────────────────────
   const checkPermission = (requiredRoles: string[], actionDesc: string, actionCallback: () => void) => {
     if (requiredRoles.includes(activeRole)) {
@@ -736,30 +536,24 @@ export default function AdminPortal() {
   };
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleAuthorize = (approval: PendingApproval) => {
-    checkPermission(['ADMIN'], 'Authorizing dual-control financial disbursements', () => {
-      if (confirm(`Authorize ${approval.type} of ${fmt(approval.amount)} for ${approval.member}?`)) {
-        setPendingApprovals(prev => prev.filter(a => a.id !== approval.id));
-        SaccoFarmStore.addTransaction({
-          date: new Date().toISOString().split('T')[0],
-          type: approval.type === 'DEPOSIT' ? 'Income' : 'Expense',
-          source: 'Bank',
-          category: `${approval.type}: ${approval.member}`,
-          amount: approval.amount,
-          description: `Admin authorized ${approval.type} for ${approval.member}. Ref: ${approval.reference}`,
-          reference: approval.id,
-          isBanked: true,
-        });
-        notify(`${approval.type} of ${fmt(approval.amount)} for ${approval.member} has been AUTHORIZED and posted to ledger.`);
+  const handleAdminApproveConversion = (requestId: string) => {
+    checkPermission(['ADMIN'], 'Authorizing share conversion request', () => {
+      const res = SaccoFarmStore.approveShareConversionRequest(requestId, 'ADMIN', 'Dr. David Kato (Admin)');
+      if (res.success) {
+        notify(res.msg);
+        reloadData();
+      } else {
+        notify(res.msg);
       }
     });
   };
 
-  const handleReject = (id: string) => {
-    checkPermission(['ADMIN'], 'Rejecting maker-checker transactions', () => {
-      if (confirm('Reject this transaction? It will be returned to the accountant.')) {
-        setPendingApprovals(prev => prev.filter(a => a.id !== id));
-        notify('Transaction rejected and returned to Accountant queue.');
+  const handleAdminRejectConversion = (requestId: string) => {
+    checkPermission(['ADMIN'], 'Rejecting share conversion request', () => {
+      if (confirm('Reject this share conversion request?')) {
+        SaccoFarmStore.rejectShareConversionRequest(requestId, 'Rejected by Administrator');
+        notify('Share conversion request rejected.');
+        reloadData();
       }
     });
   };
@@ -776,23 +570,7 @@ export default function AdminPortal() {
             const newAdminApproved = true;
             const isFullyApproved = app.secretaryApproved && newAdminApproved;
             isFinal = isFullyApproved;
-            const approvedMemberId = app.memberId || `DC-00${Math.floor(7 + Math.random() * 20)}`;
-            if (isFullyApproved) {
-              SaccoFarmStore.addMember({
-                memberId: approvedMemberId,
-                name: app.fullName,
-                phone: app.phone,
-                category: app.chapter ? `Diaspora (${app.chapter})` : 'Ordinary Member',
-                shares: 4,
-                adminFee: 50000,
-                email: app.email,
-                nin: `CM${Math.floor(10000000 + Math.random() * 90000000)}Z`,
-                joinDate: new Date().toISOString().split('T')[0],
-                status: 'ACTIVE',
-                jan: 2050000, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
-                jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
-              });
-            }
+            const approvedMemberId = isFullyApproved ? SaccoFarmStore.activateApplication(app, 'Admin').memberId : app.memberId;
             return {
               ...app,
               adminApproved: newAdminApproved,
@@ -872,110 +650,10 @@ export default function AdminPortal() {
     });
   };
 
-  const handlePostJournal = (e: React.FormEvent) => {
-    e.preventDefault();
-    checkPermission(['ADMIN', 'ACCOUNTANT'], 'Posting general ledger journal entries', () => {
-      const amt = Number(jrnlAmount);
-      if (!amt || !jrnlNarration) return;
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Transfer',
-        source: 'Bank',
-        category: `Journal: Dr ${jrnlDebit} / Cr ${jrnlCredit}`,
-        amount: amt,
-        description: jrnlNarration,
-        reference: `JNL-${Date.now().toString().slice(-6)}`,
-        isBanked: true,
-      });
-      notify(`Journal entry posted: Dr ${jrnlDebit} | Cr ${jrnlCredit} | UGX ${amt.toLocaleString()}`);
-      setJrnlAmount(''); setJrnlNarration('');
-    });
-  };
-
-  // ── Coffee Handlers ─────────────────────────────────────────────────────────
-  const handleBuyCoffee = (e: React.FormEvent) => {
-    e.preventDefault();
-    checkPermission(['ADMIN', 'ACCOUNTANT', 'FARM_WORKER'], 'Recording coffee procurement purchase', () => {
-      const netKg = Number(cfNetKg);
-      const priceKg = Number(cfPriceKg);
-      const bags = Number(cfBags);
-      if (!cfFarmerName || !netKg || !priceKg) return;
-
-      SaccoFarmStore.addCoffeeBatch({
-        date: new Date().toISOString().split('T')[0],
-        farmerName: cfFarmerName,
-        district: cfDistrict,
-        variety: cfVariety,
-        bags,
-        netWeightKg: netKg,
-        moisturePercent: Number(cfMoisture || 12.0),
-        pricePerKg: priceKg,
-        batchCode: cfBatchCode || `LOT-${Date.now().toString().slice(-4)}`,
-        status: 'Warehouse Bins'
-      });
-
-      // Update matching inventory
-      const currentInv = SaccoFarmStore.getCoffeeInventory();
-      const matchItem = currentInv.find(i => i.variety === cfVariety);
-      if (matchItem) {
-        matchItem.totalKg += netKg;
-        matchItem.totalBags += bags;
-        matchItem.lastInspectionDate = new Date().toISOString().split('T')[0];
-        SaccoFarmStore.saveCoffeeInventory(currentInv);
-      }
-
-      notify(`Purchased ${bags} bags (${netKg}kg) ${cfVariety} from ${cfFarmerName}. Payout recorded!`);
-      setCfFarmerName('');
-      setCfBatchCode('');
-      reloadData();
-    });
-  };
-
-  const handleSellCoffee = (e: React.FormEvent) => {
-    e.preventDefault();
-    checkPermission(['ADMIN', 'ACCOUNTANT'], 'Executing coffee export and sales contract dispatch', () => {
-      const netKg = Number(csNetKg);
-      const priceKg = Number(csPriceKg);
-      const bags = Number(csBags);
-      if (!csBuyerName || !netKg || !priceKg) return;
-
-      SaccoFarmStore.addCoffeeSale({
-        date: new Date().toISOString().split('T')[0],
-        buyerName: csBuyerName,
-        marketType: csMarketType,
-        destination: csDestination,
-        variety: csVariety,
-        bags,
-        netWeightKg: netKg,
-        sellingPricePerKg: priceKg,
-        contractRef: csContractRef || `EXP-${Date.now().toString().slice(-5)}`,
-        status: 'In Transit',
-        paymentStatus: 'Paid',
-        notes: `Dispatched to ${csDestination}. Revenue posted.`
-      });
-
-      notify(`Sale recorded: ${bags} bags (${netKg}kg) ${csVariety} to ${csBuyerName}! Revenue credited.`);
-      reloadData();
-    });
-  };
-
-  const handleAdjustStock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedStockItem) return;
-    checkPermission(['ADMIN', 'ACCOUNTANT', 'FARM_WORKER'], 'Adjusting warehouse coffee inventory bins', () => {
-      const deltaK = Number(adjustDeltaKg) * (adjustAction === 'deduct' ? -1 : 1);
-      const deltaB = Number(adjustDeltaBags) * (adjustAction === 'deduct' ? -1 : 1);
-      SaccoFarmStore.adjustCoffeeStock(selectedStockItem.id, deltaK, deltaB, adjustReason);
-      setShowStockModal(false);
-      notify(`Stock for ${selectedStockItem.variety} adjusted by ${deltaK}kg (${adjustReason}).`);
-      reloadData();
-    });
-  };
-
 
   // ── Universal Minimalist PDF Report Generator ─────────────────────────────
   const handleDownloadSectionPdf = (
-    section: 'milk' | 'members' | 'loans' | 'feeds' | 'cows' | 'health' | 'accounting' | 'coffee',
+    section: 'milk' | 'members' | 'loans' | 'feeds' | 'cows' | 'health' | 'accounting',
     periodOption: 'today' | 'week' | 'month' | 'calendar' | 'all' = 'month',
     calendarPick?: string
   ) => {
@@ -989,6 +667,7 @@ export default function AdminPortal() {
     let periodTitle = 'Current Period';
     let kpiHtml = '';
     let tableHtml = '';
+    let chartHtml = '';
 
     if (section === 'milk') {
       docTitle = 'Milk Production & Revenue Audit Statement';
@@ -1027,10 +706,12 @@ export default function AdminPortal() {
         <div class="kpi-card"><span class="kpi-label">PRODUCTION SESSIONS</span><div class="kpi-val">${targetLogs.length} Records</div></div>
       `;
 
+      chartHtml = htmlBarChart('Litres sold per day', [...targetLogs].sort((a, b) => a.date.localeCompare(b.date)).map(l => ({ label: l.date, value: l.netSold })), n => `${n.toFixed(1)} L`, '#1baf7a') + htmlBarChart('Milk revenue per day', [...targetLogs].sort((a, b) => a.date.localeCompare(b.date)).map(l => ({ label: l.date, value: l.revenue })), (n: number) => `UGX ${Math.round(n).toLocaleString()}`);
+
       tableHtml = `
         <table>
           <thead>
-            <tr>
+            <tr><th>#</th>
               <th>Date</th>
               <th>Morning (L)</th>
               <th>Afternoon (L)</th>
@@ -1041,9 +722,8 @@ export default function AdminPortal() {
               <th>Duty Officer</th>
             </tr>
           </thead>
-          <tbody>
-            ${targetLogs.map(l => `
-              <tr>
+          <tbody>${targetLogs.map((l, __n) => `
+              <tr><td>${__n + 1}</td>
                 <td>${l.date}</td>
                 <td>${l.morning}</td>
                 <td>${l.afternoon}</td>
@@ -1054,11 +734,11 @@ export default function AdminPortal() {
                 <td>${l.recorder}</td>
               </tr>
             `).join('')}
-            ${targetLogs.length === 0 ? '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #64748b;">No milk production records found for this period.</td></tr>' : ''}
+            ${targetLogs.length === 0 ? '<tr><td></td><td colspan="8" style="text-align: center; padding: 20px; color: #64748b;">No milk production records found for this period.</td></tr>' : ''}
           </tbody>
           ${targetLogs.length > 0 ? `
             <tfoot>
-              <tr>
+              <tr><td></td>
                 <td colspan="4" style="font-weight: bold;">PERIOD TOTALS</td>
                 <td style="text-align: right; font-weight: bold;">${totalL.toFixed(1)} L</td>
                 <td></td>
@@ -1085,10 +765,12 @@ export default function AdminPortal() {
         <div class="kpi-card"><span class="kpi-label">SHARE CAPITAL VALUE</span><div class="kpi-val text-em">UGX ${totalShrVal.toLocaleString()}</div></div>
       `;
 
+      chartHtml = htmlBarChart('Savings by member', members.map(m => ({ label: m.name, value: m.savings })), (n: number) => `UGX ${Math.round(n).toLocaleString()}`) + htmlBarChart('Shares by member', members.map(m => ({ label: m.name, value: m.shares })), n => `${n} shares`, '#6250d6');
+
       tableHtml = `
         <table>
           <thead>
-            <tr>
+            <tr><th>#</th>
               <th>Member ID</th>
               <th>Full Legal Name</th>
               <th>Phone &amp; NIN</th>
@@ -1098,9 +780,8 @@ export default function AdminPortal() {
               <th style="text-align: right;">Savings Balance (UGX)</th>
             </tr>
           </thead>
-          <tbody>
-            ${members.map(m => `
-              <tr>
+          <tbody>${members.map((m, __n) => `
+              <tr><td>${__n + 1}</td>
                 <td style="font-weight: bold;">${m.memberId}</td>
                 <td>${m.name}</td>
                 <td>${m.phone} &middot; ${m.nin}</td>
@@ -1130,10 +811,12 @@ export default function AdminPortal() {
         <div class="kpi-card"><span class="kpi-label">INVENTORY VALUATION</span><div class="kpi-val text-em">UGX ${totalCost.toLocaleString()}</div></div>
       `;
 
+      chartHtml = htmlBarChart('Feed stock on hand', feedList.map(f => ({ label: `${f.feedType} (${f.unit})`, value: f.currentStock })), n => n.toLocaleString(), '#eda100');
+
       tableHtml = `
         <table>
           <thead>
-            <tr>
+            <tr><th>#</th>
               <th>Feed Classification</th>
               <th>Source</th>
               <th>Quantity in Stock</th>
@@ -1143,9 +826,8 @@ export default function AdminPortal() {
               <th>Last Calibration</th>
             </tr>
           </thead>
-          <tbody>
-            ${feedList.map(f => `
-              <tr>
+          <tbody>${feedList.map((f, __n) => `
+              <tr><td>${__n + 1}</td>
                 <td style="font-weight: bold;">${f.feedType}</td>
                 <td>${f.source === 'FARM_MADE' ? 'Made at Farm (UGX 0)' : 'Purchased'}</td>
                 <td style="font-weight: bold;">${f.currentStock} ${f.unit}</td>
@@ -1174,10 +856,12 @@ export default function AdminPortal() {
         <div class="kpi-card"><span class="kpi-label">UNDER TREATMENT</span><div class="kpi-val" style="color: ${sickCount > 0 ? '#e11d48' : '#047857'}">${sickCount} Head</div></div>
       `;
 
+      chartHtml = htmlBarChart('Herd by stage', ['Milking', 'Pregnant', 'Dry', 'Heifer', 'Calf', 'Bull'].map(st => ({ label: st, value: cattle.filter(c => c.stage === st).length })), n => `${n} head`) + htmlBarChart('Daily average milk by cow', cattle.filter(c => (c.dailyAvgMilk || 0) > 0).map(c => ({ label: `${c.name} (${c.tagNumber})`, value: c.dailyAvgMilk || 0 })), n => `${n} L`, '#1baf7a');
+
       tableHtml = `
         <table>
           <thead>
-            <tr>
+            <tr><th>#</th>
               <th>Tag Number</th>
               <th>Name</th>
               <th>Breed</th>
@@ -1188,9 +872,8 @@ export default function AdminPortal() {
               <th>Lineage / Sire</th>
             </tr>
           </thead>
-          <tbody>
-            ${cattle.map(c => `
-              <tr>
+          <tbody>${cattle.map((c, __n) => `
+              <tr><td>${__n + 1}</td>
                 <td style="font-weight: bold;">${c.tagNumber}</td>
                 <td>${c.name}</td>
                 <td>${c.breed}</td>
@@ -1220,10 +903,12 @@ export default function AdminPortal() {
         <div class="kpi-card"><span class="kpi-label">HERD HEALTH RATE</span><div class="kpi-val text-em">${cattle.length > 0 ? (((cattle.length - activeSick) / cattle.length) * 100).toFixed(1) : 100}%</div></div>
       `;
 
+      chartHtml = htmlBarChart('Health incidents by illness', Array.from(healthList.reduce((m, h) => m.set(h.illness, (m.get(h.illness) || 0) + 1), new Map<string, number>())).map(([label, value]) => ({ label, value })), n => `${n} case(s)`, '#e34948');
+
       tableHtml = `
         <table>
           <thead>
-            <tr>
+            <tr><th>#</th>
               <th>Date</th>
               <th>Cow Tag &amp; Name</th>
               <th>Diagnosis / Illness</th>
@@ -1234,9 +919,8 @@ export default function AdminPortal() {
               <th>Recovery Date</th>
             </tr>
           </thead>
-          <tbody>
-            ${healthList.map(h => `
-              <tr>
+          <tbody>${healthList.map((h, __n) => `
+              <tr><td>${__n + 1}</td>
                 <td>${h.date}</td>
                 <td style="font-weight: bold;">${h.cowTag} (${h.cowName})</td>
                 <td style="font-weight: bold;">${h.illness}</td>
@@ -1266,10 +950,12 @@ export default function AdminPortal() {
         <div class="kpi-card"><span class="kpi-label">ACTIVE LOANS</span><div class="kpi-val">${activeCount} Active</div></div>
       `;
 
+      chartHtml = htmlBarChart('Outstanding balance by borrower', loans.map(l => ({ label: `${l.memberName} (${l.loanNumber || l.id})`, value: l.outstandingBalance })), (n: number) => `UGX ${Math.round(n).toLocaleString()}`);
+
       tableHtml = `
         <table>
           <thead>
-            <tr>
+            <tr><th>#</th>
               <th>Loan ID</th>
               <th>Borrower</th>
               <th>Purpose</th>
@@ -1280,9 +966,8 @@ export default function AdminPortal() {
               <th>Maturity</th>
             </tr>
           </thead>
-          <tbody>
-            ${loans.map(l => `
-              <tr>
+          <tbody>${loans.map((l, __n) => `
+              <tr><td>${__n + 1}</td>
                 <td style="font-weight: bold;">${l.loanNumber || l.id}</td>
                 <td style="font-weight: bold;">${l.memberName}</td>
                 <td>${l.purpose}</td>
@@ -1313,74 +998,69 @@ export default function AdminPortal() {
         <div class="kpi-card"><span class="kpi-label">TOTAL JOURNAL ENTRIES</span><div class="kpi-val">${allTx.length} Postings</div></div>
       `;
 
+      chartHtml = htmlBarChart('Income vs expenses by category', [...Array.from(allTx.filter(t => t.type === 'Income').reduce((m, t) => m.set(classifyIncome(t), (m.get(classifyIncome(t)) || 0) + t.amount), new Map<string, number>())).map(([label, value]) => ({ label: `Income — ${label}`, value })), ...Array.from(allTx.filter(t => t.type === 'Expense').reduce((m, t) => m.set(t.category, (m.get(t.category) || 0) + t.amount), new Map<string, number>())).map(([label, value]) => ({ label: `Expense — ${label}`, value }))], (n: number) => `UGX ${Math.round(n).toLocaleString()}`);
+
+      const ledger = toLedgerLines(allTx);
+      const tb = buildTrialBalance(allTx);
       tableHtml = `
+        <h3 style="font-size: 10pt; margin: 0 0 8px 0;">Trial Balance — ${tb.balanced ? 'Balanced (Dr = Cr)' : 'OUT OF BALANCE'}</h3>
         <table>
           <thead>
-            <tr>
+            <tr><th>#</th>
+              <th>Account</th>
+              <th style="text-align: right;">Debit (UGX)</th>
+              <th style="text-align: right;">Credit (UGX)</th>
+              <th style="text-align: right;">Balance</th>
+            </tr>
+          </thead>
+          <tbody>${tb.rows.map((r, __n) => `
+              <tr><td>${__n + 1}</td>
+                <td style="font-weight: bold;">${r.account}</td>
+                <td style="text-align: right;">${r.debit ? r.debit.toLocaleString() : '—'}</td>
+                <td style="text-align: right;">${r.credit ? r.credit.toLocaleString() : '—'}</td>
+                <td style="text-align: right; font-weight: bold;">${r.balance.toLocaleString()} ${r.side}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr><td></td>
+              <td>TOTALS</td>
+              <td style="text-align: right;">${tb.totalDebit.toLocaleString()}</td>
+              <td style="text-align: right;">${tb.totalCredit.toLocaleString()}</td>
+              <td style="text-align: right; color: ${tb.balanced ? '#047857' : '#e11d48'};">${tb.balanced ? 'Dr = Cr' : 'Difference ' + (tb.totalDebit - tb.totalCredit).toLocaleString()}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <h3 style="font-size: 10pt; margin: 0 0 8px 0;">General Ledger — Double Entry</h3>
+        <table>
+          <thead>
+            <tr><th>#</th>
               <th>Date</th>
               <th>Ref Number</th>
-              <th>Category</th>
-              <th>Description / Account</th>
-              <th>Type</th>
+              <th>Account</th>
+              <th>Narration</th>
               <th style="text-align: right;">Debit (UGX)</th>
               <th style="text-align: right;">Credit (UGX)</th>
             </tr>
           </thead>
-          <tbody>
-            ${allTx.slice(0, 30).map(t => `
-              <tr>
-                <td>${t.date}</td>
-                <td style="font-weight: bold;">${t.reference || t.id}</td>
-                <td>${t.category}</td>
-                <td>${t.description}</td>
-                <td style="font-weight: bold; color: ${t.type === 'Income' ? '#047857' : '#e11d48'};">${t.type}</td>
-                <td style="text-align: right;">${t.type === 'Expense' ? `UGX ${t.amount.toLocaleString()}` : '—'}</td>
-                <td style="text-align: right;">${t.type === 'Income' ? `UGX ${t.amount.toLocaleString()}` : '—'}</td>
+          <tbody>${ledger.map((l, __n) => `
+              <tr><td>${__n + 1}</td>
+                <td>${l.date}</td>
+                <td style="font-weight: bold;">${l.reference}</td>
+                <td style="${l.credit ? 'padding-left: 24px;' : 'font-weight: bold;'}">${l.account}</td>
+                <td>${l.narration}</td>
+                <td style="text-align: right;">${l.debit ? l.debit.toLocaleString() : ''}</td>
+                <td style="text-align: right;">${l.credit ? l.credit.toLocaleString() : ''}</td>
               </tr>
             `).join('')}
           </tbody>
-        </table>
-      `;
-    } else if (section === 'coffee') {
-      docTitle = 'Coffee Commodity Trading & Silo Inventory Ledger';
-      subtitle = 'Outgrower Procurement, Warehousing & Export Offtake';
-      periodTitle = `Warehouse Valuation as of ${generatedDate}`;
-
-      kpiHtml = `
-        <div class="kpi-card"><span class="kpi-label">WAREHOUSE STOCK</span><div class="kpi-val">${(totalCoffeeInvKg / 1000).toFixed(1)} MT</div></div>
-        <div class="kpi-card"><span class="kpi-label">MARKET VALUATION</span><div class="kpi-val text-em">UGX ${fmtK(totalCoffeeInvValuation)}</div></div>
-        <div class="kpi-card"><span class="kpi-label">PROCURED VOLUME</span><div class="kpi-val">${(totalCoffeePurchasedKg / 1000).toFixed(1)} MT</div></div>
-        <div class="kpi-card"><span class="kpi-label">EXPORT SALES</span><div class="kpi-val text-em">UGX ${fmtK(totalCoffeeSoldUGX)}</div></div>
-      `;
-
-      tableHtml = `
-        <table>
-          <thead>
-            <tr>
-              <th>Variety / Grade</th>
-              <th>Warehouse</th>
-              <th>Bin</th>
-              <th style="text-align: right;">Bags</th>
-              <th style="text-align: right;">Net (Kg)</th>
-              <th style="text-align: right;">Moisture</th>
-              <th style="text-align: right;">Proc. Cost/Kg</th>
-              <th style="text-align: right;">Lot Valuation (UGX)</th>
+          <tfoot>
+            <tr><td></td>
+              <td colspan="4">TOTALS</td>
+              <td style="text-align: right;">${ledger.reduce((s, l) => s + l.debit, 0).toLocaleString()}</td>
+              <td style="text-align: right;">${ledger.reduce((s, l) => s + l.credit, 0).toLocaleString()}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${coffeeInventory.map(i => `
-              <tr>
-                <td style="font-weight: bold;">${i.variety}</td>
-                <td>${i.warehouseLocation}</td>
-                <td>${i.binNumber}</td>
-                <td style="text-align: right;">${i.totalBags}</td>
-                <td style="text-align: right; font-weight: bold;">${i.totalKg.toLocaleString()} kg</td>
-                <td style="text-align: right;">${i.averageMoisture}%</td>
-                <td style="text-align: right;">UGX ${i.averageCostPerKg.toLocaleString()}</td>
-                <td style="text-align: right; font-weight: bold; color: #047857;">UGX ${(i.totalKg * i.currentMarketPricePerKg).toLocaleString()}</td>
-              </tr>
-            `).join('')}
-          </tbody>
+          </tfoot>
         </table>
       `;
     }
@@ -1497,6 +1177,7 @@ export default function AdminPortal() {
             margin-bottom: 6px;
             width: 80%;
           }
+          ${PRINT_CHART_CSS}
           @media print {
             body { padding: 0; }
             .kpi-card { break-inside: avoid; }
@@ -1521,6 +1202,8 @@ export default function AdminPortal() {
         <div class="kpi-row">
           ${kpiHtml}
         </div>
+
+        ${chartHtml}
 
         ${tableHtml}
 
@@ -1548,94 +1231,26 @@ export default function AdminPortal() {
     }
   };
 
-  const handleDownloadCoffeeReport = () => {
-    const printContent = `
-      <html><head><title>Diaspora Connect - Coffee Commodity Trading & Inventory Report</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-        h1 { font-size: 20px; font-weight: bold; margin-bottom: 4px; }
-        p { font-size: 12px; color: #64748b; margin-bottom: 16px; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 24px; }
-        th { background: #0f172a; color: white; padding: 8px; text-align: left; }
-        td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
-        tr:nth-child(even) { background: #f8fafc; }
-        .summary-box { display: flex; gap: 16px; margin-bottom: 20px; }
-        .card { padding: 12px; background: #f1f5f9; border-radius: 8px; flex: 1; }
-        .bold { font-weight: bold; }
-      </style></head><body>
-      <h1>Diaspora Connect Farmers SACCO Ltd — Coffee Trading Ledger</h1>
-      <p>Export Trading & Outgrower Procurement Division | Generated: ${new Date().toLocaleString()}</p>
-      
-      <div class="summary-box">
-        <div class="card"><strong>Warehouse Stock:</strong> ${(totalCoffeeInvKg / 1000).toFixed(1)} Metric Tons</div>
-        <div class="card"><strong>Total Procured:</strong> ${(totalCoffeePurchasedKg / 1000).toFixed(1)} Tons (UGX ${totalCoffeePurchasedUGX.toLocaleString()})</div>
-        <div class="card"><strong>Total Exported/Sold:</strong> ${(totalCoffeeSoldKg / 1000).toFixed(1)} Tons (UGX ${totalCoffeeSoldUGX.toLocaleString()})</div>
-      </div>
-
-      <h2 style="font-size:14px;">1. Current Warehouse Inventory Bins</h2>
-      <table>
-        <thead><tr><th>Variety</th><th>Warehouse Location</th><th>Bin</th><th>Bags</th><th>Total (Kg)</th><th>Moisture</th><th>Avg Cost/Kg</th><th>Market Valuation</th></tr></thead>
-        <tbody>
-          ${coffeeInventory.map(i => `<tr>
-            <td class="bold">${i.variety}</td><td>${i.warehouseLocation}</td><td>${i.binNumber}</td>
-            <td>${i.totalBags}</td><td class="bold">${i.totalKg.toLocaleString()} kg</td><td>${i.averageMoisture}%</td>
-            <td>UGX ${i.averageCostPerKg.toLocaleString()}</td><td class="bold">UGX ${(i.totalKg * i.currentMarketPricePerKg).toLocaleString()}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-
-      <h2 style="font-size:14px;">2. Outgrower Purchases (Procurement)</h2>
-      <table>
-        <thead><tr><th>Batch</th><th>Date</th><th>Farmer / Cooperative</th><th>District</th><th>Variety</th><th>Bags</th><th>Weight (Kg)</th><th>Payout (UGX)</th></tr></thead>
-        <tbody>
-          ${coffeeBatches.map(b => `<tr>
-            <td class="bold">${b.batchCode}</td><td>${b.date}</td><td>${b.farmerName}</td><td>${b.district}</td>
-            <td>${b.variety}</td><td>${b.bags}</td><td>${b.netWeightKg.toLocaleString()}</td><td class="bold">UGX ${b.totalPayout.toLocaleString()}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-
-      <h2 style="font-size:14px;">3. Export & Domestic Sales Ledger</h2>
-      <table>
-        <thead><tr><th>Contract</th><th>Date</th><th>Off-taker / Buyer</th><th>Destination</th><th>Variety</th><th>Weight (Kg)</th><th>Revenue (UGX)</th><th>Status</th></tr></thead>
-        <tbody>
-          ${coffeeSales.map(c => `<tr>
-            <td class="bold">${c.contractRef}</td><td>${c.date}</td><td>${c.buyerName}</td><td>${c.destination}</td>
-            <td>${c.variety}</td><td>${c.netWeightKg.toLocaleString()} kg</td><td class="bold">UGX ${c.totalRevenue.toLocaleString()}</td><td>${c.status}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-      </body></html>
-    `;
-    const w = window.open('', '_blank');
-    if (w) {
-      w.document.write(printContent);
-      w.document.close();
-      w.focus();
-      setTimeout(() => w.print(), 300);
-    }
-  };
-
   const handleLogout = () => { clearSession(); navigate('/signin'); };
 
   const handleMemberPayment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMember || !memberPaymentAmount) return;
     const amount = Number(memberPaymentAmount);
-    SaccoFarmStore.addTransaction({
-      date: new Date().toISOString().split('T')[0],
-      category: memberPaymentType === 'savings' ? 'Member Savings Deposit' : memberPaymentType === 'shares' ? 'Share Capital Purchase' : 'Loan Repayment',
-      description: `${memberPaymentType.replace('_', ' ')} from ${selectedMember.name} — Ref: ${memberPaymentRef}`,
-      amount,
-      type: 'Income',
-      source: 'Bank',
-      isBanked: true,
-      reference: memberPaymentRef || `PAY-${Date.now()}`,
-    });
-    if (memberPaymentType === 'savings') {
-      SaccoFarmStore.updateMember(selectedMember.memberId, { savings: (selectedMember.savings || 0) + amount });
-    } else if (memberPaymentType === 'shares') {
-      SaccoFarmStore.updateMember(selectedMember.memberId, { shares: (selectedMember.shares || 0) + Math.floor(amount / 250000) });
+    if (memberPaymentType === 'loan_repayment') {
+      // Reduce the member's actual loan (this also posts the ledger entry)
+      const loan = SaccoFarmStore.getLoans().find(l => l.memberId === selectedMember.memberId && (l.status === 'ACTIVE' || l.status === 'DEFAULTED'));
+      if (!loan) { notify(`${selectedMember.name} has no active loan to repay.`); return; }
+      SaccoFarmStore.recordLoanRepayment(loan.id, amount, 'Bank Wire', memberPaymentRef || undefined);
+    } else {
+      const res = SaccoFarmStore.applyMemberDeposit({
+        memberId: selectedMember.memberId,
+        purpose: memberPaymentType,
+        amount,
+        method: 'Bank Wire',
+        reference: memberPaymentRef || undefined,
+      });
+      if (!res.success) { notify(res.msg); return; }
     }
     notify(`Payment of UGX ${amount.toLocaleString()} recorded for ${selectedMember.name}`);
     setMemberPaymentAmount('');
@@ -1702,34 +1317,6 @@ export default function AdminPortal() {
     if (updated) setSelectedMember(updated);
   };
 
-  // ── Shares Allotment Form State & Handler ───────────────────────────────────
-  const [shareAllotMemberId, setShareAllotMemberId] = useState('');
-  const [shareAllotCount, setShareAllotCount] = useState('4');
-  const [shareAllotPaymentRef, setShareAllotPaymentRef] = useState('');
-
-  const handleAllotShares = (e: React.FormEvent) => {
-    e.preventDefault();
-    const target = members.find(m => m.memberId === shareAllotMemberId || m.id === shareAllotMemberId) || members[0];
-    if (!target) return;
-    const count = Number(shareAllotCount);
-    const amount = count * 250000;
-    SaccoFarmStore.updateMember(target.memberId, { shares: (target.shares || 0) + count });
-    SaccoFarmStore.addTransaction({
-      date: new Date().toISOString().split('T')[0],
-      category: 'Share Capital Allotment',
-      description: `Allotment of ${count} Class A voting shares to ${target.name}`,
-      amount,
-      type: 'Income',
-      source: 'Bank',
-      isBanked: true,
-      reference: shareAllotPaymentRef || `SHR-ALLOT-${Date.now()}`,
-    });
-    notify(`Successfully allotted ${count} shares (UGX ${amount.toLocaleString()}) to ${target.name}!`);
-    setShareAllotCount('4');
-    setShareAllotPaymentRef('');
-    reloadData();
-  };
-
   // ── Savings Deposit Form State & Handler ────────────────────────────────────
   const [savingsDepositMemberId, setSavingsDepositMemberId] = useState('');
   const [savingsDepositAmount, setSavingsDepositAmount] = useState('250000');
@@ -1742,61 +1329,16 @@ export default function AdminPortal() {
     const target = members.find(m => m.memberId === savingsDepositMemberId || m.id === savingsDepositMemberId) || members[0];
     if (!target) return;
     const amount = Number(savingsDepositAmount);
-
-    if (savingsDepositPurpose === 'shares') {
-      const sharesPurchased = Math.max(1, Math.floor(amount / 250000));
-      const currentShares = Number(target.shares) || 0;
-      const newShares = currentShares + sharesPurchased;
-      SaccoFarmStore.updateMember(target.memberId, {
-        shares: newShares,
-        sharesValue: newShares * 250000,
-        total: (Number(target.total) || 0) + amount
-      });
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        category: 'Share Capital Purchase',
-        description: `Share purchase (${sharesPurchased} Class A Shares) for ${target.name}`,
-        amount,
-        type: 'Income',
-        source: 'Bank',
-        isBanked: true,
-        reference: savingsDepositRef || `SHR-DEP-${Date.now()}`,
-      });
-      notify(`Recorded deposit of UGX ${amount.toLocaleString()} for ${sharesPurchased} share(s) for ${target.name}!`);
-    } else if (savingsDepositPurpose === 'savings') {
-      const currentMo = target[savingsDepositMonth] || 0;
-      SaccoFarmStore.updateMember(target.memberId, {
-        savings: (target.savings || 0) + amount,
-        [savingsDepositMonth]: currentMo + amount,
-      });
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        category: 'Member Monthly Savings Deposit',
-        description: `Monthly savings contribution for ${target.name} (${savingsDepositMonth.toUpperCase()})`,
-        amount,
-        type: 'Income',
-        source: 'Bank',
-        isBanked: true,
-        reference: savingsDepositRef || `SAV-DEP-${Date.now()}`,
-      });
-      notify(`Recorded savings deposit of UGX ${amount.toLocaleString()} for ${target.name}!`);
-    } else {
-      const purposeLabel = savingsDepositPurpose === 'welfare' ? 'Welfare & Emergency Fund' : savingsDepositPurpose === 'project' ? 'Special Farm Project' : 'Other Member Deposit';
-      SaccoFarmStore.updateMember(target.memberId, {
-        total: (Number(target.total) || 0) + amount
-      });
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        category: purposeLabel,
-        description: `${purposeLabel} deposit for ${target.name}`,
-        amount,
-        type: 'Income',
-        source: 'Bank',
-        isBanked: true,
-        reference: savingsDepositRef || `DEP-${Date.now()}`,
-      });
-      notify(`Recorded ${purposeLabel} deposit of UGX ${amount.toLocaleString()} for ${target.name}!`);
-    }
+    // One store call keeps the member's savings / shares and the ledger in step
+    const res = SaccoFarmStore.applyMemberDeposit({
+      memberId: target.memberId,
+      purpose: savingsDepositPurpose,
+      amount,
+      month: savingsDepositMonth,
+      method: 'Bank Wire',
+      reference: savingsDepositRef || undefined,
+    });
+    notify(res.success ? `Recorded ${savingsDepositPurpose} deposit of UGX ${amount.toLocaleString()} for ${target.name}.` : res.msg);
 
     setSavingsDepositAmount('250000');
     setSavingsDepositRef('');
@@ -1915,7 +1457,10 @@ export default function AdminPortal() {
   };
 
     const pendingMemberRegCount = memberApps.filter(a => !a.adminApproved && a.status === 'PENDING_APPROVAL').length;
-    const totalPendingApprovals = pendingApprovals.length + pendingMemberRegCount;
+    const pendingShareConvCount = shareConversionRequests.filter(r => !r.adminApproved && r.status === 'PENDING').length;
+    const pendingPaymentCount = paymentRequests.filter(r => r.status === 'VERIFIED_AWAITING_ADMIN').length;
+    const pendingKycCount = kycSubmissions.filter(k => k.status === 'PENDING').length;
+    const totalPendingApprovals = pendingPaymentCount + pendingMemberRegCount + pendingShareConvCount + pendingKycCount;
 
   // ── Nav items ────────────────────────────────────────────────────────────────
   const navItems: { id: TabId; label: string; icon: React.ReactNode; badge?: string | number }[] = [
@@ -1925,9 +1470,10 @@ export default function AdminPortal() {
     { id: 'savings', label: 'Savings', icon: <Wallet className="w-4 h-4" /> },
     { id: 'loans', label: 'Loans', icon: <Scale className="w-4 h-4" />, badge: activeLoans.length },
     { id: 'accounting', label: 'Accounting', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'closing', label: 'Close & Dividends', icon: <PieChart className="w-4 h-4" /> },
     { id: 'farm', label: 'Farm', icon: <Milk className="w-4 h-4" /> },
-    { id: 'coffee', label: 'Coffee Trading', icon: <Coffee className="w-4 h-4" />, badge: `${(totalCoffeeInvKg / 1000).toFixed(0)}T` },
     { id: 'reports', label: 'Reports', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'ai', label: 'AI Advisor', icon: <Sparkles className="w-4 h-4" /> },
     { id: 'approvals', label: 'Approvals', icon: <CheckCircle2 className="w-4 h-4" />, badge: totalPendingApprovals || undefined },
     { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
@@ -1937,23 +1483,6 @@ export default function AdminPortal() {
     m.memberId.toLowerCase().includes(memberSearch.toLowerCase()) ||
     m.email.toLowerCase().includes(memberSearch.toLowerCase())
   );
-
-  // ── Ledger accounts ────────────────────────────────────────────────────────
-  const ledgerAccounts = [
-    '1001 — Cash at Bank (Stanbic)',
-    '1002 — Cash at Bank (ABSA)',
-    '1010 — MTN Mobile Money Float',
-    '1011 — Airtel Money Float',
-    '1100 — Share Capital Receivable',
-    '2001 — Accounts Payable',
-    '3010 — Member Savings Account',
-    '3020 — Share Capital Fund',
-    '4001 — Loan Interest Revenue',
-    '4010 — Dairy Milk Revenue',
-    '5001 — Farm Operating Expenses',
-    '5010 — Staff Salaries',
-    '5020 — Veterinary Costs',
-  ];
 
   return (
     <div className={`min-h-screen flex antialiased font-sans transition-colors duration-200 selection:bg-emerald-600 selection:text-white ${
@@ -2039,41 +1568,6 @@ export default function AdminPortal() {
               </button>
             ))}
 
-            {/* Dynamic Custom Navigation Modules */}
-            {customModules.length > 0 && (
-              <div className="pt-2 pb-1 border-t border-slate-200 dark:border-slate-800 mt-2">
-                <p className="text-[10px] uppercase font-bold text-slate-400 px-3 py-1">Custom Modules</p>
-                {customModules.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => { setActiveTab(m.id); setSidebarOpen(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                      activeTab === m.id
-                        ? 'bg-emerald-600 text-white shadow-md font-bold'
-                        : isDark
-                        ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Layers className="w-4 h-4" />
-                      <span>{m.label}</span>
-                    </div>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                      {m.records.length}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {canAddModule && (
-              <button
-                onClick={() => setShowAddModuleModal(true)}
-                className="w-full mt-2 py-2 px-3 rounded-xl border border-dashed border-emerald-500/50 hover:border-emerald-500 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition text-center"
-              >
-                CREATE MODULE
-              </button>
-            )}
           </nav>
         </div>
 
@@ -2101,7 +1595,7 @@ export default function AdminPortal() {
             <span>Public Website</span>
           </Link>
           <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] text-emerald-500 font-mono font-bold">Live Core Synced</span>
+            <span />
             <button onClick={handleLogout} className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-rose-900/40 text-slate-300 hover:text-rose-400 transition text-[10px] font-bold">SIGN OUT</button>
           </div>
         </div>
@@ -2182,14 +1676,14 @@ export default function AdminPortal() {
         )}
 
         {/* Pending approvals banner */}
-        {pendingApprovals.length > 0 && activeTab !== 'approvals' && (
+        {pendingPaymentCount > 0 && activeTab !== 'approvals' && (
           <button
             onClick={() => setActiveTab('approvals')}
             className="mx-4 mt-2 p-3 rounded-2xl bg-rose-600/15 border border-rose-600/40 text-rose-400 text-xs font-bold flex items-center justify-between shadow-xl hover:bg-rose-600/20 transition"
           >
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{pendingApprovals.length} transaction(s) awaiting your final authorization</span>
+              <span>{pendingPaymentCount} member payment(s) awaiting your final authorization</span>
             </div>
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -2202,7 +1696,7 @@ export default function AdminPortal() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">System Dashboard</h3>
-                <p className="text-xs text-slate-400">Live overview of Diaspora Connect SACCO & Farm operations</p>
+                <p className="text-xs text-slate-400">Overview of Diaspora Connect SACCO & Farm operations</p>
               </div>
 
               {/* KPI Cards — All Clickable */}
@@ -2277,7 +1771,7 @@ export default function AdminPortal() {
                 <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-3">Quick Actions</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
-                    { label: 'Approvals Queue', tab: 'approvals', icon: <CheckCircle2 className="w-4 h-4" />, count: pendingApprovals.length, urgent: true },
+                    { label: 'Approvals Queue', tab: 'approvals', icon: <CheckCircle2 className="w-4 h-4" />, count: totalPendingApprovals, urgent: true },
                     { label: 'Register Member', tab: 'members', icon: <UserPlus className="w-4 h-4" />, count: null, urgent: false },
                     { label: 'Post Journal', tab: 'accounting', icon: <BookOpen className="w-4 h-4" />, count: null, urgent: false },
                     { label: 'Generate Report', tab: 'reports', icon: <BarChart3 className="w-4 h-4" />, count: null, urgent: false },
@@ -2310,15 +1804,15 @@ export default function AdminPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800">
+                      <tr className="border-b border-slate-200 dark:border-slate-800"><th className="text-slate-500 py-2 pr-4 w-10">#</th>
                         {['Date', 'Type', 'Category', 'Amount', 'Ref'].map(h => (
                           <th key={h} className="text-left text-slate-500 font-semibold py-2 pr-4">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                      {transactions.slice(0, 8).map(t => (
-                        <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {transactions.slice(0, 8).map((t, __n) => (
+                        <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-2 pr-4 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="py-2 pr-4 text-slate-400 font-mono">{t.date}</td>
                           <td className="py-2 pr-4">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -2356,39 +1850,6 @@ export default function AdminPortal() {
                 </div>
               </div>
 
-              {/* Dynamic Operations & Modules on Dashboard */}
-              {customModules.length > 0 && (
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Custom Operations & Modules</h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Custom administrative sections configured for cooperative operations</p>
-                    </div>
-                    {canAddModule && (
-                      <button
-                        onClick={() => setShowAddModuleModal(true)}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
-                      >CREATE MODULE</button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {customModules.map(m => (
-                      <div
-                        key={m.id}
-                        onClick={() => setActiveTab(m.id)}
-                        className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl hover:border-emerald-500 cursor-pointer transition text-left"
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white">{m.label}</p>
-                          <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">{m.records.length} records</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{m.description}</p>
-                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase mt-2">OPEN MODULE</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -2457,15 +1918,15 @@ export default function AdminPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-50 dark:bg-slate-800/50">
-                      <tr>
+                      <tr><th className="text-slate-500 dark:text-slate-400 py-3 px-4 w-10">#</th>
                         {['Member', 'ID', 'Category', 'Savings', 'Shares', 'Status', 'Actions'].map(h => (
                           <th key={h} className="text-left text-slate-500 dark:text-slate-400 font-semibold py-3 px-4">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {filteredMembers.map(m => (
-                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {filteredMembers.map((m, __n) => (
+                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-3 px-4 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               {m.avatar || getMemberPhoto(m.name) ? (
@@ -2529,50 +1990,6 @@ export default function AdminPortal() {
                 <p className="text-xs text-slate-400">Cooperative share ownership at UGX 250,000 per Class A voting share</p>
               </div>
 
-              {/* ALLOT SHARES FORM — FIRST */}
-              <div className="bg-white dark:bg-slate-900 border-2 border-blue-200 dark:border-blue-900/50 rounded-2xl p-5 shadow-sm">
-                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Allot Shares to Member</h4>
-                <form onSubmit={handleAllotShares} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Member *</label>
-                    <select
-                      value={shareAllotMemberId}
-                      onChange={e => setShareAllotMemberId(e.target.value)}
-                      required
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">Select member...</option>
-                      {members.map(m => <option key={m.id} value={m.memberId}>{m.name} ({m.memberId})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Number of Shares *</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={shareAllotCount}
-                      onChange={e => setShareAllotCount(e.target.value)}
-                      placeholder="e.g. 10"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Payment Reference</label>
-                    <input
-                      type="text"
-                      value={shareAllotPaymentRef}
-                      onChange={e => setShareAllotPaymentRef(e.target.value)}
-                      placeholder="e.g. STN-WIRE-001"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <button type="submit" className="w-full px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-lg transition">ALLOT SHARES</button>
-                  </div>
-                </form>
-              </div>
-
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   { label: 'Total Shares Issued', value: `${totalShares} shares`, color: 'text-blue-500 dark:text-blue-400' },
@@ -2590,15 +2007,15 @@ export default function AdminPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-800/50">
-                      <tr>
+                      <tr><th className="dark:text-slate-300 uppercase text-[11px] py-3 px-4 w-10">#</th>
                         {['Member', 'Member ID', 'Shares', 'Share Value (UGX)', 'Certificate No.', 'Status'].map(h => (
                           <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-3 px-4">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {members.map(m => (
-                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {members.map((m, __n) => (
+                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-3 px-4 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="py-3 px-4 font-semibold">
                             <button
                               onClick={() => { setSelectedMember(m); setShowMemberModal(true); }}
@@ -2712,7 +2129,7 @@ export default function AdminPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-800/50">
-                      <tr>
+                      <tr><th className="dark:text-slate-300 uppercase text-[11px] py-3 px-4 w-10">#</th>
                         <th className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-3 px-4">Member</th>
                         {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(m => (
                           <th key={m} className="text-right text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-3 px-2">{m}</th>
@@ -2722,8 +2139,8 @@ export default function AdminPortal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {members.map(m => (
-                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {members.map((m, __n) => (
+                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-2 px-4 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="py-2 px-4 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                             <button
                               onClick={() => { setSelectedMember(m); setShowMemberModal(true); }}
@@ -2843,15 +2260,15 @@ export default function AdminPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-800/50">
-                      <tr>
+                      <tr><th className="dark:text-slate-300 uppercase text-[11px] py-3 px-3 w-10">#</th>
                         {['Loan No.', 'Member', 'Principal', 'Outstanding', 'Rate', 'Status', 'Next Due', 'Actions'].map(h => (
                           <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-3 px-3">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {loans.map(l => (
-                        <tr key={l.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {loans.map((l, __n) => (
+                        <tr key={l.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-3 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="py-3 px-3 text-emerald-700 dark:text-emerald-400 font-mono font-bold">{l.loanNumber}</td>
                           <td className="py-3 px-3 font-semibold text-slate-900 dark:text-white">
                             <button
@@ -2913,181 +2330,14 @@ export default function AdminPortal() {
           {activeTab === 'accounting' && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Double-Entry Accounting & Expenses</h3>
-                <p className="text-xs text-slate-400">Post journal entries, record expenses, and reconcile core cooperative ledgers</p>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Accounting — Income, Expenses &amp; Double Entry</h3>
+                <p className="text-xs text-slate-400">Money in from savings, share purchases and milk; SACCO expenses; journal postings; and the debit / credit report</p>
               </div>
-
-              {/* Accounting KPI Summary */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'Total Operating Income', value: `UGX ${fmtK(transactions.filter(t => t.type === 'Income').reduce((s, t) => s + t.amount, 0))}`, color: 'text-emerald-700 dark:text-emerald-400' },
-                  { label: 'Total Operating Expenses', value: `UGX ${fmtK(transactions.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0))}`, color: 'text-rose-500' },
-                  { label: 'Net Operating Surplus', value: `UGX ${fmtK(Math.max(0, transactions.filter(t => t.type === 'Income').reduce((s, t) => s + t.amount, 0) - transactions.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0)))}`, color: 'text-blue-700 dark:text-blue-400' },
-                  { label: 'General Ledger Entries', value: `${transactions.length} vouchers`, color: 'text-slate-900 dark:text-white' },
-                ].map((k, i) => (
-                  <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-semibold">{k.label}</span>
-                    <div className={`text-xl font-extrabold font-mono mt-1 ${k.color}`}>{k.value}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Journal entry form */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Post Journal Entry</h4>
-                <form onSubmit={handlePostJournal} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Debit Account (DR)</label>
-                      <select
-                        value={jrnlDebit}
-                        onChange={e => setJrnlDebit(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-emerald-500"
-                      >
-                        {ledgerAccounts.map(a => <option key={a}>{a}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Credit Account (CR)</label>
-                      <select
-                        value={jrnlCredit}
-                        onChange={e => setJrnlCredit(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-emerald-500"
-                      >
-                        {ledgerAccounts.map(a => <option key={a}>{a}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Amount (UGX) *</label>
-                      <input
-                        type="number"
-                        required
-                        min="1000"
-                        value={jrnlAmount}
-                        onChange={e => setJrnlAmount(e.target.value)}
-                        placeholder="e.g. 1500000"
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm font-bold focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Narration / Description *</label>
-                      <input
-                        required
-                        value={jrnlNarration}
-                        onChange={e => setJrnlNarration(e.target.value)}
-                        placeholder="e.g. Member savings deposit — David Mukasa"
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <button type="submit" className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg transition">POST TO GENERAL LEDGER</button>
-                  </div>
-                </form>
-              </div>
-
-              {/* General ledger */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">General Ledger</h4>
-                  <button onClick={() => window.print()} className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700">PRINT</button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-100 dark:bg-slate-800/50">
-                      <tr>
-                        {['Date', 'Reference', 'Dr/Cr Accounts', 'Type', 'Amount', 'Banked'].map(h => (
-                          <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {transactions.map(t => (
-                        <tr key={t.id} className="hover:bg-slate-800/20">
-                          <td className="py-2 px-3 text-slate-400 font-mono">{t.date}</td>
-                          <td className="py-2 px-3 text-slate-400 font-mono">{t.reference}</td>
-                          <td className="py-2 px-3 max-w-[200px] truncate">
-                            {(() => {
-                              const m = members.find(mb => t.category.includes(mb.name) || (t.description && t.description.includes(mb.name)) || t.category.includes(mb.memberId));
-                              if (m) {
-                                return (
-                                  <button
-                                    onClick={() => { setSelectedMember(m); setShowMemberModal(true); }}
-                                    className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline text-left cursor-pointer"
-                                    title={`Click to view & edit member: ${m.name}`}
-                                  >
-                                    {t.category}
-                                  </button>
-                                );
-                              }
-                              return <span className="font-semibold text-slate-800 dark:text-slate-200">{t.category}</span>;
-                            })()}
-                          </td>
-                          <td className="py-2 px-3">
-                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              t.type === 'Income' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' :
-                              t.type === 'Expense' ? 'bg-rose-500/15 text-rose-400' :
-                              'bg-blue-500/15 text-blue-700 dark:text-blue-400'
-                            }`}>{t.type}</span>
-                          </td>
-                          <td className="py-2 px-3 font-mono font-bold text-slate-900 dark:text-white">{t.amount.toLocaleString()}</td>
-                          <td className="py-2 px-3">
-                            {t.isBanked
-                              ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
-                              : <Clock className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" />}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {transactions.length === 0 && <p className="text-slate-500 text-xs text-center py-6">No ledger entries yet.</p>}
-                </div>
-              </div>
-
-              {/* Expenses Register */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Operational Expenses Register</h4>
-                    <p className="text-xs text-slate-400">All recorded operational and administrative expenditure vouchers</p>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-rose-500">
-                    Total: UGX {transactions.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-100 dark:bg-slate-800/50">
-                      <tr>
-                        {['Date', 'Reference', 'Category / Payee', 'Description', 'Amount (UGX)', 'Status'].map(h => (
-                          <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {transactions.filter(t => t.type === 'Expense').map(t => (
-                        <tr key={t.id} className="hover:bg-slate-800/20">
-                          <td className="py-2 px-3 text-slate-400 font-mono">{t.date}</td>
-                          <td className="py-2 px-3 text-slate-400 font-mono">{t.reference}</td>
-                          <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white">{t.category}</td>
-                          <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{t.description}</td>
-                          <td className="py-2 px-3 font-mono font-bold text-rose-500">UGX {t.amount.toLocaleString()}</td>
-                          <td className="py-2 px-3">
-                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-500">
-                              EXPENSE
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {transactions.filter(t => t.type === 'Expense').length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="text-slate-500 text-xs text-center py-6">No expense vouchers recorded yet.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <AccountingWorkspace
+                actorName={`${session?.fullName || 'Administrator'} (${activeRole.replace('_', ' ')})`}
+                canPost={['ADMIN', 'ACCOUNTANT'].includes(activeRole)}
+                onNotify={notify}
+              />
             </div>
           )}
 
@@ -3098,18 +2348,27 @@ export default function AdminPortal() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Farm Operations</h3>
-                  <p className="text-xs text-slate-400">Luwero Central Dairy Unit — Production, Feeds, Herd Management & Veterinary Health</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     {cattle.length} Head of Cattle
                   </span>
-                  <button
-                    onClick={() => setCowModalTab('edit')}
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
-                  >
-                    ADD CATTLE
-                  </button>
+                  {farmSubTab === 'dairy' && SaccoFarmStore.canPerform('milk_recording') && (
+                    <button
+                      onClick={() => setShowAddMilkModal(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                    >
+                      ADD MILK RECORD
+                    </button>
+                  )}
+                  {farmSubTab === 'cows' && SaccoFarmStore.canPerform('herd_register') && (
+                    <button
+                      onClick={() => setShowAddCowModal(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                    >
+                      ADD COW
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -3239,6 +2498,70 @@ export default function AdminPortal() {
                     </div>
                   </div>
 
+                  {/* Dairy bar-graph reports */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <ReportBarChart
+                      title="Daily milk by session — last 14 days"
+                      data={[...milkLogs].sort((a, b) => a.date.localeCompare(b.date)).slice(-14).map(l => ({ date: l.date.slice(5), morning: l.morning, afternoon: l.afternoon, evening: l.evening }))}
+                      xKey="date"
+                      series={[{ key: 'morning', label: 'Morning' }, { key: 'afternoon', label: 'Afternoon' }, { key: 'evening', label: 'Evening' }]}
+                      format="litres"
+                    />
+                    <ReportBarChart
+                      title="Milk per cow (all recorded sessions)"
+                      data={Object.values(cowMilkRecords.reduce((acc, r) => {
+                        const k = `${r.cowName} (${r.cowTag})`;
+                        acc[k] = acc[k] || { cow: k, litres: 0 };
+                        acc[k].litres = Math.round((acc[k].litres + r.litres) * 10) / 10;
+                        return acc;
+                      }, {} as Record<string, { cow: string; litres: number }>)).sort((a, b) => b.litres - a.litres)}
+                      xKey="cow"
+                      series={[{ key: 'litres', label: 'Litres' }]}
+                      format="litres"
+                      horizontal
+                    />
+                  </div>
+
+                  {/* Per-cow milk records */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Cow Milk Records</h4>
+                      <button onClick={() => setShowAddMilkModal(true)} className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px]">ADD MILK RECORD</button>
+                    </div>
+                    <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100 dark:bg-slate-800/50 sticky top-0">
+                          <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
+                            {['Date', 'Session', 'Cow', 'Litres', 'Revenue', 'Recorder', ''].map(h => (
+                              <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                          {cowMilkRecords.slice(0, 30).map((r, __n) => (
+                            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-2 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
+                              <td className="py-2 px-3 font-mono text-slate-500">{r.date}</td>
+                              <td className="py-2 px-3 text-slate-700 dark:text-slate-300">{r.session}</td>
+                              <td className="py-2 px-3 font-bold text-slate-900 dark:text-white">{r.cowName} <span className="font-mono text-emerald-700 dark:text-emerald-400">{r.cowTag}</span></td>
+                              <td className="py-2 px-3 font-mono font-bold text-slate-900 dark:text-white">{r.litres} L</td>
+                              <td className="py-2 px-3 font-mono text-emerald-700 dark:text-emerald-400">UGX {r.revenue.toLocaleString()}</td>
+                              <td className="py-2 px-3 text-slate-500">{r.recorder}</td>
+                              <td className="py-2 px-3">
+                                <button
+                                  onClick={() => { if (confirm(`Delete ${r.litres}L record for ${r.cowName}?`)) { SaccoFarmStore.deleteCowMilkRecord(r.id); reloadData(); } }}
+                                  className="px-2 py-0.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold text-[10px]"
+                                >DELETE</button>
+                              </td>
+                            </tr>
+                          ))}
+                          {cowMilkRecords.length === 0 && (
+                            <tr><td colSpan={8} className="py-6 text-center text-slate-400">No cow milk records yet. Tap ADD MILK RECORD.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                   {/* Milk Production Log */}
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
                     <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
@@ -3248,15 +2571,15 @@ export default function AdminPortal() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead className="bg-slate-100 dark:bg-slate-800/50">
-                          <tr>
+                          <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                             {['Date', 'Morning (L)', 'Afternoon (L)', 'Evening (L)', 'Net Sold (L)', 'Price/L', 'Revenue', 'Recorder'].map(h => (
                               <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 font-mono">
-                          {milkLogs.slice(0, 15).map(ml => (
-                            <tr key={ml.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          {milkLogs.slice(0, 15).map((ml, __n) => (
+                            <tr key={ml.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-2 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                               <td className="py-2 px-3 text-slate-500 font-bold">{ml.date}</td>
                               <td className="py-2 px-3 text-slate-700 dark:text-slate-300">{ml.morning}</td>
                               <td className="py-2 px-3 text-slate-700 dark:text-slate-300">{ml.afternoon}</td>
@@ -3292,6 +2615,14 @@ export default function AdminPortal() {
                     ))}
                   </div>
 
+                  <ReportBarChart
+                    title="Feed stock on hand"
+                    data={feedsList.map(f => ({ feed: `${f.feedType} (${f.unit})`, stock: f.currentStock, minimum: f.minStock }))}
+                    xKey="feed"
+                    series={[{ key: 'stock', label: 'In stock' }, { key: 'minimum', label: 'Minimum level' }]}
+                    horizontal
+                  />
+
                   {/* Feeds Table */}
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3312,15 +2643,15 @@ export default function AdminPortal() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead className="bg-slate-100 dark:bg-slate-800/50">
-                          <tr>
+                          <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                             {['Feed Name', 'Source', 'Quantity In Stock', 'Unit Cost', 'Total Value', 'Date Added', 'Actions'].map(h => (
                               <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                          {feedsList.map(f => (
-                            <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          {feedsList.map((f, __n) => (
+                            <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-2 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                               <td className="py-2 px-3 font-bold text-slate-900 dark:text-white">{f.feedType}</td>
                               <td className="py-2 px-3">
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -3361,7 +2692,7 @@ export default function AdminPortal() {
                           ))}
                           {feedsList.length === 0 && (
                             <tr>
-                              <td colSpan={7} className="py-8 text-center text-slate-400 font-bold">
+                              <td colSpan={8} className="py-8 text-center text-slate-400 font-bold">
                                 No feed inventory records yet. Click ADD FEED BATCH above.
                               </td>
                             </tr>
@@ -3391,12 +2722,58 @@ export default function AdminPortal() {
                     ))}
                   </div>
 
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <ReportBarChart
+                      title="Herd by stage"
+                      data={['Milking', 'Pregnant', 'Dry', 'Heifer', 'Calf', 'Bull'].map(st => ({ stage: st, head: cattle.filter(c => c.stage === st).length }))}
+                      xKey="stage"
+                      series={[{ key: 'head', label: 'Head' }]}
+                    />
+                    <ReportBarChart
+                      title="Daily average milk by cow"
+                      data={cattle.filter(c => (c.dailyAvgMilk || 0) > 0).sort((a, b) => (b.dailyAvgMilk || 0) - (a.dailyAvgMilk || 0)).map(c => ({ cow: `${c.name} (${c.tagNumber})`, litres: c.dailyAvgMilk || 0 }))}
+                      xKey="cow"
+                      series={[{ key: 'litres', label: 'Litres / day' }]}
+                      format="litres"
+                      horizontal
+                    />
+                  </div>
+
+                  {/* Cows with calves */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Cows with a Calf</h4>
+                      <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400">{cattle.filter(c => c.hasCalf).length} cow(s)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {cattle.filter(c => c.hasCalf).map(c => {
+                        const calf = cattle.find(x => x.tagNumber === c.calfTag);
+                        return (
+                          <button key={c.id} onClick={() => handleOpenCowModal(c)} className="text-left p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition">
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">{c.name} <span className="font-mono text-emerald-700 dark:text-emerald-400">{c.tagNumber}</span></p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">{c.breed} · {c.stage}</p>
+                            <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 mt-1">Calf: {calf ? `${calf.name} (${calf.tagNumber})` : c.calfTag || 'Tag not recorded'}</p>
+                          </button>
+                        );
+                      })}
+                      {cattle.filter(c => c.hasCalf).length === 0 && <p className="text-xs text-slate-400">No cows are currently recorded with a calf.</p>}
+                    </div>
+                  </div>
+
                   {/* Herd Table */}
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden p-4 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white">Herd Register</h4>
                         <p className="text-xs text-slate-500">Click any cow to open dossier, adjust details, or toggle health status</p>
+                        <div className="flex gap-1.5 mt-2">
+                          {([['all', 'All cattle'], ['withCalf', `With calf (${cattle.filter(c => c.hasCalf).length})`]] as const).map(([k, label]) => (
+                            <button key={k} onClick={() => setCowCalfFilter(k)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${cowCalfFilter === k ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div className="relative max-w-xs w-full">
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -3418,29 +2795,31 @@ export default function AdminPortal() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead className="bg-slate-100 dark:bg-slate-800/50">
-                          <tr>
-                            {['Tag', 'Name', 'Breed', 'Stage', 'Weight', 'Daily Avg (L)', 'Health Status', 'Actions'].map(h => (
+                          <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
+                            {['Tag', 'Name', 'Breed', 'Stage', 'Calf', 'Weight', 'Daily Avg (L)', 'Health Status', 'Actions'].map(h => (
                               <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                           {cattle.filter(c => {
+                            if (cowCalfFilter === 'withCalf' && !c.hasCalf) return false;
                             if (!cattleSearch.trim()) return true;
                             const q = cattleSearch.toLowerCase().trim();
                             return c.tagNumber.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.breed.toLowerCase().includes(q);
-                          }).map(c => {
+                          }).map((c, __n) => {
                             const isSick = c.status && c.status.some(s => s.toLowerCase().includes('sick'));
                             return (
                               <tr
                                 key={c.id}
                                 onClick={() => handleOpenCowModal(c)}
                                 className="hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition"
-                              >
+                              ><td className="py-2.5 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                                 <td className="py-2.5 px-3 text-emerald-700 dark:text-emerald-400 font-mono font-bold">{c.tagNumber}</td>
                                 <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{c.name}</td>
                                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{c.breed}</td>
                                 <td className="py-2.5 px-3 text-blue-700 dark:text-blue-400 font-bold">{c.stage}</td>
+                                <td className="py-2.5 px-3">{c.hasCalf ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300">With calf{c.calfTag ? ` · ${c.calfTag}` : ''}</span> : <span className="text-slate-400">—</span>}</td>
                                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-mono">{c.weight}kg</td>
                                 <td className="py-2.5 px-3 text-emerald-700 dark:text-emerald-400 font-mono font-bold">{c.dailyAvgMilk || '0.0'}</td>
                                 <td className="py-2.5 px-3">
@@ -3503,6 +2882,18 @@ export default function AdminPortal() {
                     ))}
                   </div>
 
+                  <ReportBarChart
+                    title="Health incidents by illness"
+                    data={Object.values(healthRecords.reduce((acc, r) => {
+                      acc[r.illness] = acc[r.illness] || { illness: r.illness, active: 0, recovered: 0 };
+                      if (r.status === 'RECOVERED') acc[r.illness].recovered += 1; else acc[r.illness].active += 1;
+                      return acc;
+                    }, {} as Record<string, { illness: string; active: number; recovered: number }>))}
+                    xKey="illness"
+                    series={[{ key: 'active', label: 'Active' }, { key: 'recovered', label: 'Recovered' }]}
+                    horizontal
+                  />
+
                   {/* Sickness History Register */}
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden p-5 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3516,15 +2907,15 @@ export default function AdminPortal() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead className="bg-slate-100 dark:bg-slate-800/50">
-                          <tr>
+                          <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                             {['Date', 'Cow Tag & Name', 'Illness / Diagnosis', 'Symptoms', 'Treatment & Medication', 'Attending Vet', 'Status', 'Action'].map(h => (
                               <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                          {healthRecords.map(rec => (
-                            <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          {healthRecords.map((rec, __n) => (
+                            <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="py-2.5 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                               <td className="py-2.5 px-3 font-mono font-bold text-slate-500">{rec.date}</td>
                               <td className="py-2.5 px-3">
                                 <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{rec.cowTag}</span>
@@ -3568,7 +2959,7 @@ export default function AdminPortal() {
                           ))}
                           {healthRecords.length === 0 && (
                             <tr>
-                              <td colSpan={8} className="py-8 text-center text-slate-400 font-bold">
+                              <td colSpan={9} className="py-8 text-center text-slate-400 font-bold">
                                 No cow sickness records logged. All cattle are in healthy condition.
                               </td>
                             </tr>
@@ -3583,649 +2974,66 @@ export default function AdminPortal() {
             </div>
           )}
 
-          {/* ── COFFEE COMMODITY TRADING & INVENTORY ──────────────────── */}
-          {activeTab === 'coffee' && (
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className={`text-lg font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Coffee Commodity Trading &amp; Inventory Management
-                  </h3>
-                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Outgrower Procurement, Warehouse Silo Inventory &amp; International Export Off-takes
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={handleDownloadCoffeeReport} className="px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-700 dark:text-blue-400 border border-blue-500/30 text-xs font-bold transition">DOWNLOAD LEDGER (PDF)</button>
-                  <button
-                    onClick={() => {
-                      if (coffeeInventory.length > 0) {
-                        setSelectedStockItem(coffeeInventory[0]);
-                        setShowStockModal(true);
-                      }
-                    }}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-lg"
-                  >
-                    <Warehouse className="w-4 h-4" />
-                    <span>Inspect Warehouse Bins</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* KPI Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  {
-                    label: 'Warehouse Stock In-Hand',
-                    value: `${(totalCoffeeInvKg / 1000).toFixed(1)} MT`,
-                    sub: `${totalCoffeeInvBags} Bags in 4 Storage Silos`,
-                    color: 'text-slate-900 dark:text-white',
-                    icon: <Warehouse className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-                  },
-                  {
-                    label: 'Inventory Market Valuation',
-                    value: `UGX ${fmtK(totalCoffeeInvValuation)}`,
-                    sub: 'Valued @ Current Export Parity',
-                    color: 'text-emerald-700 dark:text-emerald-400',
-                    icon: <TrendingUp className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-                  },
-                  {
-                    label: 'Procured from Outgrowers',
-                    value: `UGX ${fmtK(totalCoffeePurchasedUGX)}`,
-                    sub: `${(totalCoffeePurchasedKg / 1000).toFixed(1)} MT (${coffeeBatches.length} lots)`,
-                    color: 'text-blue-700 dark:text-blue-400',
-                    icon: <ShoppingCart className="w-5 h-5 text-blue-700 dark:text-blue-400" />
-                  },
-                  {
-                    label: 'Export Sales Revenue',
-                    value: `UGX ${fmtK(totalCoffeeSoldUGX)}`,
-                    sub: `${(totalCoffeeSoldKg / 1000).toFixed(1)} MT Dispatched (${coffeeSales.length} contracts)`,
-                    color: 'text-slate-900 dark:text-white',
-                    icon: <Truck className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-                  },
-                ].map((k, i) => (
-                  <div key={i} className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{k.label}</span>
-                      {k.icon}
-                    </div>
-                    <div className={`text-2xl font-extrabold font-mono ${k.color}`}>{k.value}</div>
-                    <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{k.sub}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Subtabs Navigation */}
-              <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-                {[
-                  { key: 'inventory', label: 'Warehouse Inventory & Silos', icon: <Warehouse className="w-4 h-4" /> },
-                  { key: 'buying', label: 'Procure Coffee (Outgrowers)', icon: <ShoppingCart className="w-4 h-4" /> },
-                  { key: 'selling', label: 'Sales & Export Dispatches', icon: <Truck className="w-4 h-4" /> },
-                ].map(sub => (
-                  <button
-                    key={sub.key}
-                    onClick={() => setActiveCoffeeSubTab(sub.key as any)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
-                      activeCoffeeSubTab === sub.key
-                        ? 'bg-emerald-600 text-white shadow-md'
-                        : isDark
-                        ? 'bg-slate-900 text-slate-400 hover:text-white'
-                        : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-                    }`}
-                  >
-                    {sub.icon}
-                    <span>{sub.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* ── 1. INVENTORY VIEW ── */}
-              {activeCoffeeSubTab === 'inventory' && (
-                <div className="space-y-4">
-                  <div className={`p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className={`text-sm font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>Current Warehouse Stock Bins</h4>
-                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Live inventory tracking across Mbale, Kasese and Masaka facilities</p>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                        Total In-Stock: {(totalCoffeeInvKg / 1000).toFixed(1)} MT
-                      </span>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left">
-                        <thead className={`border-b ${isDark ? 'bg-slate-950 text-slate-400 border-slate-200 dark:border-slate-800' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                          <tr>
-                            <th className="p-3">Variety / Grade</th>
-                            <th className="p-3">Warehouse Location</th>
-                            <th className="p-3">Bin Code</th>
-                            <th className="p-3 text-right">Bags</th>
-                            <th className="p-3 text-right">Total Net (Kg)</th>
-                            <th className="p-3 text-right">Avg Moisture</th>
-                            <th className="p-3 text-right">Proc. Cost/Kg</th>
-                            <th className="p-3 text-right">Market Price/Kg</th>
-                            <th className="p-3 text-right">Lot Valuation</th>
-                            <th className="p-3 text-center">Status</th>
-                            <th className="p-3 text-center">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className={`divide-y font-mono ${isDark ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
-                          {coffeeInventory.map(item => (
-                            <tr key={item.id} className={isDark ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'}>
-                              <td className="p-3 font-sans font-bold text-emerald-500">{item.variety}</td>
-                              <td className="p-3 font-sans text-slate-600 dark:text-slate-300">{item.warehouseLocation}</td>
-                              <td className="p-3 text-blue-700 dark:text-blue-400 font-bold">{item.binNumber}</td>
-                              <td className="p-3 text-right">{item.totalBags}</td>
-                              <td className="p-3 text-right font-bold text-slate-900 dark:text-white">{item.totalKg.toLocaleString()} kg</td>
-                              <td className="p-3 text-right text-slate-600 dark:text-slate-300">{item.averageMoisture}%</td>
-                              <td className="p-3 text-right text-slate-400">{item.averageCostPerKg.toLocaleString()}</td>
-                              <td className="p-3 text-right text-blue-700 dark:text-blue-400 font-bold">{item.currentMarketPricePerKg.toLocaleString()}</td>
-                              <td className="p-3 text-right text-emerald-700 dark:text-emerald-400 font-bold">
-                                UGX {fmtK(item.totalKg * item.currentMarketPricePerKg)}
-                              </td>
-                              <td className="p-3 text-center">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-sans font-bold ${
-                                  item.status === 'In Storage' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' :
-                                  item.status === 'Reserved for Export' ? 'bg-blue-500/15 text-blue-700 dark:text-blue-400' :
-                                  'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                }`}>{item.status}</span>
-                              </td>
-                              <td className="p-3 text-center">
-                                <button
-                                  onClick={() => {
-                                    setSelectedStockItem(item);
-                                    setShowStockModal(true);
-                                  }}
-                                  className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-sans text-[11px] font-bold border border-slate-200 dark:border-slate-700 transition"
-                                >
-                                  Adjust / Inspect
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── 2. BUYING / PROCUREMENT VIEW ── */}
-              {activeCoffeeSubTab === 'buying' && (
-                <div className="space-y-6">
-                  {/* Buy Form */}
-                  <div className={`p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className={`text-base font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>Record Outgrower Coffee Purchase</h4>
-                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Procurement from registered farmer cooperatives across Bugisu, Kasese, and Masaka</p>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-blue-700 dark:text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-                        Cash Disbursement via Core Ledger
-                      </span>
-                    </div>
-
-                    <form onSubmit={handleBuyCoffee} className="space-y-4 text-xs">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Farmer / Outgrower Cooperative *</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="e.g. Kato Stephen &amp; Outgrowers Group"
-                            value={cfFarmerName}
-                            onChange={e => setCfFarmerName(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Origin District *</label>
-                          <select
-                            value={cfDistrict}
-                            onChange={e => setCfDistrict(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
-                          >
-                            <option value="Mbale (Mount Elgon)">Mbale (Mount Elgon)</option>
-                            <option value="Kasese (Rwenzori Foothills)">Kasese (Rwenzori Foothills)</option>
-                            <option value="Masaka (Greater Southern)">Masaka (Greater Southern)</option>
-                            <option value="Kapchorwa (Highland Arabica)">Kapchorwa (Highland Arabica)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Coffee Grade / Variety *</label>
-                          <select
-                            value={cfVariety}
-                            onChange={e => setCfVariety(e.target.value as any)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
-                          >
-                            <option value="Arabica Bugisu AA">Arabica Bugisu AA</option>
-                            <option value="Arabica Bugisu A">Arabica Bugisu A</option>
-                            <option value="Robusta Kasese Screen 18">Robusta Kasese Screen 18</option>
-                            <option value="Robusta FAQ">Robusta FAQ</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Number of Bags (60kg std)</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={cfBags}
-                            onChange={e => setCfBags(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Net Weight (Kg) *</label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            value={cfNetKg}
-                            onChange={e => setCfNetKg(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Buying Price (UGX / Kg) *</label>
-                          <input
-                            type="number"
-                            required
-                            min="1000"
-                            value={cfPriceKg}
-                            onChange={e => setCfPriceKg(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Moisture Level (%)</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={cfMoisture}
-                            onChange={e => setCfMoisture(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Lot / Batch Code</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. DC-ARA-MB-10"
-                            value={cfBatchCode}
-                            onChange={e => setCfBatchCode(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Live Calculation */}
-                      <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-slate-950 border border-emerald-500/30 flex flex-wrap gap-6 text-xs font-mono text-slate-900 dark:text-slate-100">
-                        <span>Total Weight: <strong className="text-slate-900 dark:text-white">{Number(cfNetKg || 0).toLocaleString()} Kg</strong></span>
-                        <span>Moisture Status: <strong className="text-emerald-600 dark:text-emerald-400">{Number(cfMoisture) <= 12.5 ? 'Export Standard (<=12.5%)' : 'Needs Drying'}</strong></span>
-                        <span>Total Payout Due: <strong className="text-emerald-600 dark:text-emerald-400">UGX {(Number(cfNetKg || 0) * Number(cfPriceKg || 0)).toLocaleString()}</strong></span>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm transition shadow-lg flex items-center justify-center gap-2"
-                      >
-                        <ShoppingCart className="w-4 h-4" />
-                        <span>Record Coffee Purchase &amp; Post Outgrower Payout</span>
-                      </button>
-                    </form>
-                  </div>
-
-                  {/* Procurement Log Table */}
-                  <div className={`p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                      <div>
-                        <h4 className={`text-sm font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>Outgrower Purchases History</h4>
-                        <p className="text-xs text-slate-400">Strict search by lot code, farmer, district, or variety</p>
-                      </div>
-                      <div className="relative max-w-xs w-full">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          placeholder="Strict search lot, farmer, district..."
-                          value={coffeeBatchSearch}
-                          onChange={e => setCoffeeBatchSearch(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-8 pr-7 py-1.5 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-emerald-500"
-                        />
-                        {coffeeBatchSearch && (
-                          <button onClick={() => setCoffeeBatchSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <X className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left">
-                        <thead className={`border-b ${isDark ? 'bg-slate-950 text-slate-400 border-slate-200 dark:border-slate-800' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                          <tr>
-                            <th className="p-3">Lot Code</th>
-                            <th className="p-3">Date</th>
-                            <th className="p-3">Farmer / Cooperative</th>
-                            <th className="p-3">District</th>
-                            <th className="p-3">Grade</th>
-                            <th className="p-3 text-right">Bags</th>
-                            <th className="p-3 text-right">Weight (Kg)</th>
-                            <th className="p-3 text-right">Price/Kg</th>
-                            <th className="p-3 text-right">Total Payout (UGX)</th>
-                            <th className="p-3 text-center">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className={`divide-y font-mono ${isDark ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
-                          {coffeeBatches.filter(b => {
-                            if (!coffeeBatchSearch.trim()) return true;
-                            const q = coffeeBatchSearch.toLowerCase().trim();
-                            return b.batchCode.toLowerCase().includes(q) || b.farmerName.toLowerCase().includes(q) || b.district.toLowerCase().includes(q) || b.variety.toLowerCase().includes(q);
-                          }).map(batch => (
-                            <tr key={batch.id} className={isDark ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'}>
-                              <td className="p-3 font-bold text-blue-700 dark:text-blue-400">{batch.batchCode}</td>
-                              <td className="p-3 font-sans text-slate-400">{batch.date}</td>
-                              <td className="p-3 font-sans font-bold text-slate-900 dark:text-white">{batch.farmerName}</td>
-                              <td className="p-3 font-sans text-slate-600 dark:text-slate-300">{batch.district}</td>
-                              <td className="p-3 font-sans text-emerald-700 dark:text-emerald-400">{batch.variety}</td>
-                              <td className="p-3 text-right">{batch.bags}</td>
-                              <td className="p-3 text-right font-bold text-slate-900 dark:text-white">{batch.netWeightKg.toLocaleString()}</td>
-                              <td className="p-3 text-right text-slate-600 dark:text-slate-300">{batch.pricePerKg.toLocaleString()}</td>
-                              <td className="p-3 text-right font-bold text-emerald-700 dark:text-emerald-400">UGX {batch.totalPayout.toLocaleString()}</td>
-                              <td className="p-3 text-center">
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-blue-500/15 text-blue-700 dark:text-blue-400">
-                                  {batch.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {coffeeBatches.filter(b => {
-                        if (!coffeeBatchSearch.trim()) return true;
-                        const q = coffeeBatchSearch.toLowerCase().trim();
-                        return b.batchCode.toLowerCase().includes(q) || b.farmerName.toLowerCase().includes(q) || b.district.toLowerCase().includes(q) || b.variety.toLowerCase().includes(q);
-                      }).length === 0 && (
-                        <p className="text-slate-500 text-xs text-center py-6 font-bold">No coffee purchase lots matching "{coffeeBatchSearch}" found.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── 3. SELLING & EXPORT VIEW ── */}
-              {activeCoffeeSubTab === 'selling' && (
-                <div className="space-y-6">
-                  {/* Sell Form */}
-                  <div className={`p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className={`text-base font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>Execute Coffee Sales &amp; Export Contract</h4>
-                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Record international off-take shipments and local industrial roaster deliveries</p>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                        Automatic Revenue Recognition
-                      </span>
-                    </div>
-
-                    <form onSubmit={handleSellCoffee} className="space-y-4 text-xs">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Buyer / Off-taker *</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="e.g. Hamburg Specialty Coffee Importers"
-                            value={csBuyerName}
-                            onChange={e => setCsBuyerName(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Market Channel *</label>
-                          <select
-                            value={csMarketType}
-                            onChange={e => setCsMarketType(e.target.value as any)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
-                          >
-                            <option value="Export Contract">International Export Contract</option>
-                            <option value="Domestic Roaster">Domestic Roaster / Retail Chain</option>
-                            <option value="Regional Trade">East Africa Regional Commodity Trade</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Destination *</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="e.g. Port of Hamburg, Germany"
-                            value={csDestination}
-                            onChange={e => setCsDestination(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Coffee Grade *</label>
-                          <select
-                            value={csVariety}
-                            onChange={e => setCsVariety(e.target.value as any)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
-                          >
-                            <option value="Arabica Bugisu AA">Arabica Bugisu AA</option>
-                            <option value="Arabica Bugisu A">Arabica Bugisu A</option>
-                            <option value="Robusta Kasese Screen 18">Robusta Kasese Screen 18</option>
-                            <option value="Robusta FAQ">Robusta FAQ</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Number of Bags</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={csBags}
-                            onChange={e => setCsBags(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Net Weight (Kg) *</label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            value={csNetKg}
-                            onChange={e => setCsNetKg(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Selling Price (UGX / Kg) *</label>
-                          <input
-                            type="number"
-                            required
-                            min="1000"
-                            value={csPriceKg}
-                            onChange={e => setCsPriceKg(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Contract Reference</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. CT-2026-HAM-05"
-                            value={csContractRef}
-                            onChange={e => setCsContractRef(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Live Calculation */}
-                      <div className="p-4 rounded-2xl bg-blue-50 dark:bg-slate-950 border border-blue-500/30 flex flex-wrap gap-6 text-xs font-mono text-slate-900 dark:text-slate-100">
-                        <span>Export Volume: <strong className="text-slate-900 dark:text-white">{Number(csNetKg || 0).toLocaleString()} Kg ({(Number(csNetKg || 0) / 1000).toFixed(1)} MT)</strong></span>
-                        <span>Contract Total Revenue: <strong className="text-emerald-600 dark:text-emerald-400">UGX {(Number(csNetKg || 0) * Number(csPriceKg || 0)).toLocaleString()}</strong></span>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm transition shadow-lg flex items-center justify-center gap-2"
-                      >
-                        <Truck className="w-4 h-4" />
-                        <span>Dispatch Coffee &amp; Credit Export Revenue</span>
-                      </button>
-                    </form>
-                  </div>
-
-                  {/* Sales & Export Ledger */}
-                  <div className={`p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                      <div>
-                        <h4 className={`text-sm font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>Export &amp; Sales Contracts Ledger</h4>
-                        <p className="text-xs text-slate-400">Strict search by contract ref, buyer, or destination</p>
-                      </div>
-                      <div className="relative max-w-xs w-full">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          placeholder="Strict search contract, buyer, dest..."
-                          value={coffeeSaleSearch}
-                          onChange={e => setCoffeeSaleSearch(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-8 pr-7 py-1.5 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-emerald-500"
-                        />
-                        {coffeeSaleSearch && (
-                          <button onClick={() => setCoffeeSaleSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <X className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left">
-                        <thead className={`border-b ${isDark ? 'bg-slate-950 text-slate-400 border-slate-200 dark:border-slate-800' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                          <tr>
-                            <th className="p-3">Contract Ref</th>
-                            <th className="p-3">Date</th>
-                            <th className="p-3">Buyer / Off-taker</th>
-                            <th className="p-3">Destination</th>
-                            <th className="p-3">Grade</th>
-                            <th className="p-3 text-right">Bags</th>
-                            <th className="p-3 text-right">Net Kg</th>
-                            <th className="p-3 text-right">Price/Kg</th>
-                            <th className="p-3 text-right">Contract Value (UGX)</th>
-                            <th className="p-3 text-center">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className={`divide-y font-mono ${isDark ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
-                          {coffeeSales.filter(s => {
-                            if (!coffeeSaleSearch.trim()) return true;
-                            const q = coffeeSaleSearch.toLowerCase().trim();
-                            return s.contractRef.toLowerCase().includes(q) || s.buyerName.toLowerCase().includes(q) || s.destination.toLowerCase().includes(q) || s.variety.toLowerCase().includes(q);
-                          }).map(sale => (
-                            <tr key={sale.id} className={isDark ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'}>
-                              <td className="p-3 font-bold text-blue-700 dark:text-blue-400">{sale.contractRef}</td>
-                              <td className="p-3 font-sans text-slate-400">{sale.date}</td>
-                              <td className="p-3 font-sans font-bold text-slate-900 dark:text-white">{sale.buyerName}</td>
-                              <td className="p-3 font-sans text-slate-600 dark:text-slate-300">{sale.destination}</td>
-                              <td className="p-3 font-sans text-emerald-700 dark:text-emerald-400">{sale.variety}</td>
-                              <td className="p-3 text-right">{sale.bags}</td>
-                              <td className="p-3 text-right font-bold text-slate-900 dark:text-white">{sale.netWeightKg.toLocaleString()}</td>
-                              <td className="p-3 text-right text-slate-600 dark:text-slate-300">{sale.sellingPricePerKg.toLocaleString()}</td>
-                              <td className="p-3 text-right font-bold text-emerald-700 dark:text-emerald-400">UGX {sale.totalRevenue.toLocaleString()}</td>
-                              <td className="p-3 text-center">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-sans font-bold ${
-                                  sale.status === 'Paid' || sale.status === 'Delivered' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' :
-                                  'bg-blue-500/15 text-blue-700 dark:text-blue-400'
-                                }`}>
-                                  {sale.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {coffeeSales.filter(s => {
-                        if (!coffeeSaleSearch.trim()) return true;
-                        const q = coffeeSaleSearch.toLowerCase().trim();
-                        return s.contractRef.toLowerCase().includes(q) || s.buyerName.toLowerCase().includes(q) || s.destination.toLowerCase().includes(q) || s.variety.toLowerCase().includes(q);
-                      }).length === 0 && (
-                        <p className="text-slate-500 text-xs text-center py-6 font-bold">No export contracts matching "{coffeeSaleSearch}" found.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ── REPORTS TAB ─────────────────────────────────────────────── */}
           {activeTab === 'reports' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Financial Reports</h3>
-                  <p className="text-xs text-slate-400">Cooperative performance reports and statements</p>
+                  <p className="text-xs text-slate-400">Cooperative performance reports — every figure below comes from the shared SACCO ledger</p>
                 </div>
                 <button onClick={() => window.print()} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700">PRINT REPORT</button>
               </div>
 
-              {/* Trial Balance */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
-                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Trial Balance — {new Date().toLocaleDateString('en-UG', { month: 'long', year: 'numeric' })}</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                  <div className="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-                    <span className="text-xs text-slate-400">Total Income</span>
-                    <div className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 font-mono mt-1">UGX {totalIncome.toLocaleString()}</div>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-                    <span className="text-xs text-slate-400">Total Expenses</span>
-                    <div className="text-xl font-extrabold text-rose-400 font-mono mt-1">UGX {totalExpense.toLocaleString()}</div>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-                    <span className="text-xs text-slate-400">Net Surplus / (Deficit)</span>
-                    <div className={`text-xl font-extrabold font-mono mt-1 ${totalIncome - totalExpense >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-400'}`}>
-                      UGX {(totalIncome - totalExpense).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Balance sheet summary */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800">
-                        <th className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2">Account</th>
-                        <th className="text-right text-slate-400 font-semibold py-2">Debit (UGX)</th>
-                        <th className="text-right text-slate-400 font-semibold py-2">Credit (UGX)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {[
-                        { account: '3010 — Member Savings Pool', dr: 0, cr: totalSavings },
-                        { account: '3020 — Share Capital Fund', dr: 0, cr: totalSharesValue },
-                        { account: '4001 — Loan Interest Revenue', dr: 0, cr: loans.reduce((s, l) => s + (l.amountPaid - l.principal > 0 ? l.amountPaid - l.principal : 0), 0) },
-                        { account: '4010 — Dairy Milk Revenue', dr: 0, cr: totalMilkRevenue },
-                        { account: '1001 — Cash at Bank (Stanbic)', dr: totalIncome, cr: totalExpense },
-                        { account: '2001 — Loan Receivable', dr: totalLoanBook, cr: 0 },
-                      ].map((row, i) => (
-                        <tr key={i} className="hover:bg-slate-800/20">
-                          <td className="py-2 text-slate-700 dark:text-slate-200">{row.account}</td>
-                          <td className="py-2 text-right font-mono text-slate-600 dark:text-slate-300">{row.dr ? row.dr.toLocaleString() : '—'}</td>
-                          <td className="py-2 text-right font-mono text-slate-600 dark:text-slate-300">{row.cr ? row.cr.toLocaleString() : '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <ReportBarChart
+                  title="Savings by member"
+                  data={[...members].sort((a, b) => b.savings - a.savings).map(m => ({ member: m.name, savings: m.savings }))}
+                  xKey="member"
+                  series={[{ key: 'savings', label: 'Net savings' }]}
+                  format="ugx"
+                  horizontal
+                />
+                <ReportBarChart
+                  title="Shares held by member"
+                  subtitle={`Par value UGX ${shareParValue.toLocaleString()} per share`}
+                  data={[...members].sort((a, b) => b.shares - a.shares).map(m => ({ member: m.name, shares: m.shares }))}
+                  xKey="member"
+                  series={[{ key: 'shares', label: 'Shares' }]}
+                  horizontal
+                />
+                <ReportBarChart
+                  title="Loan book by borrower"
+                  data={loans.filter(l => l.status !== 'CLEARED').map(l => ({ borrower: `${l.memberName} (${l.loanNumber})`, principal: l.principal, outstanding: l.outstandingBalance }))}
+                  xKey="borrower"
+                  series={[{ key: 'principal', label: 'Principal' }, { key: 'outstanding', label: 'Outstanding' }]}
+                  format="ugx"
+                  horizontal
+                />
+                <ReportBarChart
+                  title="Monthly savings contributions (all members)"
+                  data={(['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const).map(mo => ({ month: mo.charAt(0).toUpperCase() + mo.slice(1), amount: members.reduce((s, m) => s + (Number(m[mo]) || 0), 0) }))}
+                  xKey="month"
+                  series={[{ key: 'amount', label: 'Contributions' }]}
+                  format="ugx"
+                />
+                <ReportBarChart
+                  title="Milk revenue — last 14 production days"
+                  data={[...milkLogs].sort((a, b) => a.date.localeCompare(b.date)).slice(-14).map(l => ({ date: l.date.slice(5), revenue: l.revenue }))}
+                  xKey="date"
+                  series={[{ key: 'revenue', label: 'Milk revenue' }]}
+                  format="ugx"
+                />
+                <ReportBarChart
+                  title="Herd by stage"
+                  data={['Milking', 'Pregnant', 'Dry', 'Heifer', 'Calf', 'Bull'].map(st => ({ stage: st, head: cattle.filter(c => c.stage === st).length }))}
+                  xKey="stage"
+                  series={[{ key: 'head', label: 'Head of cattle' }]}
+                />
               </div>
+
+              {/* Income by source, trial balance and Dr/Cr charts from the shared ledger */}
+              <AccountingWorkspace sections={['summary', 'report']} actorName={session?.fullName || 'Administrator'} canPost={false} onNotify={notify} />
 
               {/* Member contributions summary */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
@@ -4305,6 +3113,7 @@ export default function AdminPortal() {
                                 <span><span className="text-slate-400">Chapter:</span> {app.chapter}</span>
                               </div>
 
+                              <ApplicationKycSummary app={app} />
                               {app.reason && (
                                 <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
                                   <span className="font-semibold text-slate-700 dark:text-slate-300">Motivation:</span> {app.reason}
@@ -4384,60 +3193,123 @@ export default function AdminPortal() {
                   <p className="text-xs text-slate-400">Dual-control final authorization — verified by Accountant, requires Admin authorization</p>
                 </div>
 
-              {pendingApprovals.length === 0 ? (
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 text-center">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-                  <p className="text-slate-900 dark:text-white font-bold">All transactions cleared</p>
-                  <p className="text-slate-400 text-xs mt-1">No transactions pending your authorization</p>
+                <PaymentRequestQueue
+                  role="ADMIN"
+                  actorName={`${session?.fullName || 'Administrator'} (Admin)`}
+                  onNotify={notify}
+                  guard={(desc, fn) => checkPermission(['ADMIN'], desc, fn)}
+                />
+              </div>
+
+              {/* SECTION 2b: Member KYC Verification */}
+              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <KycReviewPanel
+                  reviewerName={`${session?.fullName || 'Administrator'} (Admin)`}
+                  onNotify={notify}
+                  guard={(desc, fn) => checkPermission(['ADMIN', 'SECRETARY'], desc, fn)}
+                />
+              </div>
+
+              {/* SECTION 3: Savings-to-Shares Conversion Approvals */}
+              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Repeat className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> Share Capital Conversion Approvals (Savings to Shares)
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Step 2 Dual-Control: Admin final binding authorization to transfer member voluntary savings into cooperative share capital
+                    </p>
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                    {shareConversionRequests.filter(r => !r.adminApproved && r.status === 'PENDING').length} Pending Admin
+                  </span>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingApprovals.map(a => (
-                    <div key={a.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            {a.type === 'DEPOSIT'
-                              ? <ArrowDownLeft className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                              : <ArrowUpRight className="w-4 h-4 text-rose-400" />}
-                            <span className={`text-xs font-extrabold uppercase tracking-wide ${a.type === 'DEPOSIT' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-400'}`}>
-                              {a.type}
-                            </span>
-                            <span className="text-xs text-slate-500">ID: {a.id}</span>
+
+                {shareConversionRequests.filter(r => r.status === 'PENDING').length === 0 ? (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                    <p className="text-slate-900 dark:text-white font-bold text-sm">All Share Conversions Cleared</p>
+                    <p className="text-slate-400 text-xs">No savings-to-shares conversion requests awaiting authorization.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {shareConversionRequests.filter(r => r.status === 'PENDING').map(req => (
+                      <div key={req.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Repeat className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-xs font-extrabold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                                SAVINGS TO SHARES
+                              </span>
+                              <span className="text-xs text-slate-500 font-mono">ID: {req.id}</span>
+                              <span className="text-xs text-slate-400">Date: {req.date}</span>
+                            </div>
+
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">
+                              {req.memberName} <span className="text-slate-500 font-normal text-xs ml-1 font-mono">({req.memberId})</span>
+                            </p>
+
+                            <div className="flex items-baseline gap-3">
+                              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+                                UGX {req.amount.toLocaleString()}
+                              </span>
+                              <span className="text-xs font-bold text-purple-600 dark:text-purple-400 font-mono">
+                                &rarr; {req.shareCount} Class A Shares (@ UGX 250,000)
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+                              <span>
+                                Accountant Status:{' '}
+                                {req.accountantApproved ? (
+                                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                                    Verified ({req.accountantApprovedBy || 'Mrs. Miriam Halera'})
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-500 font-bold">Awaiting Accountant Verification</span>
+                                )}
+                              </span>
+                              <span>&bull;</span>
+                              <span>
+                                Admin Status:{' '}
+                                {req.adminApproved ? (
+                                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">Authorized</span>
+                                ) : (
+                                  <span className="text-blue-500 font-bold">Awaiting Your Authorization</span>
+                                )}
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-sm font-bold text-slate-900 dark:text-white">
-                            <button
-                              onClick={() => {
-                                const m = members.find(mb => mb.memberId === a.memberId || mb.name.toLowerCase() === a.member.toLowerCase());
-                                if (m) { setSelectedMember(m); setShowMemberModal(true); }
-                              }}
-                              className="font-bold text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-700 dark:text-emerald-400 text-left transition underline-offset-2 hover:underline cursor-pointer"
-                            >
-                              {a.member}
-                            </button>
-                            <span className="text-slate-500 font-normal text-xs ml-1">({a.memberId})</span>
-                          </p>
-                          <p className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-                            {fmt(a.amount)}
-                          </p>
-                          <div className="flex flex-wrap gap-3 text-xs text-slate-400">
-                            <span>Ref: <span className="text-slate-700 dark:text-slate-200 font-mono">{a.reference}</span></span>
-                            <span>Verified: <span className="text-slate-700 dark:text-slate-200">{a.verifiedAt}</span></span>
-                            <span>By: <span className="text-emerald-700 dark:text-emerald-400">{a.verifiedBy}</span></span>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {req.adminApproved ? (
+                              <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs">
+                                AUTHORIZED
+                              </span>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleAdminRejectConversion(req.id)}
+                                  className="px-4 py-2 rounded-xl bg-rose-900/30 hover:bg-rose-900/50 text-rose-400 border border-rose-500/30 font-bold text-xs transition"
+                                >
+                                  REJECT
+                                </button>
+                                <button
+                                  onClick={() => handleAdminApproveConversion(req.id)}
+                                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg transition"
+                                >
+                                  AUTHORIZE & ACCEPT
+                                </button>
+                              </>
+                            )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleReject(a.id)}
-                            className="px-4 py-2 rounded-xl bg-rose-900/30 hover:bg-rose-900/50 text-rose-400 border border-rose-500/30 font-bold text-xs transition"
-                          >REJECT</button>
-                          <button onClick={() => handleAuthorize(a)} className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg transition">AUTHORIZE</button>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -4524,37 +3396,10 @@ export default function AdminPortal() {
                 </div>
               </div>
 
-              {/* Section 3: Custom Navigation Modules */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Custom Navigation Modules</h4>
-                    <p className="text-xs text-slate-400">Create custom modules visible in the sidebar navigation</p>
-                  </div>
-                  <button
-                    onClick={() => setShowAddModuleModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
-                  >CREATE MODULE</button>
-                </div>
-                {customModules.length > 0 ? (
-                  <div className="space-y-2">
-                    {customModules.map(m => (
-                      <div key={m.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-                        <div>
-                          <p className="text-xs font-bold text-slate-900 dark:text-white">{m.label}</p>
-                          <p className="text-[11px] text-slate-400">{m.description} — {m.records.length} records</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => setActiveTab(m.id)} className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 font-bold text-[10px]">OPEN</button>
-                          <button onClick={() => handleDeleteCustomModule(m.id)} className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-500 font-bold text-[10px]">DELETE</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 text-center py-4">No custom modules created yet.</p>
-                )}
-              </div>
+              {/* Task assignment, server connection, SMS and audit */}
+              <TaskAssignmentsPanel onNotify={notify} />
+              <SmsCenterPanel onNotify={notify} />
+              <AuditTrailPanel />
 
               {/* Section 4: Danger Zone */}
               <div className="bg-white dark:bg-slate-900 border border-rose-500/20 rounded-2xl p-5">
@@ -4562,18 +3407,18 @@ export default function AdminPortal() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                     <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">Reset Demo Data</p>
-                      <p className="text-[11px] text-slate-400">Clear localStorage and reload seed data</p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">Clear This Device</p>
+                      <p className="text-[11px] text-slate-400">Removes the copy saved in this browser and signs out. Records in the database are kept.</p>
                     </div>
                     <button
                       onClick={() => {
-                        if (confirm('Reset all demo data? This will clear localStorage and reload.')) {
+                        if (confirm('Clear the copy saved on this device and sign out? Records in the database are not deleted.')) {
                           localStorage.clear();
                           window.location.reload();
                         }
                       }}
                       className="px-3 py-1.5 rounded-lg bg-rose-900/30 hover:bg-rose-900/50 text-rose-400 border border-rose-500/30 text-xs font-bold"
-                    >RESET</button>
+                    >CLEAR</button>
                   </div>
                 </div>
               </div>
@@ -4581,152 +3426,25 @@ export default function AdminPortal() {
             )
           )}
 
-          {/* ── CUSTOM MODULE VIEW ────────────────────────────────────────── */}
-          {customModules.some(m => m.id === activeTab) && (() => {
-            const currentMod = customModules.find(m => m.id === activeTab)!;
-            return (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">{currentMod.label}</h3>
-                    <p className="text-xs text-slate-400">{currentMod.description}</p>
-                  </div>
-                  {canAddModule && (
-                    <button
-                      onClick={() => handleDeleteCustomModule(currentMod.id)}
-                      className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 hover:bg-rose-500/20 font-bold text-xs"
-                    >DELETE MODULE</button>
-                  )}
-                </div>
-
-                {/* Custom KPI Boxes Defined by Admin */}
-                {currentMod.customBoxes && currentMod.customBoxes.length > 0 && (
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {currentMod.customBoxes.map(box => (
-                      <div key={box.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
-                        <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">{box.title}</span>
-                        <div className="text-2xl font-extrabold font-mono mt-1 text-emerald-700 dark:text-emerald-400">
-                          {box.value} <span className="text-xs font-semibold text-slate-500 font-sans">{box.unit}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-bold uppercase">Total Records</span>
-                    <div className="text-2xl font-black font-mono mt-1 text-slate-900 dark:text-white">{currentMod.records.length}</div>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-bold uppercase">Total Financial Value</span>
-                    <div className="text-2xl font-black font-mono mt-1 text-emerald-600 dark:text-emerald-400">
-                      UGX {currentMod.records.reduce((sum, r) => sum + (r.amount || 0), 0).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-bold uppercase">Module Created</span>
-                    <div className="text-sm font-black font-mono mt-1 text-blue-600 dark:text-blue-400">{currentMod.createdAt}</div>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-bold uppercase">Created By</span>
-                    <div className="text-xs font-bold mt-1 text-slate-700 dark:text-slate-300 truncate">{currentMod.createdBy}</div>
-                  </div>
-                </div>
-
-                {/* Add Record Form */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Add Entry to {currentMod.label}</h4>
-                  <form onSubmit={e => handleAddCustomRecord(currentMod.id, e)} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    <div className="lg:col-span-2">
-                      <input
-                        type="text"
-                        required
-                        placeholder="Entry Title / Description *"
-                        value={newRecTitle}
-                        onChange={e => setNewRecTitle(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Category (e.g. Offtake, Procured)"
-                        value={newRecCategory}
-                        onChange={e => setNewRecCategory(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="number"
-                        placeholder="Amount (UGX optional)"
-                        value={newRecAmount}
-                        onChange={e => setNewRecAmount(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <button
-                        type="submit"
-                        className="w-full h-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase cursor-pointer"
-                      >
-                        SAVE ENTRY
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
-                {/* Records Table */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-                  <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Module Records</h4>
-                    <span className="text-xs font-mono font-bold text-slate-500">{currentMod.records.length} entries</span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-slate-100 dark:bg-slate-800/50">
-                        <tr>
-                          {['Entry ID', 'Date', 'Title', 'Category', 'Amount (UGX)', 'Actions'].map(h => (
-                            <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                        {currentMod.records.map(rec => (
-                          <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                            <td className="py-2 px-3 font-mono font-bold text-emerald-700 dark:text-emerald-400">{rec.id}</td>
-                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300 font-mono">{rec.date}</td>
-                            <td className="py-2 px-3 font-bold text-slate-900 dark:text-white">
-                              {rec.title}
-                              {rec.notes && <p className="text-[10px] text-slate-400 font-normal">{rec.notes}</p>}
-                            </td>
-                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{rec.category}</td>
-                            <td className="py-2 px-3 font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                              {rec.amount ? `UGX ${rec.amount.toLocaleString()}` : '—'}
-                            </td>
-                            <td className="py-2 px-3">
-                              <button
-                                onClick={() => handleDeleteCustomRecord(currentMod.id, rec.id)}
-                                className="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 font-bold text-[10px]"
-                              >DELETE</button>
-                            </td>
-                          </tr>
-                        ))}
-                        {currentMod.records.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="py-6 text-center text-slate-400 font-bold">
-                              No records in this module yet.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+          {/* ── MONTH-END CLOSE & DIVIDENDS ─────────────────────────────── */}
+          {activeTab === 'closing' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Month-End Close &amp; Dividends</h3>
+                <p className="text-xs text-slate-400">Freeze completed months and share the year’s surplus with members</p>
               </div>
-            );
-          })()}
+              <PeriodCloseDividends onNotify={notify} />
+            </div>
+          )}
+
+          {/* ── AI ADVISOR ──────────────────────────────────────────────── */}
+          {activeTab === 'ai' && (
+            activeRole === 'ADMIN' || activeRole === 'BOARD_MEMBER' ? <SaccoAIAdvisor /> : (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 text-center">
+                <p className="text-slate-900 dark:text-white font-extrabold text-sm">The AI Advisor is available to the Administrator.</p>
+              </div>
+            )
+          )}
 
           {/* ── CHAT & MESSAGING ────────────────────────────────────────── */}
           {activeTab === 'chat' && (
@@ -4734,10 +3452,10 @@ export default function AdminPortal() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Community & Member Messaging</h3>
-                  <p className="text-xs text-slate-500">Live communication with farmers, SACCO members, and administrative staff</p>
+                  <p className="text-xs text-slate-500">Communication with farmers, SACCO members, and administrative staff</p>
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  SACCO Live Network
+                  SACCO Network
                 </span>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center space-y-4">
@@ -4769,8 +3487,6 @@ export default function AdminPortal() {
         </main>
       </div>
 
-      {/* ── CREATE CUSTOM MODULE MODAL ─────────────────────────────────────── */}
-      
       {/* ── EXPORT SECTION PDF MODAL ─────────────────────────────────────── */}
       {showSectionPdfModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" onClick={() => setShowSectionPdfModal(false)}>
@@ -4796,7 +3512,6 @@ export default function AdminPortal() {
                     { id: 'cows', label: 'Cattle Herd' },
                     { id: 'health', label: 'Veterinary Log' },
                     { id: 'accounting', label: 'General Ledger' },
-                    { id: 'coffee', label: 'Coffee Warehouse' },
                   ].map(sec => (
                     <button
                       key={sec.id}
@@ -4867,168 +3582,109 @@ export default function AdminPortal() {
         </div>
       )}
 
-      {showAddModuleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" onClick={() => setShowAddModuleModal(false)}>
+      {/* ── ADD COW MILK RECORD MODAL (Dairy) ──────────────────────────────── */}
+      {showAddMilkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" onClick={() => setShowAddMilkModal(false)}>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Create Navigation Module</h3>
-              <button onClick={() => setShowAddModuleModal(false)} className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500">
-                <X className="w-4 h-4" />
-              </button>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Add Milk Record</h3>
+                <p className="text-xs text-slate-500">Litres from one cow in one milking session</p>
+              </div>
+              <button onClick={() => setShowAddMilkModal(false)} className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500"><X className="w-4 h-4" /></button>
             </div>
-            <form onSubmit={handleCreateCustomModule} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
+            <form onSubmit={handleAddMilkRecord} className="p-6 space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Module Name / Label *</label>
-                <input
-                  type="text"
-                  required
-                  value={newModLabel}
-                  onChange={e => setNewModLabel(e.target.value)}
-                  placeholder="e.g. Silage Processing, Poultry Operations, Honey Harvest"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
-                />
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Cow *</label>
+                <select required value={milkCowTag} onChange={e => setMilkCowTag(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white">
+                  <option value="">Select cow...</option>
+                  {cattle.filter(c => c.gender === 'Female' && c.stage !== 'Calf' && c.stage !== 'Heifer').map(c => (
+                    <option key={c.id} value={c.tagNumber}>{c.name} ({c.tagNumber}) — {c.stage}{c.hasCalf ? ', with calf' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Date *</label>
+                  <input type="date" required value={milkDate} onChange={e => setMilkDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white font-mono" />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Session *</label>
+                  <select value={milkSession} onChange={e => setMilkSession(e.target.value as any)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white">
+                    <option>Morning</option><option>Afternoon</option><option>Evening</option>
+                  </select>
+                </div>
               </div>
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Operational Description</label>
-                <input
-                  type="text"
-                  value={newModDesc}
-                  onChange={e => setNewModDesc(e.target.value)}
-                  placeholder="Operational scope, records tracking, and objectives"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                />
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Litres *</label>
+                <input type="number" required min="0.1" step="0.1" value={milkLitres} onChange={e => setMilkLitres(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white font-mono font-bold" />
+                {Number(milkLitres) > 0 && <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">≈ UGX {(Number(milkLitres) * 1650).toLocaleString()} at UGX 1,650/L — added to today’s milk income</p>}
               </div>
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Notes</label>
+                <input value={milkNotes} onChange={e => setMilkNotes(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowAddMilkModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">CANCEL</button>
+                <button type="submit" className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold">SAVE MILK RECORD</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-              {/* ── Choose Custom KPI Stat Boxes ── */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider">
-                      Configure Dashboard Stat Boxes (KPI Cards)
-                    </label>
-                    <p className="text-[11px] text-slate-500">Customize the stat boxes shown at the top of this module</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCustomKpiBoxes(prev => [...prev, { title: 'New Metric', value: '100', unit: 'Units' }])}
-                    className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px]"
-                  >
-                    + ADD STAT BOX
-                  </button>
+      {/* ── ADD COW MODAL (Cows) ───────────────────────────────────────────── */}
+      {showAddCowModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" onClick={() => setShowAddCowModal(false)}>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Add Cow to Herd</h3>
+              <button onClick={() => setShowAddCowModal(false)} className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={handleAddCow} className="p-6 grid grid-cols-2 gap-3 text-xs">
+              {[
+                { label: 'Name *', value: newCowName, set: setNewCowName, required: true, type: 'text' },
+                { label: 'Tag Number (blank = auto)', value: newCowTag, set: setNewCowTag, required: false, type: 'text' },
+                { label: 'Date of Birth', value: newCowDob, set: setNewCowDob, required: false, type: 'date' },
+                { label: 'Weight (kg)', value: newCowWeight, set: setNewCowWeight, required: false, type: 'number' },
+              ].map(f => (
+                <div key={f.label}>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">{f.label}</label>
+                  <input type={f.type} required={f.required} value={f.value} onChange={e => f.set(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white" />
                 </div>
-                <div className="space-y-2">
-                  {customKpiBoxes.map((box, bIdx) => (
-                    <div key={bIdx} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                      <input
-                        type="text"
-                        placeholder="Stat Box Title"
-                        value={box.title}
-                        onChange={e => {
-                          const updated = [...customKpiBoxes];
-                          updated[bIdx].title = e.target.value;
-                          setCustomKpiBoxes(updated);
-                        }}
-                        className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-900 dark:text-white font-bold text-xs"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Value"
-                        value={box.value}
-                        onChange={e => {
-                          const updated = [...customKpiBoxes];
-                          updated[bIdx].value = e.target.value;
-                          setCustomKpiBoxes(updated);
-                        }}
-                        className="w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-900 dark:text-white font-mono font-bold text-xs"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Unit"
-                        value={box.unit}
-                        onChange={e => {
-                          const updated = [...customKpiBoxes];
-                          updated[bIdx].unit = e.target.value;
-                          setCustomKpiBoxes(updated);
-                        }}
-                        className="w-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-900 dark:text-white text-xs"
-                      />
-                      {customKpiBoxes.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setCustomKpiBoxes(prev => prev.filter((_, i) => i !== bIdx))}
-                          className="text-rose-500 font-bold px-1 hover:text-rose-700 text-xs"
-                        >
-                          X
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              ))}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Breed</label>
+                <select value={newCowBreed} onChange={e => setNewCowBreed(e.target.value as any)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white">
+                  {['Friesian Cross', 'Friesian Pure', 'Jersey', 'Boran', 'Sahiwal', 'Ankole Longhorn'].map(b => <option key={b}>{b}</option>)}
+                </select>
               </div>
-
-              {/* ── Choose Module Data Entry Boxes ── */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                <label className="block font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider">
-                  Choose Data Entry Boxes
-                </label>
-                <p className="text-[11px] text-slate-500">Select which entry fields and columns should appear in this module</p>
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  {[
-                    { label: 'Amount Box (UGX)', val: includeAmountBox, set: setIncludeAmountBox },
-                    { label: 'Quantity Box', val: includeQuantityBox, set: setIncludeQuantityBox },
-                    { label: 'Category Box', val: includeCategoryBox, set: setIncludeCategoryBox },
-                    { label: 'Location Box', val: includeLocationBox, set: setIncludeLocationBox },
-                    { label: 'Notes Box', val: includeNotesBox, set: setIncludeNotesBox },
-                  ].map((field, fIdx) => (
-                    <label key={fIdx} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={field.val}
-                        onChange={e => field.set(e.target.checked)}
-                        className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-                      />
-                      <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">{field.label}</span>
-                    </label>
-                  ))}
-                </div>
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Sex</label>
+                <select value={newCowGender} onChange={e => setNewCowGender(e.target.value as any)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white">
+                  <option>Female</option><option>Male</option>
+                </select>
               </div>
-
-              {/* Initial Record */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-3">
-                <label className="block font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider">
-                  Initial Entry (Optional)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <input
-                      type="text"
-                      value={newModInitialTitle}
-                      onChange={e => setNewModInitialTitle(e.target.value)}
-                      placeholder="Title: e.g. First Batch Harvested"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="number"
-                      value={newModInitialAmount}
-                      onChange={e => setNewModInitialAmount(e.target.value)}
-                      placeholder="Amount: e.g. 750000"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
+              <div className="col-span-2">
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Stage</label>
+                <select value={newCowStage} onChange={e => setNewCowStage(e.target.value as any)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white">
+                  {['Milking', 'Pregnant', 'Dry', 'Heifer', 'Calf', 'Bull'].map(s => <option key={s}>{s}</option>)}
+                </select>
               </div>
-              <div className="flex gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModuleModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs"
-                >CANCEL</button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs"
-                >CREATE MODULE</button>
+              {newCowGender === 'Female' && (
+                <div className="col-span-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                  <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300">
+                    <input type="checkbox" checked={newCowHasCalf} onChange={e => setNewCowHasCalf(e.target.checked)} />
+                    This cow has a calf at foot
+                  </label>
+                  {newCowHasCalf && (
+                    <input value={newCowCalfTag} onChange={e => setNewCowCalfTag(e.target.value)} placeholder="Calf tag number" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono" />
+                  )}
+                </div>
+              )}
+              <div className="col-span-2 flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowAddCowModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">CANCEL</button>
+                <button type="submit" className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold">ADD COW</button>
               </div>
             </form>
           </div>
@@ -5261,12 +3917,17 @@ export default function AdminPortal() {
             </div>
             <div className="p-6 space-y-5">
               {/* Loan summary cards */}
-              <div className="grid grid-cols-3 gap-3">
-                {[
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {(() => { const b = SaccoFarmStore.getLoanBreakdown(selectedLoanHistory); return [
                   { label: 'Principal', value: `UGX ${selectedLoanHistory.principal.toLocaleString()}` },
-                  { label: 'Outstanding', value: `UGX ${selectedLoanHistory.outstandingBalance.toLocaleString()}`, red: true },
                   { label: 'Rate', value: `${selectedLoanHistory.interestRate}% pa` },
-                ].map((s, i) => (
+                  { label: 'Principal Repaid', value: `UGX ${b.principalPaid.toLocaleString()}` },
+                  { label: 'Interest Paid', value: `UGX ${b.interestPaid.toLocaleString()}` },
+                  { label: 'Principal Left', value: `UGX ${b.principalOutstanding.toLocaleString()}`, red: true },
+                  { label: 'Interest Left', value: `UGX ${b.interestOutstanding.toLocaleString()}`, red: true },
+                  { label: 'Interest Due Now', value: `UGX ${b.interestDueNow.toLocaleString()}`, red: b.interestDueNow > 0 },
+                  { label: 'Total Outstanding', value: `UGX ${selectedLoanHistory.outstandingBalance.toLocaleString()}`, red: true },
+                ]; })().map((s, i) => (
                   <div key={i} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">{s.label}</span>
                     <div className={`text-sm font-extrabold font-mono mt-1 ${s.red ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>{s.value}</div>
@@ -5281,19 +3942,21 @@ export default function AdminPortal() {
                   <div className="overflow-x-auto bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
                     <table className="w-full text-xs">
                       <thead className="bg-slate-100 dark:bg-slate-800/50">
-                        <tr>
-                          {['Date', 'Reference', 'Method', 'Amount Paid', 'Balance After'].map(h => (
+                        <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
+                          {['Date', 'Reference', 'Method', 'Amount Paid', 'Principal', 'Interest', 'Balance After'].map(h => (
                             <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                         {selectedLoanHistory.repaymentHistory.map((r, i) => (
-                          <tr key={i} className="hover:bg-slate-100 dark:hover:bg-slate-900">
+                          <tr key={i} className="hover:bg-slate-100 dark:hover:bg-slate-900"><td className="py-2 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{i + 1}</td>
                             <td className="py-2 px-3 text-slate-700 dark:text-slate-300 font-mono">{r.date}</td>
                             <td className="py-2 px-3 text-slate-500 font-mono">{r.reference || '—'}</td>
                             <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{r.paymentMethod}</td>
                             <td className="py-2 px-3 text-emerald-700 dark:text-emerald-400 font-mono font-bold">UGX {r.amount.toLocaleString()}</td>
+                            <td className="py-2 px-3 text-slate-700 dark:text-slate-300 font-mono">{(r.principalPortion || 0).toLocaleString()}</td>
+                            <td className="py-2 px-3 text-slate-700 dark:text-slate-300 font-mono">{(r.interestPortion || 0).toLocaleString()}</td>
                             <td className="py-2 px-3 text-rose-500 font-mono font-bold">UGX {r.remainingBalance.toLocaleString()}</td>
                           </tr>
                         ))}
@@ -5433,7 +4096,7 @@ export default function AdminPortal() {
                 <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-800/50">
-                      <tr>
+                      <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                         {['Date', 'Reference', 'Type', 'Description', 'Amount'].map(h => (
                           <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                         ))}
@@ -5442,7 +4105,7 @@ export default function AdminPortal() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                       {transactions.filter(t => (t.category && t.category.includes(selectedMember.name)) || (t.description && t.description.includes(selectedMember.name)) || (t.category && t.category.includes(selectedMember.memberId))).length > 0
                         ? transactions.filter(t => (t.category && t.category.includes(selectedMember.name)) || (t.description && t.description.includes(selectedMember.name)) || (t.category && t.category.includes(selectedMember.memberId))).slice(0, 30).map((t, i) => (
-                          <tr key={i} className="hover:bg-slate-100 dark:hover:bg-slate-900">
+                          <tr key={i} className="hover:bg-slate-100 dark:hover:bg-slate-900"><td className="py-2 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{i + 1}</td>
                             <td className="py-2 px-3 text-slate-700 dark:text-slate-300 font-mono">{t.date}</td>
                             <td className="py-2 px-3 text-slate-500 font-mono">{t.reference || '—'}</td>
                             <td className="py-2 px-3">
@@ -5458,7 +4121,7 @@ export default function AdminPortal() {
                         ))
                         : (
                           <tr>
-                            <td colSpan={5} className="py-4 text-center text-slate-400 font-bold">No transactions found for this member.</td>
+                            <td colSpan={6} className="py-4 text-center text-slate-400 font-bold">No transactions found for this member.</td>
                           </tr>
                         )
                       }
@@ -5615,116 +4278,6 @@ export default function AdminPortal() {
         </div>
       )}
 
-      {/* ── COFFEE STOCK ADJUSTMENT MODAL ─────────────────────────────────── */}
-      {showStockModal && selectedStockItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setShowStockModal(false)}>
-          <div className={`p-6 max-w-lg w-full rounded-3xl border shadow-2xl space-y-4 ${isDark ? 'bg-slate-900 border-slate-200 dark:border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`} onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Warehouse className="w-5 h-5 text-emerald-500" />
-                <h3 className="text-base font-extrabold">Inspect &amp; Adjust Warehouse Silo Bin</h3>
-              </div>
-              <button onClick={() => setShowStockModal(false)} className="p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className={`p-3 rounded-2xl border space-y-1 text-xs ${isDark ? 'bg-slate-950 border-slate-200 dark:border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Variety / Grade:</span>
-                <span className="font-bold text-emerald-700 dark:text-emerald-400">{selectedStockItem.variety}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Warehouse Location:</span>
-                <span className="font-bold">{selectedStockItem.warehouseLocation} ({selectedStockItem.binNumber})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Current Stock In Bin:</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-white">{selectedStockItem.totalKg.toLocaleString()} kg ({selectedStockItem.totalBags} bags)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Moisture Content:</span>
-                <span className="font-mono font-bold text-blue-700 dark:text-blue-400">{selectedStockItem.averageMoisture}%</span>
-              </div>
-            </div>
-
-            <form onSubmit={handleAdjustStock} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Adjustment Operation</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAdjustAction('add')}
-                    className={`py-2 rounded-xl font-bold transition text-xs ${adjustAction === 'add' ? 'bg-emerald-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                  >
-                    + Add to Stock
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAdjustAction('deduct')}
-                    className={`py-2 rounded-xl font-bold transition text-xs ${adjustAction === 'deduct' ? 'bg-rose-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                  >
-                    - Deduct from Stock
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Net Weight Change (Kg) *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={adjustDeltaKg}
-                    onChange={e => setAdjustDeltaKg(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Bags Change</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={adjustDeltaBags}
-                    onChange={e => setAdjustDeltaBags(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold mb-1 text-slate-600 dark:text-slate-300">Reason / Calibration Note *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Post-drying moisture loss calibration"
-                  value={adjustReason}
-                  onChange={e => setAdjustReason(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowStockModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-lg"
-                >
-                  Apply Bin Adjustment
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* ── COW DETAIL, ADJUSTMENT & FEMALE MILK RECORDS MODAL ───────────────── */}
       {selectedCow && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
@@ -5851,7 +4404,7 @@ export default function AdminPortal() {
                     return (
                       <table className="w-full text-xs text-left">
                         <thead className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                          <tr>
+                          <tr><th className="p-2.5 w-10">#</th>
                             <th className="p-2.5">Date</th>
                             <th className="p-2.5">Diagnosis</th>
                             <th className="p-2.5">Symptoms &amp; Rx</th>
@@ -5861,7 +4414,7 @@ export default function AdminPortal() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
                           {cowSicknessEvents.map((rec, rIdx) => (
-                            <tr key={rec.id || rIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                            <tr key={rec.id || rIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-2.5 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{rIdx + 1}</td>
                               <td className="p-2.5 text-slate-500 font-bold">{rec.date}</td>
                               <td className="p-2.5 font-sans font-bold text-slate-900 dark:text-white">{rec.illness}</td>
                               <td className="p-2.5 font-sans text-slate-700 dark:text-slate-300">
@@ -5882,7 +4435,7 @@ export default function AdminPortal() {
                           ))}
                           {cowSicknessEvents.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="p-4 text-center text-slate-400 font-bold font-sans">
+                              <td colSpan={6} className="p-4 text-center text-slate-400 font-bold font-sans">
                                 Clean veterinary record! No sickness incidents recorded for {selectedCow.name}.
                               </td>
                             </tr>
@@ -6123,7 +4676,7 @@ export default function AdminPortal() {
                     return (
                       <table className="w-full text-xs text-left font-mono">
                         <thead className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                          <tr>
+                          <tr><th className="p-2.5 w-10">#</th>
                             <th className="p-2.5">Date</th>
                             <th className="p-2.5">Session</th>
                             <th className="p-2.5 text-right">Litres</th>
@@ -6132,8 +4685,8 @@ export default function AdminPortal() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                          {cowRecords.map(r => (
-                            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          {cowRecords.map((r, __n) => (
+                            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-2.5 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                               <td className="p-2.5">{r.date}</td>
                               <td className="p-2.5 font-sans font-bold text-blue-700 dark:text-blue-400">{r.session}</td>
                               <td className="p-2.5 text-right font-black text-slate-900 dark:text-white">{r.litres.toFixed(1)}L</td>
@@ -6153,7 +4706,7 @@ export default function AdminPortal() {
                           ))}
                           {cowRecords.length > 0 && (
                             <tr className="bg-slate-50 dark:bg-slate-950 font-bold">
-                              <td colSpan={2} className="p-2.5 font-sans">TOTAL PRODUCTION</td>
+                              <td colSpan={3} className="p-2.5 font-sans">TOTAL PRODUCTION</td>
                               <td className="p-2.5 text-right text-blue-700 dark:text-blue-400 font-black">{totalL.toFixed(1)}L</td>
                               <td className="p-2.5 text-right text-emerald-700 dark:text-emerald-400 font-black">UGX {totalUGX.toLocaleString()}</td>
                               <td></td>
@@ -6161,7 +4714,7 @@ export default function AdminPortal() {
                           )}
                           {cowRecords.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="p-4 text-center text-slate-500 font-bold font-sans">
+                              <td colSpan={6} className="p-4 text-center text-slate-500 font-bold font-sans">
                                 No milk records logged yet for {selectedCow.name}.
                               </td>
                             </tr>

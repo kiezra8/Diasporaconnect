@@ -8,7 +8,14 @@ import { SaccoFarmStore,
   SaccoMember,
   SaccoLoan,
   PettyCashTransaction,
+  ShareConversionRequest,
+  MemberPaymentRequest,
 } from '../../services/saccoFarmStore';
+import AccountingWorkspace from '../../components/accounting/AccountingWorkspace';
+import PaymentRequestQueue from '../../components/approvals/PaymentRequestQueue';
+import ReportBarChart from '../../components/charts/ReportBarChart';
+import PeriodCloseDividends from '../../components/accounting/PeriodCloseDividends';
+import MyTasksCard from '../../components/settings/MyTasksCard';
 import {
   Search,
   FileCheck,
@@ -35,6 +42,8 @@ import {
   Printer,
   Wallet,
   DollarSign,
+  Repeat,
+  Check,
 } from 'lucide-react';
 
 type TabId =
@@ -48,6 +57,7 @@ type TabId =
   | 'reports'
   | 'verification'
   | 'reconciliation'
+  | 'closing'
   | 'chat'
   | 'settings';
 
@@ -79,41 +89,8 @@ export default function AccountantPortal() {
   const [members, setMembers] = useState<SaccoMember[]>([]);
   const [loans, setLoans] = useState<SaccoLoan[]>([]);
   const [transactions, setTransactions] = useState<PettyCashTransaction[]>([]);
-
-  // Verification queue (dual-control)
-  const [unverifiedQueue, setUnverifiedQueue] = useState([
-    {
-      id: 'TX-9410',
-      member: 'Joseph Ssenyonga (DC-MBR-00106)',
-      type: 'DEPOSIT',
-      purpose: 'Buying Shares (10 Class A Shares)',
-      amount: 2500000,
-      paymentMethod: 'Airtel Money Merchant',
-      reference: 'AIRTEL-7729104',
-      submittedAt: '2026-11-12 10:45',
-      status: 'PENDING_VERIFICATION',
-    },
-    {
-      id: 'TX-9411',
-      member: 'David Mukasa (DC-MBR-00104)',
-      type: 'DEPOSIT',
-      purpose: 'Monthly Savings (November 2026)',
-      amount: 1000000,
-      paymentMethod: 'Stanbic Bank Wire',
-      reference: 'STN-WIRE-40192',
-      submittedAt: '2026-11-12 11:10',
-      status: 'PENDING_VERIFICATION',
-    },
-  ]);
-  const [verifiedQueue, setVerifiedQueue] = useState([
-    {
-      id: 'TX-9402',
-      member: 'David Mukasa (DC-MBR-00104)',
-      amount: 1500000,
-      verifiedAt: '2026-11-12 09:30',
-      status: 'VERIFIED_AWAITING_ADMIN',
-    },
-  ]);
+  const [shareConversionRequests, setShareConversionRequests] = useState<ShareConversionRequest[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<MemberPaymentRequest[]>([]);
 
   // Loans UI
   const [repaymentAmounts, setRepaymentAmounts] = useState<Record<string, string>>({});
@@ -126,44 +103,12 @@ export default function AccountantPortal() {
   // Selected Loan for Repayment History Modal
   const [selectedLoanHistory, setSelectedLoanHistory] = useState<SaccoLoan | null>(null);
 
-  // Expense Form State
-  const [expenseCategory, setExpenseCategory] = useState('Dairy Feeds & Nutrition');
-  const [expensePayee, setExpensePayee] = useState('');
-  const [expenseAmount, setExpenseAmount] = useState('');
-  const [expenseSource, setExpenseSource] = useState<'Bank' | 'Petty Cash'>('Bank');
-  const [expenseRef, setExpenseRef] = useState('');
-  const [expenseDesc, setExpenseDesc] = useState('');
-  const [expenseSearch, setExpenseSearch] = useState('');
-
-  const handleRecordExpense = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = Number(expenseAmount);
-    if (!amt || amt <= 0) {
-      notify('Please enter a valid expense amount.', 'error');
-      return;
-    }
-    SaccoFarmStore.addTransaction({
-      date: new Date().toISOString().split('T')[0],
-      type: 'Expense',
-      source: expenseSource,
-      category: expenseCategory,
-      amount: amt,
-      description: `${expenseDesc ? expenseDesc + ' - ' : ''}Payee: ${expensePayee || 'General Vendor'}`,
-      reference: expenseRef || `EXP-${Date.now().toString().slice(-5)}`,
-      isBanked: expenseSource === 'Bank'
-    });
-    notify(`Expense of UGX ${amt.toLocaleString()} recorded and posted to General Ledger!`);
-    setExpenseAmount('');
-    setExpensePayee('');
-    setExpenseRef('');
-    setExpenseDesc('');
-    reloadData();
-  };
-
   const reloadData = () => {
     setMembers(SaccoFarmStore.getMembers());
     setLoans(SaccoFarmStore.getLoans());
     setTransactions(SaccoFarmStore.getTransactions());
+    setShareConversionRequests(SaccoFarmStore.getShareConversionRequests());
+    setPaymentRequests(SaccoFarmStore.getPaymentRequests());
   };
 
   useEffect(() => {
@@ -196,6 +141,7 @@ export default function AccountantPortal() {
     .filter((l) => l.status === 'ACTIVE')
     .reduce((s, l) => s + l.outstandingBalance, 0);
   const pendingLoans = loans.filter((l) => l.status === 'PENDING_APPROVAL');
+  const pendingConversionCount = shareConversionRequests.filter((r) => !r.accountantApproved && r.status === 'PENDING').length;
   const totalIncome = transactions
     .filter((t) => t.type === 'Income')
     .reduce((s, t) => s + t.amount, 0);
@@ -204,24 +150,26 @@ export default function AccountantPortal() {
     .reduce((s, t) => s + t.amount, 0);
 
   // -- Handlers ---------------------------------------------------------------
-  const handleVerifyTransaction = (id: string) => {
-    const item = unverifiedQueue.find((q) => q.id === id);
-    if (!item) return;
-    setUnverifiedQueue(unverifiedQueue.filter((q) => q.id !== id));
-    setVerifiedQueue([
-      {
-        id: item.id,
-        member: item.member,
-        amount: item.amount,
-        verifiedAt: new Date().toLocaleString(),
-        status: 'VERIFIED_AWAITING_ADMIN',
-      },
-      ...verifiedQueue,
-    ]);
-    notify(`Transaction ${id} verified and forwarded to Admin for final authorization.`);
+  const handleAccountantApproveConversion = (requestId: string) => {
+    const res = SaccoFarmStore.approveShareConversionRequest(requestId, 'ACCOUNTANT', 'Mrs. Miriam Halera (Accountant)');
+    if (res.success) {
+      notify(res.msg);
+      reloadData();
+    } else {
+      notify(res.msg, 'error');
+    }
+  };
+
+  const handleAccountantRejectConversion = (requestId: string) => {
+    if (confirm('Reject this share conversion request?')) {
+      SaccoFarmStore.rejectShareConversionRequest(requestId, 'Rejected by Accountant during verification');
+      notify('Share conversion request rejected.');
+      reloadData();
+    }
   };
 
   const handleApproveLoan = (id: string) => {
+    if (!SaccoFarmStore.canPerform('loan_processing')) { notify(`Loan processing is assigned to: ${SaccoFarmStore.assigneeNames('loan_processing')}.`, 'error'); return; }
     const loan = SaccoFarmStore.approveLoan(id);
     if (loan) {
       notify(`Loan ${id} approved and disbursed to ${loan.memberName}.`);
@@ -229,6 +177,7 @@ export default function AccountantPortal() {
   };
 
   const handleRecordRepayment = (loanId: string) => {
+    if (!SaccoFarmStore.canPerform('loan_processing')) { notify(`Loan processing is assigned to: ${SaccoFarmStore.assigneeNames('loan_processing')}.`, 'error'); return; }
     const amt = Number(repaymentAmounts[loanId] || 0);
     if (!amt || amt <= 0) {
       notify('Enter a valid repayment amount.', 'error');
@@ -277,17 +226,6 @@ export default function AccountantPortal() {
       )}
     </button>
   );
-
-  // -- Trial Balance data -----------------------------------------------------
-  const cashBankBalance = 342500000;
-  const cattleAssets = 568000000;
-  const memberSavingsLiability = totalSavings;
-  const shareCapital = totalSharesValue;
-  const loanPortfolio = loans
-    .filter((l) => l.status === 'ACTIVE')
-    .reduce((s, l) => s + l.outstandingBalance, 0);
-  const tbDebit = cashBankBalance + cattleAssets + loanPortfolio;
-  const tbCredit = memberSavingsLiability + shareCapital;
 
   return (
     <div className={`min-h-screen flex antialiased font-sans selection:bg-emerald-600 selection:text-white ${
@@ -354,10 +292,11 @@ export default function AccountantPortal() {
             {navItem('shares', 'Shares Management', CreditCard)}
             {navItem('savings', 'Savings Records', PiggyBank)}
             {navItem('loans', 'Loans Processing', CircleDollarSign, pendingLoans.length)}
-            {navItem('expenses', 'Expenses Ledger', Receipt)}
+            {navItem('expenses', 'Income & Expenses', Receipt)}
             {navItem('journal', 'Double-Entry Journal', BookOpen)}
+            {navItem('closing', 'Close & Dividends', Scale)}
             {navItem('reports', 'Financial Reports', TrendingUp)}
-            {navItem('verification', 'Verification Queue', FileCheck, unverifiedQueue.length)}
+            {navItem('verification', 'Verification Queue', FileCheck, paymentRequests.filter(r => r.status === 'PENDING_VERIFICATION').length + pendingConversionCount)}
             {navItem('reconciliation', 'Bank Reconciliation', Building2)}
           </div>
         </div>
@@ -413,8 +352,7 @@ export default function AccountantPortal() {
               <Menu className="w-5 h-5" />
             </button>
             <div>
-              <h2 className={`text-base sm:text-lg font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>Financial Accounting Dashboard</h2>
-              <p className={`text-xs ${isDark ? 'text-slate-500 dark:text-slate-400' : 'text-slate-500'}`}>Double-Entry Ledger &amp; Dual-Control Verification</p>
+              <h2 className={`text-base sm:text-lg font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>Accounting</h2>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -424,7 +362,7 @@ export default function AccountantPortal() {
                 : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             }`}>
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Balanced Invariant</span>
+              <span>Balanced</span>
             </span>
 
             {/* Header Theme Switch */}
@@ -462,12 +400,13 @@ export default function AccountantPortal() {
           {/* -- TAB: DASHBOARD ------------------------------------------- */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
+              <MyTasksCard compact actor={{ name: session?.fullName || 'Accountant', role: session?.role || 'ACCOUNTANT', email: session?.email }} />
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Total Member Savings', value: `UGX ${totalSavings.toLocaleString()}`, color: 'emerald' },
-                  { label: 'Share Capital Pool', value: `UGX ${totalSharesValue.toLocaleString()}`, color: 'blue' },
-                  { label: 'Active Loan Portfolio', value: `UGX ${activeLoansTotal.toLocaleString()}`, color: 'blue' },
-                  { label: 'Net Operating Surplus', value: `UGX ${(totalIncome - totalExpenses).toLocaleString()}`, color: 'emerald' },
+                  { label: 'Savings', value: `UGX ${totalSavings.toLocaleString()}`, color: 'emerald' },
+                  { label: 'Share Capital', value: `UGX ${totalSharesValue.toLocaleString()}`, color: 'blue' },
+                  { label: 'Loans Out', value: `UGX ${activeLoansTotal.toLocaleString()}`, color: 'blue' },
+                  { label: 'Net Surplus', value: `UGX ${(totalIncome - totalExpenses).toLocaleString()}`, color: 'emerald' },
                 ].map((card) => (
                   <div
                     key={card.label}
@@ -481,24 +420,22 @@ export default function AccountantPortal() {
 
               {/* Quick activity */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4">
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Recent Transactions</h3>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Recent</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]">
+                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]"><th className="p-3 w-10">#</th>
                         <th className="p-3">Date</th>
                         <th className="p-3">Category</th>
-                        <th className="p-3">Description</th>
                         <th className="p-3 text-right">Amount (UGX)</th>
                         <th className="p-3 text-center">Type</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-                      {transactions.slice(0, 8).map((tx) => (
-                        <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      {transactions.slice(0, 8).map((tx, __n) => (
+                        <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="p-3 font-sans text-slate-500 dark:text-slate-400">{tx.date}</td>
                           <td className="p-3 font-sans text-slate-900 dark:text-slate-100 font-bold font-bold">{tx.category}</td>
-                          <td className="p-3 font-sans text-slate-500 dark:text-slate-400 text-[11px] max-w-xs truncate">{tx.description}</td>
                           <td className={`p-3 text-right font-extrabold ${tx.type === 'Income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-400'}`}>
                             {tx.amount.toLocaleString()}
                           </td>
@@ -532,7 +469,7 @@ export default function AccountantPortal() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]">
+                    <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]"><th className="p-3 w-10">#</th>
                       <th className="p-3">ID</th>
                       <th className="p-3">Name</th>
                       <th className="p-3 text-right">Savings (UGX)</th>
@@ -543,8 +480,8 @@ export default function AccountantPortal() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-                    {members.map((m) => (
-                      <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                    {members.map((m, __n) => (
+                      <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                         <td className="p-3 font-bold text-blue-700 dark:text-blue-400">{m.memberId}</td>
                         <td className="p-3 font-sans">
                           <span className="font-bold text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-700 dark:text-emerald-400 cursor-pointer transition">
@@ -571,7 +508,7 @@ export default function AccountantPortal() {
                   </tbody>
                   <tfoot className="border-t-2 border-slate-700">
                     <tr className="bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white font-mono">
-                      <td colSpan={2} className="p-3 font-sans uppercase text-[11px]">Totals</td>
+                      <td colSpan={3} className="p-3 font-sans uppercase text-[11px]">Totals</td>
                       <td className="p-3 text-right text-emerald-700 dark:text-emerald-400">{totalSavings.toLocaleString()}</td>
                       <td className="p-3 text-right">{totalShares}</td>
                       <td className="p-3 text-right text-blue-700 dark:text-blue-300">{totalSharesValue.toLocaleString()}</td>
@@ -607,7 +544,7 @@ export default function AccountantPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]">
+                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]"><th className="p-3 w-10">#</th>
                         <th className="p-3">Member ID</th>
                         <th className="p-3">Name</th>
                         <th className="p-3 text-right">Shares Held</th>
@@ -619,8 +556,8 @@ export default function AccountantPortal() {
                       {members
                         .filter((m) => (m.shares || 0) > 0)
                         .sort((a, b) => (b.shares || 0) - (a.shares || 0))
-                        .map((m) => (
-                          <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        .map((m, __n) => (
+                          <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                             <td className="p-3 font-bold text-blue-700 dark:text-blue-400">{m.memberId}</td>
                             <td className="p-3 font-sans"><button onClick={() => { setSelectedMember(m); setShowMemberModal(true); }} className="font-bold text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-700 dark:text-emerald-400 underline-offset-2 hover:underline cursor-pointer text-left">{m.name}</button></td>
                             <td className="p-3 text-right font-bold text-slate-900 dark:text-white">{m.shares || 0}</td>
@@ -645,7 +582,7 @@ export default function AccountantPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]">
+                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]"><th className="p-3 w-10">#</th>
                         <th className="p-3">Member</th>
                         <th className="p-3 text-right">Jan</th>
                         <th className="p-3 text-right">Feb</th>
@@ -659,11 +596,11 @@ export default function AccountantPortal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-                      {members.map((m) => {
+                      {members.map((m, __n) => {
                         const q2 = (m.apr || 0) + (m.may || 0) + (m.jun || 0);
                         const q3 = (m.jul || 0) + (m.aug || 0) + (m.sep || 0);
                         return (
-                          <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                             <td className="p-3 font-sans"><button onClick={() => { setSelectedMember(m); setShowMemberModal(true); }} className="font-bold text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-700 dark:text-emerald-400 underline-offset-2 hover:underline cursor-pointer text-left">{m.name}</button></td>
                             <td className="p-3 text-right text-slate-500 dark:text-slate-400">{(m.jan || 0).toLocaleString()}</td>
                             <td className="p-3 text-right text-slate-500 dark:text-slate-400">{(m.feb || 0).toLocaleString()}</td>
@@ -679,7 +616,7 @@ export default function AccountantPortal() {
                       })}
                     </tbody>
                     <tfoot className="border-t-2 border-slate-700">
-                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-bold font-mono">
+                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-bold font-mono"><td />
                         <td className="p-3 font-sans uppercase text-[11px]">Pool Total</td>
                         <td colSpan={8} className="p-3" />
                         <td className="p-3 text-right text-emerald-700 dark:text-emerald-400">{totalSavings.toLocaleString()}</td>
@@ -777,6 +714,11 @@ export default function AccountantPortal() {
                           </p>
                         </div>
                       </div>
+                      {(() => { const b = SaccoFarmStore.getLoanBreakdown(loan); return (
+                        <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400">
+                          Principal repaid {b.principalPaid.toLocaleString()} / {loan.principal.toLocaleString()} · Interest paid {b.interestPaid.toLocaleString()} / {b.totalInterest.toLocaleString()} · Interest due now {b.interestDueNow.toLocaleString()}
+                        </p>
+                      ); })()}
                       <div className="w-full bg-slate-800 rounded-full h-1.5">
                         <div
                           className="bg-emerald-500 h-1.5 rounded-full"
@@ -809,195 +751,149 @@ export default function AccountantPortal() {
             </div>
           )}
 
+          {/* -- TAB: INCOME & EXPENSES ----------------------------------- */}
+          {activeTab === 'expenses' && (
+            <AccountingWorkspace sections={['summary', 'income', 'expenses']} actorName={`${session?.fullName || 'Mrs. Miriam Halera'} (Accountant)`} onNotify={notify} />
+          )}
+
           {/* -- TAB: DOUBLE-ENTRY JOURNAL -------------------------------- */}
           {activeTab === 'journal' && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">General Ledger Journal Entries</h3>
-              <div className="space-y-3 font-mono text-xs">
-                {/* Auto-generated from transactions */}
-                {transactions.slice(0, 10).map((tx, i) => {
-                  const jrnNum = `JRN-2026-${880 + i}`;
-                  const isIncome = tx.type === 'Income';
-                  const drAcc = isIncome ? '1010 Cash &amp; Bank' : tx.category;
-                  const crAcc = isIncome ? `4xxx ${tx.category}` : '1010 Cash &amp; Bank';
-                  return (
-                    <div key={tx.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                      <div className="flex justify-between text-slate-500 dark:text-slate-400 text-[11px] font-sans">
-                        <span>Journal #{jrnNum} &middot; {tx.date} &middot; Ref: {tx.reference}</span>
-                        <span className="text-emerald-700 dark:text-emerald-400 font-bold uppercase">Balanced Posting</span>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-slate-900 dark:text-slate-100 font-bold">DR {drAcc}</span>
-                          <span className={`font-bold ${isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-400'}`}>
-                            UGX {tx.amount.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between pl-6">
-                          <span className="text-slate-500 dark:text-slate-400">CR {crAcc}</span>
-                          <span className="text-slate-900 dark:text-white font-bold">UGX {tx.amount.toLocaleString()}</span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 pt-1 font-sans">{tx.description}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <AccountingWorkspace sections={['journal', 'ledger']} actorName={`${session?.fullName || 'Mrs. Miriam Halera'} (Accountant)`} onNotify={notify} />
           )}
 
           {/* -- TAB: FINANCIAL REPORTS ----------------------------------- */}
           {activeTab === 'reports' && (
             <div className="space-y-6">
-              {/* Trial Balance */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Double-Entry Trial Balance</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs font-mono">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase font-sans text-[10px]">
-                        <th className="p-3">Code</th>
-                        <th className="p-3">Account Name</th>
-                        <th className="p-3 text-right">Debit (UGX)</th>
-                        <th className="p-3 text-right">Credit (UGX)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                        <td className="p-3 text-blue-700 dark:text-blue-400 font-bold">1010</td>
-                        <td className="p-3 font-sans text-slate-900 dark:text-slate-100 font-bold">Cash &amp; Bank Balances</td>
-                        <td className="p-3 text-right text-emerald-700 dark:text-emerald-400 font-bold">{cashBankBalance.toLocaleString()}</td>
-                        <td className="p-3 text-right text-slate-600">0</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                        <td className="p-3 text-blue-700 dark:text-blue-400 font-bold">1100</td>
-                        <td className="p-3 font-sans text-slate-900 dark:text-slate-100 font-bold">Biological Cattle Herd Assets</td>
-                        <td className="p-3 text-right text-emerald-700 dark:text-emerald-400 font-bold">{cattleAssets.toLocaleString()}</td>
-                        <td className="p-3 text-right text-slate-600">0</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                        <td className="p-3 text-blue-700 dark:text-blue-400 font-bold">1200</td>
-                        <td className="p-3 font-sans text-slate-900 dark:text-slate-100 font-bold">Cooperative Loan Portfolio</td>
-                        <td className="p-3 text-right text-emerald-700 dark:text-emerald-400 font-bold">{loanPortfolio.toLocaleString()}</td>
-                        <td className="p-3 text-right text-slate-600">0</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                        <td className="p-3 text-blue-700 dark:text-blue-400 font-bold">2010</td>
-                        <td className="p-3 font-sans text-slate-900 dark:text-slate-100 font-bold">Member Savings Liabilities</td>
-                        <td className="p-3 text-right text-slate-600">0</td>
-                        <td className="p-3 text-right text-slate-900 dark:text-white font-bold">{totalSavings.toLocaleString()}</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                        <td className="p-3 text-blue-700 dark:text-blue-400 font-bold">3010</td>
-                        <td className="p-3 font-sans text-slate-900 dark:text-slate-100 font-bold">Member Share Capital Equity</td>
-                        <td className="p-3 text-right text-slate-600">0</td>
-                        <td className="p-3 text-right text-slate-900 dark:text-white font-bold">{totalSharesValue.toLocaleString()}</td>
-                      </tr>
-                      <tr className="bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white font-sans border-t border-slate-200 dark:border-slate-800">
-                        <td colSpan={2} className="p-3 uppercase">Total Invariant Check</td>
-                        <td className="p-3 text-right font-mono text-emerald-700 dark:text-emerald-400">UGX {tbDebit.toLocaleString()}</td>
-                        <td className="p-3 text-right font-mono text-emerald-700 dark:text-emerald-400">UGX {tbCredit.toLocaleString()}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <ReportBarChart
+                  title="Savings by member"
+                  data={[...members].sort((a, b) => b.savings - a.savings).map(m => ({ member: m.name, savings: m.savings }))}
+                  xKey="member"
+                  series={[{ key: 'savings', label: 'Net savings' }]}
+                  format="ugx"
+                  horizontal
+                />
+                <ReportBarChart
+                  title="Share capital by member"
+                  data={[...members].sort((a, b) => (b.sharesValue || 0) - (a.sharesValue || 0)).map(m => ({ member: m.name, value: m.sharesValue || 0 }))}
+                  xKey="member"
+                  series={[{ key: 'value', label: 'Share value' }]}
+                  format="ugx"
+                  horizontal
+                />
+                <ReportBarChart
+                  title="Loan book by borrower"
+                  data={loans.filter(l => l.status !== 'CLEARED').map(l => ({ borrower: `${l.memberName} (${l.loanNumber})`, paid: l.amountPaid, outstanding: l.outstandingBalance }))}
+                  xKey="borrower"
+                  series={[{ key: 'paid', label: 'Repaid' }, { key: 'outstanding', label: 'Outstanding' }]}
+                  format="ugx"
+                  horizontal
+                />
+                <ReportBarChart
+                  title="Monthly savings contributions (all members)"
+                  data={(['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const).map(mo => ({ month: mo.charAt(0).toUpperCase() + mo.slice(1), amount: members.reduce((s, m) => s + (Number(m[mo]) || 0), 0) }))}
+                  xKey="month"
+                  series={[{ key: 'amount', label: 'Contributions' }]}
+                  format="ugx"
+                />
               </div>
-
-              {/* Income Statement */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Income &amp; Expenditure Statement</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
-                  <div className="space-y-2">
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-sans font-semibold">Income</p>
-                    {transactions.filter((t) => t.type === 'Income').slice(0, 5).map((t) => (
-                      <div key={t.id} className="flex justify-between">
-                        <span className="text-slate-600 dark:text-slate-300 font-sans">{t.category}</span>
-                        <span className="text-emerald-700 dark:text-emerald-400 font-bold">{t.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between border-t border-slate-200 dark:border-slate-800 pt-2 font-bold">
-                      <span className="text-slate-900 dark:text-white font-sans">Total Income</span>
-                      <span className="text-emerald-700 dark:text-emerald-400">{totalIncome.toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-sans font-semibold">Expenditure</p>
-                    {transactions.filter((t) => t.type === 'Expense').slice(0, 5).map((t) => (
-                      <div key={t.id} className="flex justify-between">
-                        <span className="text-slate-600 dark:text-slate-300 font-sans">{t.category}</span>
-                        <span className="text-rose-400 font-bold">{t.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between border-t border-slate-200 dark:border-slate-800 pt-2 font-bold">
-                      <span className="text-slate-900 dark:text-white font-sans">Total Expenditure</span>
-                      <span className="text-rose-400">{totalExpenses.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-emerald-500/30 flex justify-between items-center">
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">Net Operating Surplus</span>
-                  <span className="font-extrabold text-emerald-700 dark:text-emerald-400 text-xl font-mono">
-                    UGX {(totalIncome - totalExpenses).toLocaleString()}
-                  </span>
-                </div>
-              </div>
+              <AccountingWorkspace sections={['summary', 'income', 'report']} actorName={`${session?.fullName || 'Mrs. Miriam Halera'} (Accountant)`} canPost={false} onNotify={notify} />
             </div>
           )}
 
           {/* -- TAB: VERIFICATION QUEUE ---------------------------------- */}
           {activeTab === 'verification' && (
             <div className="space-y-6">
+              {/* Share Conversion Requests (Savings to Shares Dual-Control) */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Step 1: Payment Evidence Verification</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Match external bank or mobile money records before admin authorization</p>
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                      <Repeat className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> Share Capital Conversions (Savings to Shares)
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Step 1 Dual-Control: Accountant verifies savings balance eligibility before Admin final authorization
+                    </p>
                   </div>
-                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300">
-                    {unverifiedQueue.length} Pending
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                    {shareConversionRequests.filter(r => !r.accountantApproved && r.status === 'PENDING').length} Pending Accountant
                   </span>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]">
+                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase text-[10px]"><th className="p-3 w-10">#</th>
                         <th className="p-3">Ref ID</th>
                         <th className="p-3">Member</th>
-                        <th className="p-3">Depositing For</th>
-                        <th className="p-3 text-right">Amount</th>
-                        <th className="p-3">Channel</th>
-                        <th className="p-3">Reference #</th>
+                        <th className="p-3">Shares Requested</th>
+                        <th className="p-3 text-right">Conversion Cost</th>
+                        <th className="p-3 text-center">Admin Status</th>
+                        <th className="p-3 text-center">Accountant Status</th>
                         <th className="p-3 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-                      {unverifiedQueue.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                          <td className="p-3 font-bold text-blue-700 dark:text-blue-400">{item.id}</td>
-                          <td className="p-3 font-sans text-slate-900 dark:text-slate-100 font-bold font-bold">{item.member}</td>
-                          <td className="p-3 font-sans">
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
-                              {item.purpose || 'Monthly Savings'}
-                            </span>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+                      {shareConversionRequests.filter(r => r.status === 'PENDING').map((req, __n) => (
+                        <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
+                          <td className="p-3 font-bold text-emerald-700 dark:text-emerald-400">{req.id}</td>
+                          <td className="p-3 font-sans text-slate-900 dark:text-slate-100 font-bold">
+                            {req.memberName} <span className="text-slate-400 text-[11px] font-normal font-mono">({req.memberId})</span>
                           </td>
-                          <td className="p-3 text-right font-extrabold text-slate-900 dark:text-white">UGX {item.amount.toLocaleString()}</td>
-                          <td className="p-3 font-sans text-slate-500 dark:text-slate-400">{item.paymentMethod}</td>
-                          <td className="p-3 text-emerald-800 dark:text-emerald-300 font-bold">{item.reference}</td>
-                          <td className="p-3 text-right">
-                            <button
-                              onClick={() => handleVerifyTransaction(item.id)}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-900 dark:text-white font-sans font-bold text-xs shadow-md transition"
-                            >
-                              Verify
-                            </button>
+                          <td className="p-3 font-sans font-bold text-slate-800 dark:text-slate-200">
+                            {req.shareCount} Class A Shares
+                          </td>
+                          <td className="p-3 text-right font-extrabold text-slate-900 dark:text-white">
+                            UGX {req.amount.toLocaleString()}
+                          </td>
+                          <td className="p-3 text-center font-sans">
+                            {req.adminApproved ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                                <Check className="w-3 h-3" /> Admin Authorized
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                                Awaiting Admin
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center font-sans">
+                            {req.accountantApproved ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                                <Check className="w-3 h-3" /> Verified by Accountant
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 text-[10px] font-bold">
+                                Awaiting Verification
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-right font-sans">
+                            {req.accountantApproved ? (
+                              <span className="text-xs text-emerald-600 font-bold">Verified</span>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => handleAccountantRejectConversion(req.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-[11px] font-bold transition"
+                                >
+                                  Reject
+                                </button>
+                                <button
+                                  onClick={() => handleAccountantApproveConversion(req.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition"
+                                >
+                                  Accept & Verify
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
-                      {unverifiedQueue.length === 0 && (
+                      {shareConversionRequests.filter(r => r.status === 'PENDING').length === 0 && (
                         <tr>
-                          <td colSpan={7} className="p-6 text-center text-slate-500 font-sans">
-                            All submitted payment requests have been verified.
+                          <td colSpan={8} className="p-6 text-center text-slate-500 font-sans">
+                            No pending savings-to-shares conversion requests.
                           </td>
                         </tr>
                       )}
@@ -1006,27 +902,12 @@ export default function AccountantPortal() {
                 </div>
               </div>
 
-              {/* Verified awaiting Admin */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Step 2: Awaiting Admin Final Authorization</h3>
-                <div className="space-y-2">
-                  {verifiedQueue.map((v) => (
-                    <div key={v.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-mono">
-                      <div>
-                        <span className="font-bold text-blue-700 dark:text-blue-400">{v.id}</span>
-                        <span className="text-slate-600 dark:text-slate-300 font-sans ml-2 font-semibold">{v.member}</span>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Verified at: {v.verifiedAt}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm">UGX {v.amount.toLocaleString()}</span>
-                        <span className="block text-[10px] font-sans font-bold text-blue-700 dark:text-blue-400 uppercase">Awaiting Admin Dual-Auth</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <PaymentRequestQueue role="ACCOUNTANT" actorName={`${session?.fullName || 'Mrs. Miriam Halera'} (Accountant)`} onNotify={notify} />
             </div>
           )}
+
+          {/* -- TAB: MONTH-END CLOSE & DIVIDENDS ----------------------- */}
+          {activeTab === 'closing' && <PeriodCloseDividends onNotify={notify} />}
 
           {/* -- TAB: BANK RECONCILIATION --------------------------------- */}
           {activeTab === 'reconciliation' && (
@@ -1132,7 +1013,7 @@ export default function AccountantPortal() {
               <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden max-h-60 overflow-y-auto text-xs">
                 <table className="w-full text-left">
                   <thead className="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-200 uppercase font-black text-[10px] sticky top-0">
-                    <tr>
+                    <tr><th className="p-2.5 w-10">#</th>
                       <th className="p-2.5">Date</th>
                       <th className="p-2.5">Ref #</th>
                       <th className="p-2.5">Channel</th>
@@ -1143,8 +1024,8 @@ export default function AccountantPortal() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
                     {selectedLoanHistory.repaymentHistory && selectedLoanHistory.repaymentHistory.length > 0 ? (
-                      selectedLoanHistory.repaymentHistory.map((h) => (
-                        <tr key={h.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      selectedLoanHistory.repaymentHistory.map((h, __n) => (
+                        <tr key={h.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40"><td className="p-2.5 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="p-2.5 font-sans font-bold text-slate-900 dark:text-slate-200">{h.date}</td>
                           <td className="p-2.5 font-bold text-blue-700 dark:text-blue-400">{h.reference}</td>
                           <td className="p-2.5 font-sans text-slate-700 dark:text-slate-300">{h.paymentMethod}</td>
@@ -1159,7 +1040,7 @@ export default function AccountantPortal() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="p-4 text-center text-slate-500 font-sans">
+                        <td colSpan={7} className="p-4 text-center text-slate-500 font-sans">
                           No repayment installments recorded yet for this facility.
                         </td>
                       </tr>

@@ -46,7 +46,6 @@ export default function App() {
     '/admin',
     '/sacco',
     '/farm-system',
-    '/coffee-system',
     '/cattle',
     '/animals',
     '/milk',
@@ -100,7 +99,6 @@ export default function App() {
         <Route path="/admin" element={<RequireAuth allowedRoles={['ADMIN']}><AdminPortal /></RequireAuth>} />
         <Route path="/sacco" element={<RequireAuth allowedRoles={['ADMIN']}><AdminPortal /></RequireAuth>} />
         <Route path="/farm-system" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
-        <Route path="/coffee-system" element={<RequireAuth allowedRoles={['ADMIN']}><AdminPortal /></RequireAuth>} />
         <Route path="/cattle" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
         <Route path="/animals" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />
         <Route path="/milk" element={<RequireAuth allowedRoles={['ADMIN', 'FARM_WORKER', 'BOARD_MEMBER', 'ACCOUNTANT', 'SECRETARY']}><FarmPortal /></RequireAuth>} />

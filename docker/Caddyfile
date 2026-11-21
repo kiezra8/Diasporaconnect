@@ -17,6 +17,11 @@ diasporaconnectt.com {
     }
 }
 
+# www → apex
+www.diasporaconnectt.com {
+    redir https://diasporaconnectt.com{uri} permanent
+}
+
 # 2. NestJS REST API & WebSockets
 api.diasporaconnectt.com {
     encode gzip zstd
@@ -28,10 +33,8 @@ api.diasporaconnectt.com {
         header_up X-Forwarded-Proto {scheme}
     }
 
-    # Security Headers
+    # Security headers (CORS is answered by the API itself — do not add CORS headers here)
     header {
-        Access-Control-Allow-Origin "https://diasporaconnectt.com"
-        Access-Control-Allow-Credentials "true"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     }
 }

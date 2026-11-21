@@ -1,57 +1,24 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 
-import { PrismaService } from './prisma/prisma.service';
+import { SupabaseService } from './supabase/supabase.service';
+import { SupabaseAuthGuard } from './auth/supabase-auth.guard';
 
-import { AuthService } from './auth/auth.service';
-import { AuthController } from './auth/auth.controller';
-import { JwtStrategy } from './auth/jwt.strategy';
-import { RolesGuard } from './auth/roles.guard';
+import { AiService } from './ai/ai.service';
+import { AiController } from './ai/ai.controller';
 
-import { AccountingService } from './accounting/accounting.service';
-import { AccountingController } from './accounting/accounting.controller';
+import { SmsService } from './notifications/sms.service';
+import { NotificationsController } from './notifications/notifications.controller';
+import { PaymentsService } from './payments/payments.service';
+import { PaymentsController } from './payments/payments.controller';
+import { HealthController } from './health.controller';
 
-import { SaccoService } from './sacco/sacco.service';
-import { SaccoController } from './sacco/sacco.controller';
-
-import { FarmService } from './farm/farm.service';
-import { FarmController } from './farm/farm.controller';
-
-import { CoffeeService } from './coffee/coffee.service';
-import { CoffeeController } from './coffee/coffee.controller';
-
-import { SupportService } from './support/support.service';
-import { SupportController } from './support/support.controller';
-
+/**
+ * The API on the VPS (Contabo) handles only what needs server-side secrets:
+ * mobile money (MTN / Airtel), SMS (Africa's Talking) and the AI advisor.
+ * Sign-in and all SACCO data live in Supabase (Auth + Postgres).
+ */
 @Module({
-  imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'diaspora-connect-secure-jwt-secret-key-2026',
-      signOptions: { expiresIn: '7d' },
-    }),
-  ],
-  controllers: [
-    AuthController,
-    AccountingController,
-    SaccoController,
-    FarmController,
-    CoffeeController,
-    SupportController,
-  ],
-  providers: [
-    PrismaService,
-    AuthService,
-    JwtStrategy,
-    RolesGuard,
-    AccountingService,
-    SaccoService,
-    FarmService,
-    CoffeeService,
-    SupportService,
-  ],
-  exports: [PrismaService, AuthService, AccountingService],
+  controllers: [AiController, NotificationsController, PaymentsController, HealthController],
+  providers: [SupabaseService, SupabaseAuthGuard, AiService, SmsService, PaymentsService],
 })
 export class AppModule {}
-

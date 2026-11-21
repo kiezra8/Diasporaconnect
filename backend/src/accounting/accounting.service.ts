@@ -203,14 +203,12 @@ export class AccountingService {
       { code: '1030', name: 'Airtel Money Merchant Holding', category: 'ASSET' as const },
       { code: '1050', name: 'Member Loan Portfolio Receivable', category: 'ASSET' as const },
       { code: '1100', name: 'Luwero Commercial Cattle Herd Asset', category: 'ASSET' as const },
-      { code: '1110', name: 'Coffee Green Bean Warehouse Inventory', category: 'ASSET' as const },
       { code: '1120', name: 'Farm Land & Pasture Improvement Asset', category: 'ASSET' as const },
 
       // 2000 - LIABILITIES
       { code: '2010', name: 'Ordinary Member Savings Deposits', category: 'LIABILITY' as const },
       { code: '2020', name: 'Fixed Term Member Deposits', category: 'LIABILITY' as const },
       { code: '2030', name: 'Unallocated Clearing Deposits', category: 'LIABILITY' as const },
-      { code: '2050', name: 'Coffee Outgrower Payables', category: 'LIABILITY' as const },
 
       // 3000 - EQUITY
       { code: '3010', name: 'Member Share Capital (UGX 250,000/share)', category: 'EQUITY' as const },
@@ -220,13 +218,11 @@ export class AccountingService {
 
       // 4000 - REVENUE
       { code: '4010', name: 'Commercial Dairy Milk Sales Revenue', category: 'REVENUE' as const },
-      { code: '4020', name: 'Coffee Export Trading Sales', category: 'REVENUE' as const },
       { code: '4030', name: 'SACCO Member Loan Interest Income', category: 'REVENUE' as const },
       { code: '4040', name: 'Member Registration & Entrance Fees', category: 'REVENUE' as const },
 
       // 5000 - EXPENSES
       { code: '5010', name: 'Farm Veterinary & Feed Operating Expenses', category: 'EXPENSE' as const },
-      { code: '5020', name: 'Coffee Milling & Export Handling Costs', category: 'EXPENSE' as const },
       { code: '5030', name: 'SACCO Administrative & Audit Expenses', category: 'EXPENSE' as const },
       { code: '5040', name: 'Statutory Taxes & Regulatory Licenses', category: 'EXPENSE' as const },
     ];

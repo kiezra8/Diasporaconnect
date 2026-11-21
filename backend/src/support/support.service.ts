@@ -118,7 +118,7 @@ export class SupportService {
         title: 'Share Capital & Ownership Policies',
         category: 'Shares',
         tags: ['shares', 'share price', 'dividends', 'nominal value', 'equity'],
-        content: 'Diaspora Connect ordinary shares have a nominal value of UGX 250,000 per share. Shares confer democratic voting rights in the Annual General Meeting and represent equity ownership. Dividends are declared annually from verified net operating surpluses (commercial dairy operations, coffee export proceeds, and loan interest) after statutory reserve deductions.',
+        content: 'Diaspora Connect ordinary shares have a nominal value of UGX 250,000 per share. Shares confer democratic voting rights in the Annual General Meeting and represent equity ownership. Dividends are declared annually from verified net operating surpluses (commercial dairy operations and loan interest) after statutory reserve deductions.',
       },
       {
         title: 'Commercial Dairy Cattle Investment ("Money Maker")',
@@ -137,12 +137,6 @@ export class SupportService {
         category: 'Withdrawal Instructions',
         tags: ['withdraw', 'withdrawal', 'payout', 'timeline'],
         content: 'Members may submit withdrawal requests for unencumbered savings directly through their portal dashboard. To prevent fraud, withdrawals undergo strict dual control: the Accountant verifies payout instructions and available ledger balance, and the Admin grants final authorization before funds are dispatched.',
-      },
-      {
-        title: 'Coffee Outgrower & Trading Operations',
-        category: 'Coffee Operations',
-        tags: ['coffee', 'arabica', 'robusta', 'bugisu', 'kasese', 'export'],
-        content: 'Diaspora Connect procures high-grade Arabica (Bugisu AA) and Robusta (Screen 18) directly from registered outgrowers in Mbale and Kasese. Coffee is quality-tested for moisture content (strictly under 13%), sorted at our Kampala processing facility, and exported to international buyers under contracted export sales orders.',
       },
     ];
 

@@ -2,9 +2,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Supabase Postgres:
+//   DATABASE_URL = transaction pooler (port 6543, ?pgbouncer=true) used by the running API
+//   DIRECT_URL   = direct / session connection (port 5432) used by prisma migrate
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -59,8 +63,6 @@ enum PaymentMethod {
 enum ProjectType {
   DAIRY_CATTLE
   BEEF_CATTLE
-  COFFEE_FARMING
-  COFFEE_TRADING
   AGRO_FORESTRY
 }
 
@@ -131,7 +133,6 @@ model User {
   journalEntriesCreated JournalEntry[] @relation("CreatedJournalEntries")
   assignedTickets    SupportTicket[] @relation("AssignedStaffTickets")
   recordedMilkLogs   MilkProductionLog[]
-  recordedCoffeePurchases CoffeePurchase[]
 
   notifications      Notification[]
 }
@@ -148,11 +149,16 @@ model RefreshToken {
 
 model AuditLog {
   id          String   @id @default(uuid())
+  clientId    String?  @unique // id generated in the portal, makes uploads idempotent
   actorId     String?
   actor       User?    @relation("ActorAuditLogs", fields: [actorId], references: [id])
+  actorName   String?
+  actorRole   String?
   action      String
   entity      String
   entityId    String?
+  summary     String?
+  occurredAt  DateTime?
   oldValues   Json?
   newValues   Json?
   ipAddress   String?
@@ -161,6 +167,7 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([actorId])
+  @@index([occurredAt])
 }
 
 // ─────────────────────────────────────────────
@@ -512,63 +519,6 @@ model FarmFeedInventory {
 }
 
 // ─────────────────────────────────────────────
-// COFFEE MANAGEMENT SYSTEM
-// ─────────────────────────────────────────────
-
-model CoffeeSupplier {
-  id          String           @id @default(uuid())
-  code        String           @unique // e.g., 'SUP-BGS-019'
-  fullName    String
-  phone       String
-  district    String           // 'Bugisu - Mbale', 'Rwenzori - Kasese'
-  purchases   CoffeePurchase[]
-}
-
-model CoffeePurchase {
-  id                     String         @id @default(uuid())
-  batchNumber            String         @unique // e.g., 'BATCH-CF-2026-004'
-  supplierId             String
-  supplier               CoffeeSupplier @relation(fields: [supplierId], references: [id])
-  coffeeType             String         // 'Arabica Bugisu AA', 'Robusta Screen 18'
-  grade                  String         @default("AA")
-  weightKg               Decimal        @db.Decimal(10, 2)
-  moistureContentPercent Decimal        @db.Decimal(4, 2) // e.g. 12.5%
-  pricePerKgUGX          Decimal        @db.Decimal(10, 2)
-  totalAmountUGX         Decimal        @db.Decimal(18, 2)
-  paymentReference       String?
-  recordedById           String
-  recordedBy             User           @relation(fields: [recordedById], references: [id])
-  date                   DateTime       @default(now())
-
-  @@index([supplierId])
-}
-
-model CoffeeInventory {
-  id                     String   @id @default(uuid())
-  warehouseLocation      String   @default("Kampala Central Hub")
-  coffeeType             String   @unique
-  currentStockKg         Decimal  @default(0.00) @db.Decimal(12, 2)
-  totalProcessedKg       Decimal  @default(0.00) @db.Decimal(12, 2)
-  processingLossKg       Decimal  @default(0.00) @db.Decimal(12, 2)
-  lastAuditDate          DateTime @default(now())
-}
-
-model CoffeeSale {
-  id                     String   @id @default(uuid())
-  salesOrderNumber       String   @unique // e.g., 'SO-EXP-2026-002'
-  buyerName              String   // e.g., 'Hamburg Coffee Company GmbH'
-  destinationCountry     String   @default("Germany")
-  coffeeType             String
-  grade                  String
-  weightSoldKg           Decimal  @db.Decimal(10, 2)
-  pricePerKgUSD          Decimal  @db.Decimal(8, 2)
-  exchangeRate           Decimal  @default(3800.00) @db.Decimal(10, 2)
-  totalAmountUGX         Decimal  @db.Decimal(18, 2)
-  paymentStatus          String   @default("PAID")
-  date                   DateTime @default(now())
-}
-
-// ─────────────────────────────────────────────
 // CUSTOMER SUPPORT & TICKETS (RAG READY)
 // ─────────────────────────────────────────────
 
@@ -628,3 +578,66 @@ model Notification {
   @@index([recipientId, isRead])
 }
 
+
+// ─────────────────────────────────────────────
+// SHARED PORTAL STATE (one row per collection: members, transactions, loans, herd …)
+// ─────────────────────────────────────────────
+
+model AppState {
+  key         String   @id
+  value       Json
+  version     Int      @default(1)
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   String?
+
+  @@index([updatedAt])
+}
+
+// ─────────────────────────────────────────────
+// MOBILE MONEY (MTN MoMo / Airtel Money collections)
+// ─────────────────────────────────────────────
+
+model MobileMoneyPayment {
+  id              String   @id @default(uuid())
+  provider        String   // MTN | AIRTEL
+  providerRef     String   @unique // X-Reference-Id (MTN) / transaction id (Airtel)
+  externalId      String
+  msisdn          String
+  amount          Int
+  currency        String   @default("UGX")
+  memberId        String
+  purpose         String
+  month           String?
+  otherLabel      String?
+  status          String   @default("PENDING") // PENDING | SUCCESSFUL | FAILED
+  reason          String?
+  financialTxnId  String?
+  requestId       String?  // payment request created in the approvals queue
+  initiatedBy     String?
+  raw             Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// SMS ALERTS (Africa's Talking)
+// ─────────────────────────────────────────────
+
+model SmsMessage {
+  id          String   @id // client id from the portal (idempotent)
+  to          String
+  message     String
+  event       String
+  status      String   // SENT | FAILED
+  providerRef String?
+  cost        String?
+  error       String?
+  sentById    String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}

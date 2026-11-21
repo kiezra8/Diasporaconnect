@@ -4,6 +4,8 @@ import { getSession, clearSession } from '../../services/api';
 import AccessDenied from '../../components/AccessDenied';
 import { applyTheme, getTheme } from '../../services/theme';
 import PortalBottomNav from '../../components/PortalBottomNav';
+import AccountingWorkspace from '../../components/accounting/AccountingWorkspace';
+import MyTasksCard from '../../components/settings/MyTasksCard';
 import { SaccoFarmStore, CattleAnimal, MilkLogRecord, CowHealthRecord, FeedInventoryItem } from '../../services/saccoFarmStore';
 import {
   Briefcase,
@@ -16,7 +18,6 @@ import {
   ShieldCheck,
   CheckCircle2,
   Milk,
-  Coffee,
   Calendar,
   Menu,
   X,
@@ -322,6 +323,7 @@ export default function BoardPortal() {
           {/* TAB 1: STRATEGIC KPIS */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              <MyTasksCard actor={{ name: session?.fullName || 'Staff', role: session?.role || 'BOARD_MEMBER', email: session?.email }} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800$2">
                   <span className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold block mb-1">Total Cooperative Assets</span>
@@ -339,9 +341,9 @@ export default function BoardPortal() {
                   <span className="text-xs text-slate-500 dark:text-slate-400">100% Off-take Brookside</span>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800$2">
-                  <span className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold block mb-1">Coffee Export Volume</span>
-                  <div className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 font-mono">114 Metric Tons</div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Hamburg &amp; Rotterdam</span>
+                  <span className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold block mb-1">Active Loan Book</span>
+                  <div className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 font-mono">UGX {SaccoFarmStore.getLoans().filter(l => l.status === 'ACTIVE').reduce((s, l) => s + l.outstandingBalance, 0).toLocaleString()}</div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{SaccoFarmStore.getLoans().filter(l => l.status === 'ACTIVE').length} active facilities</span>
                 </div>
               </div>
 
@@ -351,7 +353,7 @@ export default function BoardPortal() {
                   <span className="text-xs text-emerald-700 dark:text-emerald-400 font-mono">Certified by External Auditor</span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  The cooperative maintains audited liquidity ratios above statutory requirements, with ordinary member savings separated from the commercial dairy and coffee trading capital pools.
+                  The cooperative maintains audited liquidity ratios above statutory requirements, with ordinary member savings separated from the commercial dairy capital pool.
                 </p>
                 <div className="flex gap-2 pt-2">
                   <button
@@ -367,6 +369,7 @@ export default function BoardPortal() {
 
           {/* TAB 2: AUDITED FINANCIALS */}
           {activeTab === 'financials' && (
+            <div className="space-y-6">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
               <div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white">Certified Double-Entry Trial Balance</h3>
@@ -423,6 +426,8 @@ export default function BoardPortal() {
                   </tbody>
                 </table>
               </div>
+            </div>
+            <AccountingWorkspace sections={['summary', 'income', 'report']} actorName={session?.fullName || 'Board'} canPost={false} />
             </div>
           )}
 
@@ -499,15 +504,15 @@ export default function BoardPortal() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead className="bg-slate-100 dark:bg-slate-800/50">
-                            <tr>
+                            <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                               {['Date', 'Morning (L)', 'Afternoon (L)', 'Evening (L)', 'Net Sold (L)', 'Price/L', 'Revenue (UGX)'].map(h => (
                                 <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
-                            {milkLogs.slice(0, 10).map(ml => (
-                              <tr key={ml.id}>
+                            {milkLogs.slice(0, 10).map((ml, __n) => (
+                              <tr key={ml.id}><td className="py-2.5 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                                 <td className="py-2.5 px-3 text-slate-500 font-bold">{ml.date}</td>
                                 <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{ml.morning}</td>
                                 <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{ml.afternoon}</td>
@@ -553,15 +558,15 @@ export default function BoardPortal() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead className="bg-slate-100 dark:bg-slate-800/50">
-                            <tr>
+                            <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                               {['Feed Type', 'Source', 'Current Stock', 'Unit Cost', 'Total Value', 'Date Updated'].map(h => (
                                 <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {feedList.map(f => (
-                              <tr key={f.id}>
+                            {feedList.map((f, __n) => (
+                              <tr key={f.id}><td className="py-2.5 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                                 <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{f.feedType}</td>
                                 <td className="py-2.5 px-3">
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -598,17 +603,17 @@ export default function BoardPortal() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead className="bg-slate-100 dark:bg-slate-800/50">
-                            <tr>
+                            <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                               {['Tag', 'Name', 'Breed', 'Stage', 'Weight', 'Daily Avg (L)', 'Health Status', 'Action'].map(h => (
                                 <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {cattleList.map(c => {
+                            {cattleList.map((c, __n) => {
                               const isSick = c.status && c.status.some(s => s.toLowerCase().includes('sick'));
                               return (
-                                <tr key={c.id}>
+                                <tr key={c.id}><td className="py-2.5 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                                   <td className="py-2.5 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{c.tagNumber}</td>
                                   <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{c.name}</td>
                                   <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{c.breed}</td>
@@ -651,15 +656,15 @@ export default function BoardPortal() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead className="bg-slate-100 dark:bg-slate-800/50">
-                            <tr>
+                            <tr><th className="dark:text-slate-300 uppercase text-[11px] py-2 px-3 w-10">#</th>
                               {['Date', 'Cow Tag & Name', 'Illness', 'Symptoms', 'Treatment', 'Vet', 'Status'].map(h => (
                                 <th key={h} className="text-left text-slate-800 dark:text-slate-300 font-bold uppercase text-[11px] py-2 px-3">{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
-                            {healthLogs.map(rec => (
-                              <tr key={rec.id}>
+                            {healthLogs.map((rec, __n) => (
+                              <tr key={rec.id}><td className="py-2.5 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                                 <td className="py-2.5 px-3 text-slate-500 font-bold">{rec.date}</td>
                                 <td className="py-2.5 px-3 font-sans">
                                   <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{rec.cowTag}</span>

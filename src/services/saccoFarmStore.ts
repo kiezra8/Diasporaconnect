@@ -63,6 +63,24 @@ export interface CowMilkRecord {
   notes?: string;
 }
 
+export interface ShareConversionRequest {
+  id: string;
+  memberId: string;
+  memberName: string;
+  shareCount: number;
+  amount: number;
+  date: string;
+  submittedAt: string;
+  accountantApproved: boolean;
+  accountantApprovedAt?: string;
+  accountantApprovedBy?: string;
+  adminApproved: boolean;
+  adminApprovedAt?: string;
+  adminApprovedBy?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
+}
+
 export interface LoanRepaymentEntry {
   id: string;
   date: string;
@@ -95,12 +113,15 @@ export interface SaccoLoan {
   disbursementDate?: string;
   nextDueDate: string;
   repaymentHistory?: LoanRepaymentEntry[];
+  principalPaid?: number;   // running totals from the interest-first allocation
+  interestPaid?: number;
 }
 
 export interface PettyCashTransaction {
   id: string;
   date: string;
-  type: 'Income' | 'Expense' | 'Transfer';
+  // 'Journal' = non-cash double-entry posting (e.g. savings → share capital); it never moves Bank / Petty Cash balances
+  type: 'Income' | 'Expense' | 'Transfer' | 'Journal';
   source: 'Bank' | 'Petty Cash';
   category: string;
   amount: number;
@@ -108,6 +129,276 @@ export interface PettyCashTransaction {
   reference: string;
   isBanked: boolean;
   bankedDate?: string;
+  // Explicit double-entry accounts (optional — derived from type/source/category when absent)
+  debitAccount?: string;
+  creditAccount?: string;
+  payee?: string;
+  recordedBy?: string;
+  memberId?: string;   // member this entry belongs to (members see their own entries)
+}
+
+// ── Member KYC (Know Your Customer) self-verification ────────────────────────
+export type KycStatus = 'NOT_SUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+
+export interface KycSubmission {
+  id: string;
+  memberId: string;
+  memberName: string;
+  idType: 'National ID' | 'Passport' | 'Driving Permit';
+  idNumber: string;
+  dateOfBirth: string;
+  nationality: string;
+  countryOfResidence: string;
+  address: string;
+  occupation: string;
+  sourceOfFunds: string;
+  nextOfKinName: string;
+  nextOfKinRelationship: string;
+  nextOfKinPhone: string;
+  idFrontImage: string;   // compressed JPEG data URL
+  idBackImage?: string;   // compressed JPEG data URL
+  selfieImage: string;    // compressed JPEG data URL
+  submittedAt: string;
+  status: Exclude<KycStatus, 'NOT_SUBMITTED'>;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+}
+
+// ── Member payment requests (deposits & withdrawals) — maker / checker / approver ──
+export type PaymentPurpose = 'savings' | 'shares' | 'welfare' | 'project' | 'other';
+
+export interface MemberPaymentRequest {
+  id: string;
+  memberId: string;
+  memberName: string;
+  kind: 'DEPOSIT' | 'WITHDRAWAL';
+  purpose: PaymentPurpose;
+  purposeLabel: string;
+  month?: MonthKey;          // savings month allocation
+  shareCount?: number;       // shares being bought (computed at submission from par value)
+  amount: number;
+  method: string;
+  reference: string;
+  destination?: string;      // withdrawals only
+  notes?: string;
+  submittedAt: string;
+  status: 'PENDING_VERIFICATION' | 'VERIFIED_AWAITING_ADMIN' | 'APPROVED' | 'REJECTED';
+  verifiedBy?: string;
+  verifiedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  postedTransactionId?: string;
+}
+
+export type MonthKey = 'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun' | 'jul' | 'aug' | 'sep' | 'oct' | 'nov' | 'dec';
+export const MONTH_KEYS: MonthKey[] = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+// ── Audit trail ──────────────────────────────────────────────────────────────
+export interface Actor { name: string; role: string; email?: string }
+export interface AuditEntry {
+  id: string;
+  at: string;          // ISO timestamp
+  actor: string;
+  role: string;
+  email?: string;
+  action: string;      // store operation, e.g. approvePaymentRequest
+  entity: string;      // Member, Transaction, Loan, Cow ...
+  entityId?: string;
+  summary: string;
+  details?: string;    // JSON (truncated, images stripped)
+}
+
+// ── Staff & task assignment ──────────────────────────────────────────────────
+export interface StaffUser { id: string; name: string; email: string; role: string; phone?: string; active: boolean }
+
+export interface TaskDefinition { id: string; area: 'SACCO' | 'Farm'; label: string; description: string; defaultRoles: string[] }
+export const TASK_CATALOG: TaskDefinition[] = [
+  { id: 'verify_payments', area: 'SACCO', label: 'Verify member payments', description: 'Match member deposits / withdrawals to bank & mobile-money statements', defaultRoles: ['ACCOUNTANT'] },
+  { id: 'approve_payments', area: 'SACCO', label: 'Approve member payments', description: 'Final approval that posts deposits, share purchases and withdrawals', defaultRoles: ['ADMIN'] },
+  { id: 'record_income', area: 'SACCO', label: 'Record income manually', description: 'Enter savings, share purchases, repayments and other income received off-portal', defaultRoles: ['ACCOUNTANT'] },
+  { id: 'record_expenses', area: 'SACCO', label: 'Record expenses', description: 'Post SACCO and farm expenditure', defaultRoles: ['ACCOUNTANT'] },
+  { id: 'post_journals', area: 'SACCO', label: 'Post journal entries', description: 'Debit / credit adjustments', defaultRoles: ['ACCOUNTANT'] },
+  { id: 'loan_processing', area: 'SACCO', label: 'Process loans & repayments', description: 'Approve loans and record repayments', defaultRoles: ['ACCOUNTANT', 'ADMIN'] },
+  { id: 'kyc_review', area: 'SACCO', label: 'Review member KYC', description: 'Verify or reject identity documents', defaultRoles: ['SECRETARY', 'ADMIN'] },
+  { id: 'member_registration', area: 'SACCO', label: 'Register members', description: 'Capture new member applications', defaultRoles: ['SECRETARY'] },
+  { id: 'month_end_close', area: 'SACCO', label: 'Month-end close', description: 'Close a month so its figures can no longer change', defaultRoles: ['ACCOUNTANT'] },
+  { id: 'dividends', area: 'SACCO', label: 'Declare & pay dividends', description: 'Compute and pay annual dividends', defaultRoles: ['ADMIN'] },
+  { id: 'sms_broadcast', area: 'SACCO', label: 'Member SMS & notices', description: 'Send SMS alerts and notices to members', defaultRoles: ['SECRETARY', 'ADMIN'] },
+  { id: 'milk_recording', area: 'Farm', label: 'Record milk', description: 'Enter per-cow milk records each session', defaultRoles: ['FARM_WORKER'] },
+  { id: 'herd_register', area: 'Farm', label: 'Manage herd register', description: 'Add cows, calves and update cattle details', defaultRoles: ['FARM_WORKER'] },
+  { id: 'animal_health', area: 'Farm', label: 'Animal health & vet records', description: 'Log sickness, treatment and recovery', defaultRoles: ['FARM_WORKER'] },
+  { id: 'feeds_stock', area: 'Farm', label: 'Feeds & stock', description: 'Record feed purchases and usage', defaultRoles: ['FARM_WORKER'] },
+  { id: 'breeding', area: 'Farm', label: 'Breeding & calving', description: 'Record services, pregnancies and calvings', defaultRoles: ['FARM_WORKER'] },
+];
+export interface TaskAssignment { taskId: string; assigneeEmails: string[]; notes?: string; dueRule?: string; updatedBy?: string; updatedAt?: string }
+
+// ── Month-end close & dividends ──────────────────────────────────────────────
+export interface PeriodClose {
+  month: string;             // YYYY-MM
+  closedAt: string;
+  closedBy: string;
+  income: number;
+  revenue: number;
+  expenses: number;
+  surplus: number;
+  trialBalanced: boolean;
+  status: 'CLOSED' | 'REOPENED';
+  reopenReason?: string;
+}
+export interface DividendParams { year: number; reservePct: number; educationPct: number; payoutPct: number; method: 'shares' | 'share-months' }
+export interface DividendRow { memberId: string; memberName: string; shares: number; weight: number; amount: number }
+export interface DividendDeclaration extends DividendParams {
+  id: string;
+  revenue: number;
+  expenses: number;
+  surplus: number;
+  reserve: number;
+  education: number;
+  pool: number;
+  ratePerShare: number;
+  rows: DividendRow[];
+  declaredAt: string;
+  declaredBy: string;
+  status: 'DECLARED' | 'PAID';
+  paidAt?: string;
+  paidBy?: string;
+}
+
+// ── SMS alerts ───────────────────────────────────────────────────────────────
+export type SmsEvent = 'payment_received' | 'payment_approved' | 'payment_rejected' | 'kyc_verified' | 'kyc_rejected' | 'loan_repayment' | 'manual_income' | 'dividend_paid' | 'broadcast';
+export const SMS_EVENT_LABELS: Record<SmsEvent, string> = {
+  payment_received: 'Mobile-money payment received',
+  payment_approved: 'Deposit / withdrawal approved',
+  payment_rejected: 'Deposit / withdrawal rejected',
+  kyc_verified: 'KYC verified',
+  kyc_rejected: 'KYC rejected',
+  loan_repayment: 'Loan repayment received',
+  manual_income: 'Payment recorded by Accountant',
+  dividend_paid: 'Dividend paid',
+  broadcast: 'Broadcast messages',
+};
+export interface SmsSettings { enabled: boolean; senderId: string; events: Record<SmsEvent, boolean> }
+export interface SmsMessage {
+  id: string;
+  event: SmsEvent;
+  to: string;
+  memberId?: string;
+  message: string;
+  createdAt: string;
+  status: 'QUEUED' | 'SENT' | 'FAILED';
+  providerRef?: string;
+  error?: string;
+}
+
+// ── Income source buckets used by accounting reports ─────────────────────────
+export type IncomeSource = 'Savings' | 'Share Purchases' | 'Milk Sales (Farm)' | 'Loan Interest' | 'Loan Repayments' | 'Member Funds' | 'Other Income';
+export const INCOME_SOURCES: IncomeSource[] = ['Savings', 'Share Purchases', 'Milk Sales (Farm)', 'Loan Interest', 'Loan Repayments', 'Member Funds', 'Other Income'];
+/** Income that is SACCO revenue (counts toward surplus & dividends). Savings, shares, member funds and loan principal are money held for members, not earnings. */
+export const REVENUE_SOURCES: IncomeSource[] = ['Milk Sales (Farm)', 'Loan Interest', 'Other Income'];
+
+export function classifyIncome(tx: Pick<PettyCashTransaction, 'category' | 'description'>): IncomeSource {
+  const c = `${tx.category || ''}`.toLowerCase();
+  const d = `${tx.description || ''}`.toLowerCase();
+  if (/loan interest/.test(c)) return 'Loan Interest';
+  if (/loan repayment/.test(c)) return 'Loan Repayments';
+  if (/share/.test(c)) return 'Share Purchases';
+  if (/milk|dairy|brookside/.test(c)) return 'Milk Sales (Farm)';
+  if (/welfare|project|special deposit|member fund/.test(c)) return 'Member Funds';
+  if (/saving|contribution|member cash deposit|deposit/.test(c)) return 'Savings';
+  if (/share/.test(d)) return 'Share Purchases';
+  if (/milk/.test(d)) return 'Milk Sales (Farm)';
+  if (/saving/.test(d)) return 'Savings';
+  return 'Other Income';
+}
+
+/** One side of a double-entry posting */
+export interface LedgerLine {
+  txId: string;
+  date: string;
+  reference: string;
+  account: string;
+  narration: string;
+  debit: number;
+  credit: number;
+}
+
+const cashAccount = (source: PettyCashTransaction['source']) =>
+  source === 'Petty Cash' ? '1010 — Petty Cash / Mobile Money Float' : '1001 — Cash at Bank';
+
+function incomeAccount(tx: PettyCashTransaction): string {
+  switch (classifyIncome(tx)) {
+    case 'Savings': return '3010 — Member Savings';
+    case 'Share Purchases': return '3020 — Share Capital';
+    case 'Milk Sales (Farm)': return '4010 — Milk Sales Revenue';
+    case 'Loan Repayments': return '1200 — Loans Receivable';
+    case 'Loan Interest': return '4020 — Loan Interest Income';
+    case 'Member Funds': return '3030 — Welfare & Project Funds';
+    default: return '4090 — Other Income';
+  }
+}
+
+function expenseAccount(tx: PettyCashTransaction): string {
+  const c = (tx.category || '').toLowerCase();
+  if (/withdrawal/.test(c)) return '3010 — Member Savings';
+  if (/loan (facility )?disbursement|loan disbursement/.test(c)) return '1200 — Loans Receivable';
+  return `5000 — Expense: ${tx.category || 'General'}`;
+}
+
+/** Turns every ledger transaction into balanced debit / credit lines. */
+export function toLedgerLines(txs: PettyCashTransaction[]): LedgerLine[] {
+  const lines: LedgerLine[] = [];
+  txs.forEach(tx => {
+    const amt = Number(tx.amount) || 0;
+    if (amt <= 0) return;
+    let dr: string;
+    let cr: string;
+    if (tx.debitAccount && tx.creditAccount) {
+      dr = tx.debitAccount;
+      cr = tx.creditAccount;
+    } else if (tx.type === 'Income') {
+      dr = cashAccount(tx.source);
+      cr = incomeAccount(tx);
+    } else if (tx.type === 'Expense') {
+      dr = expenseAccount(tx);
+      cr = cashAccount(tx.source);
+    } else if (tx.type === 'Transfer') {
+      // Transfer FROM source to the other cash account
+      dr = tx.source === 'Bank' ? cashAccount('Petty Cash') : cashAccount('Bank');
+      cr = cashAccount(tx.source);
+    } else {
+      // Legacy journal text: "Journal: Dr X / Cr Y"
+      const m = /Dr\s+(.+?)\s*\/\s*Cr\s+(.+)$/i.exec(tx.category || '');
+      dr = m ? m[1].trim() : 'Suspense (Dr)';
+      cr = m ? m[2].trim() : 'Suspense (Cr)';
+    }
+    const narration = tx.description || tx.category;
+    lines.push({ txId: tx.id, date: tx.date, reference: tx.reference, account: dr, narration, debit: amt, credit: 0 });
+    lines.push({ txId: tx.id, date: tx.date, reference: tx.reference, account: cr, narration, debit: 0, credit: amt });
+  });
+  return lines;
+}
+
+export interface TrialBalanceRow { account: string; debit: number; credit: number; balance: number; side: 'Dr' | 'Cr' }
+
+export function buildTrialBalance(txs: PettyCashTransaction[]): { rows: TrialBalanceRow[]; totalDebit: number; totalCredit: number; balanced: boolean } {
+  const map = new Map<string, { debit: number; credit: number }>();
+  toLedgerLines(txs).forEach(l => {
+    const r = map.get(l.account) || { debit: 0, credit: 0 };
+    r.debit += l.debit;
+    r.credit += l.credit;
+    map.set(l.account, r);
+  });
+  const rows: TrialBalanceRow[] = Array.from(map.entries())
+    .map(([account, v]) => {
+      const net = v.debit - v.credit;
+      return { account, debit: v.debit, credit: v.credit, balance: Math.abs(net), side: (net >= 0 ? 'Dr' : 'Cr') as 'Dr' | 'Cr' };
+    })
+    .sort((a, b) => a.account.localeCompare(b.account));
+  const totalDebit = rows.reduce((s, r) => s + r.debit, 0);
+  const totalCredit = rows.reduce((s, r) => s + r.credit, 0);
+  return { rows, totalDebit, totalCredit, balanced: Math.round(totalDebit) === Math.round(totalCredit) };
 }
 
 export interface CowHealthRecord {
@@ -206,65 +497,7 @@ export interface FeedInventoryItem {
   notes?: string;
 }
 
-export interface CustomModule {
-  id: string;
-  title: string;
-  slug: string;
-  description: string;
-  category: string;
-  metrics: Array<{ label: string; value: string; sub?: string }>;
-  contentNotes: string;
-  createdAt: string;
-  createdBy: string;
-}
-
-export interface CoffeePurchaseBatch {
-  id: string;
-  date: string;
-  farmerName: string;
-  district: string;
-  variety: 'Arabica Bugisu AA' | 'Arabica Bugisu A' | 'Robusta Kasese Screen 18' | 'Robusta FAQ';
-  bags: number;
-  netWeightKg: number;
-  moisturePercent: number;
-  pricePerKg: number;
-  totalPayout: number;
-  batchCode: string;
-  status: 'Received' | 'Drying' | 'Graded' | 'Warehouse Bins' | 'Export Ready';
-}
-
-export interface CoffeeSaleRecord {
-  id: string;
-  date: string;
-  buyerName: string;
-  marketType: 'Export Contract' | 'Domestic Roaster' | 'Regional Trade';
-  destination: string;
-  variety: 'Arabica Bugisu AA' | 'Arabica Bugisu A' | 'Robusta Kasese Screen 18' | 'Robusta FAQ';
-  bags: number;
-  netWeightKg: number;
-  sellingPricePerKg: number;
-  totalRevenue: number;
-  contractRef: string;
-  status: 'Contract Signed' | 'In Transit' | 'Delivered' | 'Paid';
-  paymentStatus: 'Paid' | 'Partial' | 'Pending Net 30';
-  notes?: string;
-}
-
-export interface CoffeeInventoryItem {
-  id: string;
-  variety: 'Arabica Bugisu AA' | 'Arabica Bugisu A' | 'Robusta Kasese Screen 18' | 'Robusta FAQ';
-  warehouseLocation: string;
-  binNumber: string;
-  totalBags: number;
-  totalKg: number;
-  averageMoisture: number;
-  averageCostPerKg: number;
-  currentMarketPricePerKg: number;
-  lastInspectionDate: string;
-  status: 'In Storage' | 'Processing / Drying' | 'Reserved for Export';
-}
-
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   MEMBERS: 'dc_sacco_members_v2',
   INVESTORS: 'dc_sacco_investors_v2',
   TRANSACTIONS: 'dc_sacco_transactions_v2',
@@ -274,30 +507,134 @@ const STORAGE_KEYS = {
   HEALTH: 'dc_farm_health_v2',
   BREEDING: 'dc_farm_breeding_v2',
   FEEDS: 'dc_farm_feeds_v2',
-  COFFEE: 'dc_coffee_batches_v2',
-  COFFEE_SALES: 'dc_coffee_sales_v2',
-  COFFEE_INVENTORY: 'dc_coffee_inventory_v2',
   LOANS: 'dc_sacco_loans_v2',
-  CUSTOM_MODULES: 'dc_custom_modules_v2'
+  SHARE_CONVERSIONS: 'dc_share_conversions_v2',
+  KYC: 'dc_member_kyc_v1',
+  PAYMENT_REQUESTS: 'dc_member_payment_requests_v1',
+  AUDIT: 'dc_audit_trail_v1',
+  STAFF: 'dc_staff_directory_v1',
+  TASKS: 'dc_task_assignments_v1',
+  PERIODS: 'dc_period_closes_v1',
+  DIVIDENDS: 'dc_dividends_v1',
+  SMS_SETTINGS: 'dc_sms_settings_v1',
+  SMS_LOG: 'dc_sms_log_v1',
+  SHARE_PAR: 'dc_share_par_value'
 };
 
-const DEFAULT_CUSTOM_MODULES: CustomModule[] = [
+const DEFAULT_STAFF: StaffUser[] = [
+  { id: 'STF-01', name: 'Ezra Kisakye', email: 'admin@diasporaconnectt.com', role: 'ADMIN', active: true },
+  { id: 'STF-02', name: 'Mrs. Miriam Halera', email: 'accountant@diasporaconnectt.com', role: 'ACCOUNTANT', active: true },
+  { id: 'STF-03', name: 'Mr. Halera John Bahati', email: 'secretary@diasporaconnectt.com', role: 'SECRETARY', active: true },
+  { id: 'STF-04', name: 'Mr. Nyanzi Edrine', email: 'board@diasporaconnectt.com', role: 'BOARD_MEMBER', active: true },
+  { id: 'STF-05', name: 'Mugisha Joseph', email: 'farm@diasporaconnectt.com', role: 'FARM_WORKER', active: true },
+];
+
+const DEFAULT_SMS_SETTINGS: SmsSettings = {
+  enabled: true,
+  senderId: 'DIASPORA',
+  events: { payment_received: true, payment_approved: true, payment_rejected: true, kyc_verified: true, kyc_rejected: true, loan_repayment: true, manual_income: true, dividend_paid: true, broadcast: true },
+};
+
+// Who is acting right now (set by each portal on load) — stamped on audit entries
+let currentActor: Actor = { name: 'System', role: 'SYSTEM' };
+
+// Listeners notified after every save (used by the cloud sync to push changes to the server)
+type StoreWriteListener = (key: string, value: unknown) => void;
+const writeListeners: StoreWriteListener[] = [];
+export function onStoreWrite(fn: StoreWriteListener): () => void {
+  writeListeners.push(fn);
+  return () => { const i = writeListeners.indexOf(fn); if (i >= 0) writeListeners.splice(i, 1); };
+}
+
+// Seed queue — replaces the hard-coded demo queues that used to live inside the Accountant & Admin portals
+const DEFAULT_PAYMENT_REQUESTS: MemberPaymentRequest[] = [
   {
-    id: 'MOD-01',
-    title: 'Coffee Roastery & Retail',
-    slug: 'coffee-roastery',
-    description: 'Specialty coffee roasting, packaging, and regional retail sales unit',
-    category: 'Commercial Enterprises',
-    metrics: [
-      { label: 'Roast Batches', value: '18 Batches', sub: 'Single-Origin Bugisu AA' },
-      { label: 'Retail Inventory', value: '450 kg', sub: 'Valued @ UGX 13,500,000' },
-      { label: 'Monthly Sales', value: 'UGX 6,200,000', sub: 'Regional cafes & exports' }
-    ],
-    contentNotes: 'Roastery equipment operational with 200kg daily roasting capacity. All packaging complies with UNBS certification standards.',
-    createdAt: '2026-11-01',
-    createdBy: 'System Administrator'
+    id: 'PRQ-9410',
+    memberId: 'DC-006',
+    memberName: 'David Mukasa',
+    kind: 'DEPOSIT',
+    purpose: 'shares',
+    purposeLabel: 'Buying Shares',
+    shareCount: 10,
+    amount: 2500000,
+    method: 'Airtel Money',
+    reference: 'AIRTEL-7729104',
+    submittedAt: '2026-11-12 10:45',
+    status: 'PENDING_VERIFICATION'
+  },
+  {
+    id: 'PRQ-9411',
+    memberId: 'DC-006',
+    memberName: 'David Mukasa',
+    kind: 'DEPOSIT',
+    purpose: 'savings',
+    purposeLabel: 'Monthly Savings (November)',
+    month: 'nov',
+    amount: 1000000,
+    method: 'Bank Wire',
+    reference: 'STN-WIRE-40192',
+    submittedAt: '2026-11-12 11:10',
+    status: 'PENDING_VERIFICATION'
+  },
+  {
+    id: 'PRQ-9402',
+    memberId: 'DC-006',
+    memberName: 'David Mukasa',
+    kind: 'DEPOSIT',
+    purpose: 'savings',
+    purposeLabel: 'Monthly Savings (November)',
+    month: 'nov',
+    amount: 1500000,
+    method: 'Bank Wire',
+    reference: 'STN-WIRE-40188',
+    submittedAt: '2026-11-12 09:05',
+    status: 'VERIFIED_AWAITING_ADMIN',
+    verifiedBy: 'Mrs. Miriam Halera (Accountant)',
+    verifiedAt: '2026-11-12 09:30'
+  },
+  {
+    id: 'PRQ-9405',
+    memberId: 'DC-007',
+    memberName: 'Amara Okello',
+    kind: 'WITHDRAWAL',
+    purpose: 'savings',
+    purposeLabel: 'Savings Withdrawal',
+    amount: 2000000,
+    method: 'MTN Mobile Money',
+    destination: 'MTN Mobile Money',
+    reference: 'WTH-740291',
+    submittedAt: '2026-11-12 10:40',
+    status: 'VERIFIED_AWAITING_ADMIN',
+    verifiedBy: 'Mrs. Miriam Halera (Accountant)',
+    verifiedAt: '2026-11-12 11:15'
   }
 ];
+
+const nowStamp = () => new Date().toLocaleString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+const todayISO = () => new Date().toISOString().split('T')[0];
+const purposeLabelOf = (p: PaymentPurpose, month?: MonthKey, other?: string) =>
+  p === 'savings' ? `Monthly Savings${month ? ` (${month.toUpperCase()})` : ''}`
+  : p === 'shares' ? 'Buying Shares'
+  : p === 'welfare' ? 'Welfare & Emergency Fund'
+  : p === 'project' ? 'Special Farm Project'
+  : (other || 'Other Special Deposit');
+
+// One-time cleanup: coffee trading and custom modules are no longer part of the SACCO
+function purgeRetiredModules() {
+  try {
+    if (localStorage.getItem('dc_retired_modules_purged_v1') === '1') return;
+    ['dc_coffee_batches_v2', 'dc_coffee_sales_v2', 'dc_coffee_inventory_v2', 'dc_custom_modules_v2', 'dc_custom_nav_modules', 'dc_module_creator_roles']
+      .forEach(k => localStorage.removeItem(k));
+    const raw = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+    if (raw) {
+      const txs = JSON.parse(raw) as PettyCashTransaction[];
+      const kept = txs.filter(t => !/coffee/i.test(`${t.category} ${t.description}`));
+      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(kept));
+    }
+    localStorage.setItem('dc_retired_modules_purged_v1', '1');
+  } catch {}
+}
+purgeRetiredModules();
 
 // Default Realistic Seed Data
 const DEFAULT_MEMBERS: SaccoMember[] = [
@@ -564,7 +901,7 @@ const DEFAULT_LOANS: SaccoLoan[] = [
     totalPayable: 8800000,
     amountPaid: 4400000,
     outstandingBalance: 4400000,
-    purpose: 'Coffee Solar Drying Mill Installation',
+    purpose: 'Solar Milk Cooling Unit Installation',
     collateral: 'Cooperative Share Holdings (42 shares)',
     guarantor: 'Mr. Halera John Bahati (DC-004)',
     status: 'ACTIVE',
@@ -1071,158 +1408,6 @@ const DEFAULT_FEEDS: FeedInventoryItem[] = [
     notes: 'Grown and cut on farm'
   }
 ];
-
-const DEFAULT_COFFEE: CoffeePurchaseBatch[] = [
-  {
-    id: 'CF-101',
-    date: '2026-11-10',
-    farmerName: 'Kato Stephen & Outgrowers Group',
-    district: 'Mbale (Mount Elgon)',
-    variety: 'Arabica Bugisu AA',
-    bags: 45,
-    netWeightKg: 2700,
-    moisturePercent: 12.1,
-    pricePerKg: 13500,
-    totalPayout: 36450000,
-    batchCode: 'DC-ARA-MB-09',
-    status: 'Warehouse Bins'
-  },
-  {
-    id: 'CF-102',
-    date: '2026-11-08',
-    farmerName: 'Muhindo Eric Farmers Cooperative',
-    district: 'Kasese (Rwenzori Foothills)',
-    variety: 'Robusta Kasese Screen 18',
-    bags: 60,
-    netWeightKg: 3600,
-    moisturePercent: 12.4,
-    pricePerKg: 10200,
-    totalPayout: 36720000,
-    batchCode: 'DC-ROB-KAS-12',
-    status: 'Warehouse Bins'
-  },
-  {
-    id: 'CF-103',
-    date: '2026-11-04',
-    farmerName: 'Wasswa Gerald Estate',
-    district: 'Masaka (Greater Southern)',
-    variety: 'Robusta FAQ',
-    bags: 30,
-    netWeightKg: 1800,
-    moisturePercent: 12.8,
-    pricePerKg: 9400,
-    totalPayout: 16920000,
-    batchCode: 'DC-ROB-MSK-05',
-    status: 'Graded'
-  }
-];
-
-const DEFAULT_COFFEE_SALES: CoffeeSaleRecord[] = [
-  {
-    id: 'CS-501',
-    date: '2026-11-11',
-    buyerName: 'Hamburg Specialty Coffee Importers GmbH',
-    marketType: 'Export Contract',
-    destination: 'Port of Hamburg, Germany',
-    variety: 'Arabica Bugisu AA',
-    bags: 120,
-    netWeightKg: 7200,
-    sellingPricePerKg: 18200,
-    totalRevenue: 131040000,
-    contractRef: 'CT-2026-HAM-04',
-    status: 'In Transit',
-    paymentStatus: 'Paid',
-    notes: 'Grade A1 specialty parchment lot. Off-take FOB Mombasa port.'
-  },
-  {
-    id: 'CS-502',
-    date: '2026-11-06',
-    buyerName: 'Rotterdam Commodity Exchange BV',
-    marketType: 'Export Contract',
-    destination: 'Rotterdam, Netherlands',
-    variety: 'Robusta Kasese Screen 18',
-    bags: 180,
-    netWeightKg: 10800,
-    sellingPricePerKg: 14500,
-    totalRevenue: 156600000,
-    contractRef: 'CT-2026-RTD-08',
-    status: 'Delivered',
-    paymentStatus: 'Paid',
-    notes: 'Bulk washed screen 18. Certified organic origin.'
-  },
-  {
-    id: 'CS-503',
-    date: '2026-11-02',
-    buyerName: 'Kampala Artisan Coffee Roasters',
-    marketType: 'Domestic Roaster',
-    destination: 'Industrial Area, Kampala',
-    variety: 'Arabica Bugisu AA',
-    bags: 25,
-    netWeightKg: 1500,
-    sellingPricePerKg: 16800,
-    totalRevenue: 25200000,
-    contractRef: 'DOM-KLA-1102',
-    status: 'Paid',
-    paymentStatus: 'Paid',
-    notes: 'Local specialty coffee retail chain supply.'
-  }
-];
-
-const DEFAULT_COFFEE_INVENTORY: CoffeeInventoryItem[] = [
-  {
-    id: 'INV-CF-01',
-    variety: 'Arabica Bugisu AA',
-    warehouseLocation: 'Mbale Central Silo Facility',
-    binNumber: 'SILO-BIN-04A',
-    totalBags: 340,
-    totalKg: 20400,
-    averageMoisture: 12.0,
-    averageCostPerKg: 13500,
-    currentMarketPricePerKg: 18200,
-    lastInspectionDate: '2026-11-12',
-    status: 'In Storage'
-  },
-  {
-    id: 'INV-CF-02',
-    variety: 'Robusta Kasese Screen 18',
-    warehouseLocation: 'Kasese Foothills Bonded Depot',
-    binNumber: 'DEP-BIN-12B',
-    totalBags: 420,
-    totalKg: 25200,
-    averageMoisture: 12.3,
-    averageCostPerKg: 10200,
-    currentMarketPricePerKg: 14500,
-    lastInspectionDate: '2026-11-11',
-    status: 'In Storage'
-  },
-  {
-    id: 'INV-CF-03',
-    variety: 'Arabica Bugisu A',
-    warehouseLocation: 'Mbale Central Silo Facility',
-    binNumber: 'SILO-BIN-02C',
-    totalBags: 110,
-    totalKg: 6600,
-    averageMoisture: 12.5,
-    averageCostPerKg: 11800,
-    currentMarketPricePerKg: 15400,
-    lastInspectionDate: '2026-11-09',
-    status: 'Processing / Drying'
-  },
-  {
-    id: 'INV-CF-04',
-    variety: 'Robusta FAQ',
-    warehouseLocation: 'Masaka Regional Collection Center',
-    binNumber: 'MSK-BIN-01',
-    totalBags: 150,
-    totalKg: 9000,
-    averageMoisture: 12.7,
-    averageCostPerKg: 9400,
-    currentMarketPricePerKg: 12800,
-    lastInspectionDate: '2026-11-07',
-    status: 'Reserved for Export'
-  }
-];
-
 export const getMemberPhoto = (name: string): string => {
   const n = (name || '').toLowerCase();
   if (n.includes('nyanzi') || n.includes('edrine')) return '/images/nyanzi_edrine.jpg';
@@ -1232,6 +1417,28 @@ export const getMemberPhoto = (name: string): string => {
   if (n.includes('ssanyu') || n.includes('phiona')) return '/images/ssanyu_phiona.jpg';
   return '';
 };
+
+// Strip big data URLs (KYC images) and cap size before writing audit details
+function safeDetails(v: unknown): string {
+  try {
+    const s = JSON.stringify(v, (_k, val) => (typeof val === 'string' && val.startsWith('data:') ? '[image]' : val));
+    return s.length > 1500 ? s.slice(0, 1500) + '…' : s;
+  } catch { return ''; }
+}
+
+/** 07XX / +256 7XX / 2567XX → 2567XXXXXXXX (E.164 without +) — returns '' if it isn't a usable number. */
+export function normalizeUgPhone(raw: string): string {
+  const digits = String(raw || '').replace(/[^0-9]/g, '');
+  if (/^0\d{9}$/.test(digits)) return '256' + digits.slice(1);
+  if (/^256\d{9}$/.test(digits)) return digits;
+  if (/^\d{9}$/.test(digits) && digits.startsWith('7')) return '256' + digits;
+  return digits.length >= 10 && digits.length <= 15 ? digits : '';
+}
+
+// Operating expenses reduce surplus; member withdrawals and loan disbursements are balance-sheet movements
+function isOperatingExpense(t: PettyCashTransaction): boolean {
+  return !/withdrawal|loan (facility )?disbursement/i.test(t.category || '');
+}
 
 // Helper to load or initialize
 function getStored<T>(key: string, defaultVal: T): T {
@@ -1251,6 +1458,7 @@ function getStored<T>(key: string, defaultVal: T): T {
 function setStored<T>(key: string, val: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(val));
+    writeListeners.forEach(fn => { try { fn(key, val); } catch {} });
     window.dispatchEvent(new Event('dc_storage_update'));
   } catch (err) {
     console.error(`Error saving ${key} to localStorage:`, err);
@@ -1270,14 +1478,13 @@ export const SaccoFarmStore = {
 
   addMember: (member: Omit<SaccoMember, 'id' | 'total' | 'savings' | 'sharesValue' | 'withdrawable'>): SaccoMember => {
     const members = SaccoFarmStore.getMembers();
-    const nextNum = members.length + 1;
-    const memberId = `DC-${String(nextNum).padStart(3, '0')}`;
+    const memberId = SaccoFarmStore.nextMemberId();
     const months = [member.jan, member.feb, member.mar, member.apr, member.may, member.jun, member.jul, member.aug, member.sep, member.oct, member.nov, member.dec];
     const total = months.reduce((acc, m) => acc + (Number(m) || 0), 0);
     const adminFee = Number(member.adminFee) || 50000;
     const savings = Math.max(0, total - adminFee);
     const shares = Number(member.shares) || 0;
-    const sharesValue = shares * 250000;
+    const sharesValue = shares * SaccoFarmStore.getShareParValue();
 
     const newMember: SaccoMember = {
       ...member,
@@ -1295,6 +1502,55 @@ export const SaccoFarmStore = {
     return newMember;
   },
 
+  /** Next member number in sequence: DC-001, DC-002 … (never reuses a number). */
+  nextMemberId: (): string => {
+    const nums = SaccoFarmStore.getMembers().map(m => parseInt(String(m.memberId || m.id).replace(/\D/g, ''), 10)).filter(n => Number.isFinite(n));
+    const next = (nums.length ? Math.max(...nums) : 0) + 1;
+    return `DC-${String(next).padStart(3, '0')}`;
+  },
+
+  /**
+   * A membership application approved by both Secretary and Admin becomes a member:
+   * next member number, and the KYC captured at sign-up is recorded as verified.
+   */
+  activateApplication: (app: any, approver: string): SaccoMember => {
+    const kyc = app.kyc || {};
+    const member = SaccoFarmStore.addMember({
+      memberId: '',
+      name: app.fullName,
+      phone: app.phone,
+      category: app.chapter ? `Diaspora (${app.chapter})` : 'Ordinary Member',
+      shares: 4,
+      adminFee: 50000,
+      email: app.email,
+      nin: kyc.idNumber || `CM${Math.floor(10000000 + Math.random() * 90000000)}Z`,
+      joinDate: new Date().toISOString().split('T')[0],
+      status: 'ACTIVE',
+      avatar: app.photoUrl || undefined,
+      jan: 2050000, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
+      jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
+    } as any);
+    if (kyc.idNumber) {
+      const list = SaccoFarmStore.getKycSubmissions();
+      list.unshift({
+        id: `KYC-${app.id || Date.now().toString().slice(-6)}`,
+        memberId: member.memberId,
+        memberName: member.name,
+        idType: kyc.idType, idNumber: kyc.idNumber, dateOfBirth: kyc.dateOfBirth || app.dob || '',
+        nationality: kyc.nationality || '', countryOfResidence: kyc.countryOfResidence || '', address: kyc.address || '',
+        occupation: kyc.occupation || '', sourceOfFunds: kyc.sourceOfFunds || '',
+        nextOfKinName: kyc.nextOfKinName || '', nextOfKinRelationship: kyc.nextOfKinRelationship || '', nextOfKinPhone: kyc.nextOfKinPhone || '',
+        idFrontImage: kyc.idFrontImage || '', idBackImage: kyc.idBackImage, selfieImage: kyc.selfieImage || '',
+        submittedAt: app.submittedAt || nowStamp(),
+        status: 'VERIFIED',
+        reviewedBy: approver,
+        reviewedAt: nowStamp(),
+      });
+      setStored(STORAGE_KEYS.KYC, list);
+    }
+    return member;
+  },
+
   updateMember: (id: string, updates: Partial<SaccoMember>): SaccoMember | null => {
     const members = SaccoFarmStore.getMembers();
     const idx = members.findIndex(m => m.id === id || m.memberId === id);
@@ -1307,7 +1563,7 @@ export const SaccoFarmStore = {
     merged.adminFee = Number(merged.adminFee) || 50000;
     merged.savings = Math.max(0, merged.total - merged.adminFee);
     merged.shares = Number(merged.shares) || 0;
-    merged.sharesValue = merged.shares * 250000;
+    merged.sharesValue = merged.shares * SaccoFarmStore.getShareParValue();
     merged.withdrawable = Math.round(merged.savings * 0.9);
 
     members[idx] = merged;
@@ -1334,7 +1590,7 @@ export const SaccoFarmStore = {
   },
 
 
-  convertSavingsToShares: (memberId: string, shareCount: number, sharePrice = 250000): { success: boolean; msg: string } => {
+  convertSavingsToShares: (memberId: string, shareCount: number, sharePrice = SaccoFarmStore.getShareParValue()): { success: boolean; msg: string } => {
     const members = SaccoFarmStore.getMembers();
     const m = members.find(item => item.id === memberId || item.memberId === memberId);
     if (!m) return { success: false, msg: 'Member not found' };
@@ -1342,12 +1598,634 @@ export const SaccoFarmStore = {
     if (m.savings < cost) {
       return { success: false, msg: `Insufficient savings balance (${m.savings.toLocaleString()} UGX) for ${shareCount} shares (${cost.toLocaleString()} UGX)` };
     }
-    m.savings -= cost;
-    m.shares += shareCount;
+
+    // Deduct cost from months from latest to earliest so total matches savings
+    let remainingToDeduct = cost;
+    const monthKeys: (keyof SaccoMember)[] = ['dec', 'nov', 'oct', 'sep', 'aug', 'jul', 'jun', 'may', 'apr', 'mar', 'feb', 'jan'];
+    for (const mk of monthKeys) {
+      if (remainingToDeduct <= 0) break;
+      const currentVal = Number(m[mk]) || 0;
+      if (currentVal > 0) {
+        const deduct = Math.min(currentVal, remainingToDeduct);
+        (m as any)[mk] = currentVal - deduct;
+        remainingToDeduct -= deduct;
+      }
+    }
+
+    m.shares = (Number(m.shares) || 0) + shareCount;
     m.sharesValue = m.shares * sharePrice;
+    const months = [m.jan, m.feb, m.mar, m.apr, m.may, m.jun, m.jul, m.aug, m.sep, m.oct, m.nov, m.dec];
+    m.total = months.reduce((acc, val) => acc + (Number(val) || 0), 0);
+    m.savings = Math.max(0, m.total - (Number(m.adminFee) || 50000));
     m.withdrawable = Math.round(m.savings * 0.9);
-    SaccoFarmStore.updateMember(m.id, m);
+
+    const idx = members.findIndex(item => item.id === m.id || item.memberId === m.memberId);
+    if (idx !== -1) {
+      members[idx] = m;
+      SaccoFarmStore.saveMembers(members);
+    }
     return { success: true, msg: `Converted ${cost.toLocaleString()} UGX savings into ${shareCount} shares successfully.` };
+  },
+
+  // Share Conversion Requests (Dual-Approval: Accountant + Admin)
+  getShareConversionRequests: (): ShareConversionRequest[] => {
+    return getStored<ShareConversionRequest[]>(STORAGE_KEYS.SHARE_CONVERSIONS, []);
+  },
+
+  saveShareConversionRequests: (requests: ShareConversionRequest[]) => {
+    setStored(STORAGE_KEYS.SHARE_CONVERSIONS, requests);
+  },
+
+  addShareConversionRequest: (req: { memberId: string; memberName: string; shareCount: number }): { success: boolean; request?: ShareConversionRequest; msg: string } => {
+    const cost = req.shareCount * SaccoFarmStore.getShareParValue();
+    const members = SaccoFarmStore.getMembers();
+    const m = members.find(item => item.id === req.memberId || item.memberId === req.memberId);
+    if (!m) return { success: false, msg: 'Member not found' };
+    if (m.savings < cost) {
+      return { success: false, msg: `Insufficient savings balance (UGX ${m.savings.toLocaleString()}) for ${req.shareCount} shares (UGX ${cost.toLocaleString()})` };
+    }
+
+    const requests = SaccoFarmStore.getShareConversionRequests();
+    const newReq: ShareConversionRequest = {
+      id: `SCR-${Date.now().toString().slice(-6)}`,
+      memberId: m.memberId,
+      memberName: m.name,
+      shareCount: req.shareCount,
+      amount: cost,
+      date: new Date().toISOString().split('T')[0],
+      submittedAt: new Date().toLocaleString(),
+      accountantApproved: false,
+      adminApproved: false,
+      status: 'PENDING'
+    };
+
+    requests.unshift(newReq);
+    SaccoFarmStore.saveShareConversionRequests(requests);
+    return { success: true, request: newReq, msg: 'Share conversion request submitted for Accountant & Admin approval.' };
+  },
+
+  approveShareConversionRequest: (
+    requestId: string,
+    role: 'ACCOUNTANT' | 'ADMIN',
+    approverName: string
+  ): { success: boolean; fullyApproved: boolean; msg: string } => {
+    const requests = SaccoFarmStore.getShareConversionRequests();
+    const req = requests.find(r => r.id === requestId);
+    if (!req) return { success: false, fullyApproved: false, msg: 'Request not found' };
+    if (req.status !== 'PENDING') return { success: false, fullyApproved: false, msg: `Request is already ${req.status}` };
+
+    if (role === 'ACCOUNTANT') {
+      req.accountantApproved = true;
+      req.accountantApprovedAt = new Date().toLocaleString();
+      req.accountantApprovedBy = approverName;
+    } else if (role === 'ADMIN') {
+      req.adminApproved = true;
+      req.adminApprovedAt = new Date().toLocaleString();
+      req.adminApprovedBy = approverName;
+    }
+
+    let fullyApproved = false;
+    if (req.accountantApproved && req.adminApproved) {
+      // Execute the conversion
+      const convRes = SaccoFarmStore.convertSavingsToShares(req.memberId, req.shareCount);
+      if (!convRes.success) {
+        if (role === 'ACCOUNTANT') req.accountantApproved = false;
+        if (role === 'ADMIN') req.adminApproved = false;
+        SaccoFarmStore.saveShareConversionRequests(requests);
+        return { success: false, fullyApproved: false, msg: convRes.msg };
+      }
+
+      req.status = 'APPROVED';
+      fullyApproved = true;
+
+      // Non-cash double-entry: Dr Member Savings (liability falls) / Cr Share Capital (equity rises)
+      SaccoFarmStore.addTransaction({
+        date: new Date().toISOString().split('T')[0],
+        type: 'Journal',
+        source: 'Bank',
+        debitAccount: '3010 — Member Savings',
+        creditAccount: '3020 — Share Capital',
+        category: `Share Conversion: ${req.memberName}`,
+        amount: req.amount,
+        description: `Dual-Approved: Converted UGX ${req.amount.toLocaleString()} savings to ${req.shareCount} shares for ${req.memberName} (${req.memberId}). Verified by Accountant & Authorized by Admin.`,
+        reference: req.id,
+        isBanked: true,
+      });
+    }
+
+    SaccoFarmStore.saveShareConversionRequests(requests);
+    const msg = fullyApproved
+      ? `Share conversion request ${req.id} fully dual-approved! ${req.shareCount} shares credited and savings deducted.`
+      : `${role === 'ACCOUNTANT' ? 'Accountant' : 'Admin'} approved request ${req.id}. Awaiting ${role === 'ACCOUNTANT' ? 'Admin' : 'Accountant'} dual authorization.`;
+    return { success: true, fullyApproved, msg };
+  },
+
+  rejectShareConversionRequest: (requestId: string, reason?: string): boolean => {
+    const requests = SaccoFarmStore.getShareConversionRequests();
+    const req = requests.find(r => r.id === requestId);
+    if (!req) return false;
+    req.status = 'REJECTED';
+    req.rejectionReason = reason || 'Rejected by management';
+    SaccoFarmStore.saveShareConversionRequests(requests);
+    return true;
+  },
+
+  // ── Single source of truth for money a member pays in ─────────────────────
+  // Every portal (Admin direct entry, Member request after approval) calls this, so
+  // member balances, share counts and the ledger can never drift apart.
+  applyMemberDeposit: (args: {
+    memberId: string;
+    purpose: PaymentPurpose;
+    amount: number;
+    month?: MonthKey;
+    shareCount?: number;
+    method?: string;
+    reference?: string;
+    otherLabel?: string;
+    notes?: string;
+    date?: string;
+  }): { success: boolean; msg: string; tx?: PettyCashTransaction } => {
+    const members = SaccoFarmStore.getMembers();
+    const m = members.find(x => x.id === args.memberId || x.memberId === args.memberId);
+    if (!m) return { success: false, msg: 'Member not found' };
+    const amount = Number(args.amount) || 0;
+    if (amount <= 0) return { success: false, msg: 'Amount must be greater than zero' };
+    const par = SaccoFarmStore.getShareParValue();
+    const method = args.method || 'Bank Wire';
+    const isBank = /bank/i.test(method);
+    const ref = args.reference || `DEP-${Date.now().toString().slice(-6)}`;
+    const who = `${m.name} (${m.memberId})`;
+    let category: string;
+    let description: string;
+
+    if (args.purpose === 'shares') {
+      const count = args.shareCount && args.shareCount > 0 ? args.shareCount : Math.floor(amount / par);
+      if (count < 1) return { success: false, msg: `Amount is below the price of one share (UGX ${par.toLocaleString()})` };
+      SaccoFarmStore.updateMember(m.id, { shares: (Number(m.shares) || 0) + count });
+      category = `Share Capital Purchase: ${who}`;
+      description = `Purchased ${count} share(s) @ UGX ${par.toLocaleString()} via ${method}. Ref: ${ref}. ${args.notes || ''}`.trim();
+    } else if (args.purpose === 'savings') {
+      const month = args.month || MONTH_KEYS[new Date().getMonth()];
+      SaccoFarmStore.updateMember(m.id, { [month]: (Number(m[month]) || 0) + amount } as Partial<SaccoMember>);
+      category = `Member Savings: ${who}`;
+      description = `Monthly savings for ${month.toUpperCase()} via ${method}. Ref: ${ref}. ${args.notes || ''}`.trim();
+    } else {
+      const label = purposeLabelOf(args.purpose, undefined, args.otherLabel);
+      category = `${label}: ${who}`;
+      description = `${label} contribution via ${method}. Ref: ${ref}. ${args.notes || ''}`.trim();
+    }
+
+    const tx = SaccoFarmStore.addTransaction({
+      memberId: m.memberId,
+      date: args.date || todayISO(),
+      type: 'Income',
+      source: isBank ? 'Bank' : 'Petty Cash',
+      category,
+      amount,
+      description,
+      reference: ref,
+      isBanked: isBank,
+    });
+    return { success: true, msg: `UGX ${amount.toLocaleString()} posted for ${m.name}.`, tx };
+  },
+
+  /** Deducts a withdrawal from the member's latest months first and posts the cash out. */
+  applyMemberWithdrawal: (args: { memberId: string; amount: number; method?: string; reference?: string; notes?: string }): { success: boolean; msg: string; tx?: PettyCashTransaction } => {
+    const members = SaccoFarmStore.getMembers();
+    const m = members.find(x => x.id === args.memberId || x.memberId === args.memberId);
+    if (!m) return { success: false, msg: 'Member not found' };
+    const amount = Number(args.amount) || 0;
+    if (amount <= 0) return { success: false, msg: 'Amount must be greater than zero' };
+    if (amount > m.withdrawable) return { success: false, msg: `Exceeds withdrawable balance (UGX ${m.withdrawable.toLocaleString()})` };
+    const updates: Partial<SaccoMember> = {};
+    let remaining = amount;
+    [...MONTH_KEYS].reverse().forEach(k => {
+      if (remaining <= 0) return;
+      const cur = Number(m[k]) || 0;
+      const take = Math.min(cur, remaining);
+      if (take > 0) { (updates as any)[k] = cur - take; remaining -= take; }
+    });
+    SaccoFarmStore.updateMember(m.id, updates);
+    const method = args.method || 'Mobile Money';
+    const isBank = /bank/i.test(method);
+    const ref = args.reference || `WTH-${Date.now().toString().slice(-6)}`;
+    const tx = SaccoFarmStore.addTransaction({
+      date: todayISO(),
+      type: 'Expense',
+      source: isBank ? 'Bank' : 'Petty Cash',
+      memberId: m.memberId,
+      category: `Member Savings Withdrawal: ${m.name} (${m.memberId})`,
+      amount,
+      description: `Savings withdrawal paid via ${method}. Ref: ${ref}. ${args.notes || ''}`.trim(),
+      reference: ref,
+      isBanked: isBank,
+    });
+    return { success: true, msg: `Withdrawal of UGX ${amount.toLocaleString()} paid to ${m.name}.`, tx };
+  },
+
+  // ── Member payment requests: Member submits → Accountant verifies → Admin approves ──
+  getPaymentRequests: (): MemberPaymentRequest[] => getStored<MemberPaymentRequest[]>(STORAGE_KEYS.PAYMENT_REQUESTS, DEFAULT_PAYMENT_REQUESTS),
+  savePaymentRequests: (list: MemberPaymentRequest[]) => setStored(STORAGE_KEYS.PAYMENT_REQUESTS, list),
+
+  submitPaymentRequest: (req: {
+    memberId: string;
+    kind: 'DEPOSIT' | 'WITHDRAWAL';
+    purpose: PaymentPurpose;
+    amount: number;
+    method: string;
+    reference?: string;
+    month?: MonthKey;
+    otherLabel?: string;
+    destination?: string;
+    notes?: string;
+  }): { success: boolean; msg: string; request?: MemberPaymentRequest } => {
+    const m = SaccoFarmStore.getMembers().find(x => x.id === req.memberId || x.memberId === req.memberId);
+    if (!m) return { success: false, msg: 'Member not found' };
+    const amount = Number(req.amount) || 0;
+    if (amount <= 0) return { success: false, msg: 'Enter a valid amount' };
+    const par = SaccoFarmStore.getShareParValue();
+    let shareCount: number | undefined;
+    if (req.kind === 'DEPOSIT' && req.purpose === 'shares') {
+      shareCount = Math.floor(amount / par);
+      if (shareCount < 1) return { success: false, msg: `Minimum share purchase is UGX ${par.toLocaleString()} (1 share)` };
+    }
+    if (req.kind === 'WITHDRAWAL' && amount > m.withdrawable) {
+      return { success: false, msg: `Amount exceeds your withdrawable balance of UGX ${m.withdrawable.toLocaleString()}` };
+    }
+    const list = SaccoFarmStore.getPaymentRequests();
+    const newReq: MemberPaymentRequest = {
+      id: `PRQ-${Date.now().toString().slice(-6)}`,
+      memberId: m.memberId,
+      memberName: m.name,
+      kind: req.kind,
+      purpose: req.kind === 'WITHDRAWAL' ? 'savings' : req.purpose,
+      purposeLabel: req.kind === 'WITHDRAWAL' ? 'Savings Withdrawal' : purposeLabelOf(req.purpose, req.month, req.otherLabel),
+      month: req.kind === 'DEPOSIT' && req.purpose === 'savings' ? (req.month || MONTH_KEYS[new Date().getMonth()]) : undefined,
+      shareCount,
+      amount,
+      method: req.method,
+      reference: req.reference || `${req.kind === 'DEPOSIT' ? 'DEP' : 'WTH'}-${Date.now().toString().slice(-6)}`,
+      destination: req.destination,
+      notes: req.notes,
+      submittedAt: nowStamp(),
+      status: 'PENDING_VERIFICATION',
+    };
+    list.unshift(newReq);
+    SaccoFarmStore.savePaymentRequests(list);
+    return { success: true, msg: `${req.kind === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} request ${newReq.id} submitted. It will reflect on your account once the Accountant verifies it and the Admin approves it.`, request: newReq };
+  },
+
+  verifyPaymentRequest: (id: string, verifierName: string): { success: boolean; msg: string } => {
+    const list = SaccoFarmStore.getPaymentRequests();
+    const r = list.find(x => x.id === id);
+    if (!r) return { success: false, msg: 'Request not found' };
+    if (r.status !== 'PENDING_VERIFICATION') return { success: false, msg: `Request is already ${r.status.replace(/_/g, ' ').toLowerCase()}` };
+    r.status = 'VERIFIED_AWAITING_ADMIN';
+    r.verifiedBy = verifierName;
+    r.verifiedAt = nowStamp();
+    SaccoFarmStore.savePaymentRequests(list);
+    return { success: true, msg: `${r.id} verified and forwarded to Admin for final approval.` };
+  },
+
+  approvePaymentRequest: (id: string, approverName: string): { success: boolean; msg: string } => {
+    const list = SaccoFarmStore.getPaymentRequests();
+    const r = list.find(x => x.id === id);
+    if (!r) return { success: false, msg: 'Request not found' };
+    if (r.status !== 'VERIFIED_AWAITING_ADMIN') return { success: false, msg: 'The Accountant must verify this request before Admin approval.' };
+    const res = r.kind === 'DEPOSIT'
+      ? SaccoFarmStore.applyMemberDeposit({
+          memberId: r.memberId, purpose: r.purpose, amount: r.amount, month: r.month,
+          shareCount: r.shareCount, method: r.method, reference: r.reference,
+          otherLabel: r.purpose === 'other' ? r.purposeLabel : undefined, notes: r.notes,
+        })
+      : SaccoFarmStore.applyMemberWithdrawal({ memberId: r.memberId, amount: r.amount, method: r.method, reference: r.reference, notes: r.notes });
+    if (!res.success) return res;
+    // re-read: applying the request saved members/transactions, the request list is unaffected
+    r.status = 'APPROVED';
+    r.approvedBy = approverName;
+    r.approvedAt = nowStamp();
+    r.postedTransactionId = res.tx?.id;
+    SaccoFarmStore.savePaymentRequests(list);
+    const detail = r.kind === 'DEPOSIT' && r.purpose === 'shares' ? ` ${r.shareCount} share(s) credited to ${r.memberName}.` : '';
+    SaccoFarmStore.queueSms('payment_approved', r.memberId, r.kind === 'DEPOSIT'
+      ? `Diaspora Connect: your ${r.purposeLabel} deposit of UGX ${r.amount.toLocaleString()} (ref ${r.reference}) is approved and on your account.${r.shareCount ? ` ${r.shareCount} share(s) added.` : ''}`
+      : `Diaspora Connect: your withdrawal of UGX ${r.amount.toLocaleString()} is approved and being paid to ${r.destination || r.method}.`);
+    return { success: true, msg: `${r.id} approved and posted to the ledger.${detail}` };
+  },
+
+  rejectPaymentRequest: (id: string, reason: string, by: string): boolean => {
+    const list = SaccoFarmStore.getPaymentRequests();
+    const r = list.find(x => x.id === id);
+    if (!r || r.status === 'APPROVED') return false;
+    r.status = 'REJECTED';
+    r.rejectionReason = `${reason || 'Rejected'} — ${by}`;
+    SaccoFarmStore.savePaymentRequests(list);
+    SaccoFarmStore.queueSms('payment_rejected', r.memberId, `Diaspora Connect: your ${r.kind.toLowerCase()} request ${r.id} of UGX ${r.amount.toLocaleString()} was not approved. Reason: ${reason || 'see portal'}.`);
+    return true;
+  },
+
+  // ── KYC ───────────────────────────────────────────────────────────────────
+  getKycSubmissions: (): KycSubmission[] => getStored<KycSubmission[]>(STORAGE_KEYS.KYC, []),
+  saveKycSubmissions: (list: KycSubmission[]) => setStored(STORAGE_KEYS.KYC, list),
+
+  getLatestKyc: (memberId: string): KycSubmission | null => {
+    const list = SaccoFarmStore.getKycSubmissions().filter(k => k.memberId === memberId);
+    return list.length ? list[0] : null;
+  },
+
+  getKycStatus: (memberId: string): KycStatus => SaccoFarmStore.getLatestKyc(memberId)?.status || 'NOT_SUBMITTED',
+
+  submitKyc: (data: Omit<KycSubmission, 'id' | 'submittedAt' | 'status' | 'reviewedBy' | 'reviewedAt' | 'rejectionReason'>): { success: boolean; msg: string } => {
+    const current = SaccoFarmStore.getKycStatus(data.memberId);
+    if (current === 'PENDING') return { success: false, msg: 'Your KYC is already under review.' };
+    if (current === 'VERIFIED') return { success: false, msg: 'Your identity is already verified.' };
+    const list = SaccoFarmStore.getKycSubmissions();
+    list.unshift({ ...data, id: `KYC-${Date.now().toString().slice(-6)}`, submittedAt: nowStamp(), status: 'PENDING' });
+    try {
+      // written directly (not via setStored) so a storage-quota failure is reported to the member
+      localStorage.setItem(STORAGE_KEYS.KYC, JSON.stringify(list));
+      window.dispatchEvent(new Event('dc_storage_update'));
+    } catch {
+      return { success: false, msg: 'Could not save documents — the images are too large. Try smaller photos.' };
+    }
+    return { success: true, msg: 'KYC documents submitted. You will be notified once an officer reviews them.' };
+  },
+
+  reviewKyc: (id: string, decision: 'VERIFIED' | 'REJECTED', reviewer: string, reason?: string): boolean => {
+    const list = SaccoFarmStore.getKycSubmissions();
+    const k = list.find(x => x.id === id);
+    if (!k || k.status !== 'PENDING') return false;
+    k.status = decision;
+    k.reviewedBy = reviewer;
+    k.reviewedAt = nowStamp();
+    if (decision === 'REJECTED') k.rejectionReason = reason || 'Documents could not be verified';
+    SaccoFarmStore.saveKycSubmissions(list);
+    // A verified identity updates the member record everyone reads
+    if (decision === 'VERIFIED') SaccoFarmStore.updateMember(k.memberId, { nin: k.idNumber });
+    SaccoFarmStore.queueSms(decision === 'VERIFIED' ? 'kyc_verified' : 'kyc_rejected', k.memberId, decision === 'VERIFIED'
+      ? 'Diaspora Connect: your identity (KYC) has been verified. Thank you.'
+      : `Diaspora Connect: your KYC could not be verified — ${k.rejectionReason}. Please resubmit in the Member Portal.`);
+    return true;
+  },
+
+  // ── Acting user & audit trail ─────────────────────────────────────────────
+  setActor: (actor: Actor) => { currentActor = { ...actor }; },
+  getActor: (): Actor => ({ ...currentActor }),
+
+  getAuditTrail: (): AuditEntry[] => getStored<AuditEntry[]>(STORAGE_KEYS.AUDIT, []),
+
+  /** Append-only. Written straight to storage (no re-render storm); cloud sync ships each entry to the server log. */
+  audit: (action: string, entity: string, entityId: string | undefined, summary: string, details?: unknown) => {
+    const entry: AuditEntry = {
+      id: `AUD-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      at: new Date().toISOString(),
+      actor: currentActor.name,
+      role: currentActor.role,
+      email: currentActor.email,
+      action,
+      entity,
+      entityId,
+      summary,
+      details: details === undefined ? undefined : safeDetails(details),
+    };
+    try {
+      const list = SaccoFarmStore.getAuditTrail();
+      list.unshift(entry);
+      localStorage.setItem(STORAGE_KEYS.AUDIT, JSON.stringify(list.slice(0, 5000)));
+      window.dispatchEvent(new CustomEvent('dc_audit', { detail: entry }));
+    } catch {}
+    return entry;
+  },
+
+  // ── Staff directory & task assignment ─────────────────────────────────────
+  getStaff: (): StaffUser[] => getStored<StaffUser[]>(STORAGE_KEYS.STAFF, DEFAULT_STAFF),
+  saveStaffUser: (u: Omit<StaffUser, 'id'> & { id?: string }): StaffUser => {
+    const list = SaccoFarmStore.getStaff();
+    const email = u.email.toLowerCase().trim();
+    const existing = list.find(s => s.id === u.id || s.email.toLowerCase() === email);
+    const saved: StaffUser = existing ? Object.assign(existing, { ...u, email, id: existing.id }) : { ...u, email, id: `STF-${Date.now().toString().slice(-5)}` };
+    if (!existing) list.push(saved);
+    setStored(STORAGE_KEYS.STAFF, list);
+    return saved;
+  },
+
+  getTaskAssignments: (): TaskAssignment[] => {
+    const saved = getStored<TaskAssignment[]>(STORAGE_KEYS.TASKS, []);
+    const staff = SaccoFarmStore.getStaff();
+    return TASK_CATALOG.map(t => saved.find(a => a.taskId === t.id) || {
+      taskId: t.id,
+      assigneeEmails: staff.filter(s => s.active && t.defaultRoles.includes(s.role)).map(s => s.email),
+    });
+  },
+
+  saveTaskAssignment: (taskId: string, assigneeEmails: string[], notes?: string, dueRule?: string) => {
+    const list = getStored<TaskAssignment[]>(STORAGE_KEYS.TASKS, []).filter(a => a.taskId !== taskId);
+    list.push({ taskId, assigneeEmails, notes, dueRule, updatedBy: currentActor.name, updatedAt: new Date().toISOString() });
+    setStored(STORAGE_KEYS.TASKS, list);
+  },
+
+  /** Admin can do everything; anyone else must be assigned the task by email (or, for legacy sessions without email, by role). */
+  canPerform: (taskId: string, actor: Actor = currentActor): boolean => {
+    if (actor.role === 'ADMIN') return true;
+    const a = SaccoFarmStore.getTaskAssignments().find(x => x.taskId === taskId);
+    if (!a) return false;
+    const staff = SaccoFarmStore.getStaff();
+    if (actor.email && a.assigneeEmails.map(e => e.toLowerCase()).includes(actor.email.toLowerCase())) return true;
+    return !actor.email && a.assigneeEmails.some(e => staff.find(s => s.email === e)?.role === actor.role);
+  },
+
+  assigneeNames: (taskId: string): string => {
+    const a = SaccoFarmStore.getTaskAssignments().find(x => x.taskId === taskId);
+    const staff = SaccoFarmStore.getStaff();
+    const names = (a?.assigneeEmails || []).map(e => staff.find(s => s.email === e)?.name || e);
+    return names.length ? names.join(', ') : 'Unassigned';
+  },
+
+  getMyTasks: (actor: Actor = currentActor): Array<TaskDefinition & { assignment: TaskAssignment }> => {
+    const all = SaccoFarmStore.getTaskAssignments();
+    return TASK_CATALOG
+      .map(t => ({ ...t, assignment: all.find(a => a.taskId === t.id)! }))
+      .filter(t => actor.role !== 'ADMIN' && SaccoFarmStore.canPerform(t.id, actor));
+  },
+
+  // ── Manual income (members who don't use the portal) ──────────────────────
+  recordManualIncome: (args: {
+    type: 'savings' | 'shares' | 'welfare' | 'project' | 'loan_repayment' | 'milk' | 'other';
+    memberId?: string;
+    amount: number;
+    date: string;
+    method: string;
+    reference?: string;
+    month?: MonthKey;
+    category?: string;
+    notes?: string;
+  }): { success: boolean; msg: string } => {
+    const amount = Number(args.amount) || 0;
+    if (amount <= 0) return { success: false, msg: 'Enter a valid amount' };
+    const isBank = /bank/i.test(args.method);
+    const note = `Recorded by ${currentActor.name}${args.notes ? ` — ${args.notes}` : ''}`;
+
+    if (args.type === 'loan_repayment') {
+      const loan = SaccoFarmStore.getLoans().find(l => l.memberId === args.memberId && (l.status === 'ACTIVE' || l.status === 'DEFAULTED'));
+      if (!loan) return { success: false, msg: 'This member has no active loan' };
+      SaccoFarmStore.recordLoanRepayment(loan.id, amount, args.method, args.reference || '', note, args.date);
+      return { success: true, msg: `Repayment of UGX ${amount.toLocaleString()} posted to ${loan.loanNumber}.` };
+    }
+    if (args.type === 'milk' || args.type === 'other') {
+      const category = args.type === 'milk' ? 'Milk Sales (Farm)' : (args.category || '').trim();
+      if (!category) return { success: false, msg: 'Type the income category' };
+      SaccoFarmStore.addTransaction({
+        date: args.date, type: 'Income', source: isBank ? 'Bank' : 'Petty Cash', category, amount,
+        description: `${category} received via ${args.method}. ${note}`,
+        reference: args.reference || `INC-${Date.now().toString().slice(-6)}`, isBanked: isBank, recordedBy: currentActor.name,
+      });
+      return { success: true, msg: `Income "${category}" of UGX ${amount.toLocaleString()} recorded.` };
+    }
+    if (!args.memberId) return { success: false, msg: 'Select the member who paid' };
+    const res = SaccoFarmStore.applyMemberDeposit({
+      memberId: args.memberId, purpose: args.type, amount, month: args.month, method: args.method,
+      reference: args.reference, otherLabel: args.category, notes: note, date: args.date,
+    });
+    if (res.success) {
+      SaccoFarmStore.queueSms('manual_income', args.memberId,
+        `Diaspora Connect: we received UGX ${amount.toLocaleString()} for ${purposeLabelOf(args.type, args.month, args.category)} on ${args.date}. Thank you.`);
+    }
+    return res;
+  },
+
+  // ── Month-end close ───────────────────────────────────────────────────────
+  getPeriodCloses: (): PeriodClose[] => getStored<PeriodClose[]>(STORAGE_KEYS.PERIODS, []),
+  isPeriodClosed: (date: string): boolean =>
+    SaccoFarmStore.getPeriodCloses().some(p => p.status === 'CLOSED' && date.startsWith(p.month)),
+
+  summarizePeriod: (prefix: string) => {
+    const txs = SaccoFarmStore.getTransactions().filter(t => t.date.startsWith(prefix));
+    const income = txs.filter(t => t.type === 'Income');
+    const revenue = income.filter(t => REVENUE_SOURCES.includes(classifyIncome(t))).reduce((s, t) => s + t.amount, 0);
+    const expenses = txs.filter(t => t.type === 'Expense' && isOperatingExpense(t)).reduce((s, t) => s + t.amount, 0);
+    return {
+      income: income.reduce((s, t) => s + t.amount, 0),
+      revenue,
+      expenses,
+      surplus: revenue - expenses,
+      trialBalanced: buildTrialBalance(txs).balanced,
+      count: txs.length,
+    };
+  },
+
+  closePeriod: (month: string): { success: boolean; msg: string } => {
+    const current = new Date().toISOString().slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) return { success: false, msg: 'Invalid month' };
+    if (month >= current) return { success: false, msg: 'Only months that have ended can be closed.' };
+    const list = SaccoFarmStore.getPeriodCloses();
+    if (list.some(p => p.month === month && p.status === 'CLOSED')) return { success: false, msg: `${month} is already closed.` };
+    const s = SaccoFarmStore.summarizePeriod(month);
+    if (!s.trialBalanced) return { success: false, msg: `${month} does not balance (Dr ≠ Cr). Fix the entries before closing.` };
+    const pending = SaccoFarmStore.getPaymentRequests().filter(r => r.status !== 'APPROVED' && r.status !== 'REJECTED' && r.submittedAt.includes(month.split('-').reverse().join('/')));
+    const rec: PeriodClose = {
+      month, closedAt: new Date().toISOString(), closedBy: currentActor.name,
+      income: s.income, revenue: s.revenue, expenses: s.expenses, surplus: s.surplus, trialBalanced: s.trialBalanced, status: 'CLOSED',
+    };
+    setStored(STORAGE_KEYS.PERIODS, [rec, ...list.filter(p => p.month !== month)]);
+    return { success: true, msg: `${month} closed. Surplus UGX ${s.surplus.toLocaleString()}.${pending.length ? ` Note: ${pending.length} request(s) from that month are still pending.` : ''}` };
+  },
+
+  reopenPeriod: (month: string, reason: string): boolean => {
+    const list = SaccoFarmStore.getPeriodCloses();
+    const p = list.find(x => x.month === month && x.status === 'CLOSED');
+    if (!p || currentActor.role !== 'ADMIN') return false;
+    p.status = 'REOPENED';
+    p.reopenReason = `${reason} — ${currentActor.name}, ${new Date().toLocaleString()}`;
+    setStored(STORAGE_KEYS.PERIODS, list);
+    return true;
+  },
+
+  // ── Dividends ─────────────────────────────────────────────────────────────
+  getDividends: (): DividendDeclaration[] => getStored<DividendDeclaration[]>(STORAGE_KEYS.DIVIDENDS, []),
+
+  computeDividend: (p: DividendParams): Omit<DividendDeclaration, 'id' | 'declaredAt' | 'declaredBy' | 'status'> => {
+    const s = SaccoFarmStore.summarizePeriod(String(p.year));
+    const surplus = Math.max(0, s.surplus);
+    const reserve = Math.round(surplus * p.reservePct / 100);
+    const education = Math.round(surplus * p.educationPct / 100);
+    const pool = Math.round(Math.max(0, surplus - reserve - education) * p.payoutPct / 100);
+    const members = SaccoFarmStore.getMembers().filter(m => m.status === 'ACTIVE' && m.shares > 0);
+    // share-months: shares weighted by the months of the year the member has been in the SACCO
+    const weightOf = (m: SaccoMember) => {
+      if (p.method === 'shares') return m.shares;
+      const join = new Date(m.joinDate);
+      const months = join.getFullYear() < p.year ? 12 : join.getFullYear() > p.year ? 0 : 12 - join.getMonth();
+      return m.shares * months / 12;
+    };
+    const totalWeight = members.reduce((t, m) => t + weightOf(m), 0);
+    const rows: DividendRow[] = members.map(m => {
+      const weight = weightOf(m);
+      return { memberId: m.memberId, memberName: m.name, shares: m.shares, weight, amount: totalWeight ? Math.floor(pool * weight / totalWeight) : 0 };
+    });
+    const totalShares = members.reduce((t, m) => t + m.shares, 0);
+    return { ...p, revenue: s.revenue, expenses: s.expenses, surplus: s.surplus, reserve, education, pool, ratePerShare: totalShares ? Math.floor(pool / totalShares) : 0, rows };
+  },
+
+  declareDividend: (p: DividendParams): { success: boolean; msg: string } => {
+    if (SaccoFarmStore.getDividends().some(d => d.year === p.year)) return { success: false, msg: `A dividend for ${p.year} has already been declared.` };
+    const c = SaccoFarmStore.computeDividend(p);
+    if (c.pool <= 0) return { success: false, msg: `No distributable surplus for ${p.year}.` };
+    const decl: DividendDeclaration = { ...c, id: `DIV-${p.year}`, declaredAt: new Date().toISOString(), declaredBy: currentActor.name, status: 'DECLARED' };
+    setStored(STORAGE_KEYS.DIVIDENDS, [decl, ...SaccoFarmStore.getDividends()]);
+    const date = todayISO();
+    if (c.reserve + c.education > 0) {
+      SaccoFarmStore.addTransaction({ date, type: 'Journal', source: 'Bank', debitAccount: '3100 — Retained Surplus', creditAccount: '3200 — Statutory Reserve & Education Fund', category: `Appropriation ${p.year}: reserves`, amount: c.reserve + c.education, description: `Statutory reserve ${p.reservePct}% + education fund ${p.educationPct}% of ${p.year} surplus`, reference: `${decl.id}-RES`, isBanked: true });
+    }
+    SaccoFarmStore.addTransaction({ date, type: 'Journal', source: 'Bank', debitAccount: '3100 — Retained Surplus', creditAccount: '2200 — Dividends Payable', category: `Dividend declared ${p.year}`, amount: c.pool, description: `Dividend of UGX ${c.ratePerShare.toLocaleString()} per share declared for ${p.year}`, reference: decl.id, isBanked: true });
+    return { success: true, msg: `Dividend for ${p.year} declared: pool UGX ${c.pool.toLocaleString()} (UGX ${c.ratePerShare.toLocaleString()} per share).` };
+  },
+
+  /** Credits every member's savings with their dividend (Dr Dividends Payable / Cr Member Savings). */
+  payDividend: (id: string): { success: boolean; msg: string } => {
+    const list = SaccoFarmStore.getDividends();
+    const d = list.find(x => x.id === id);
+    if (!d || d.status !== 'DECLARED') return { success: false, msg: 'Dividend not found or already paid' };
+    const month = MONTH_KEYS[new Date().getMonth()];
+    d.rows.forEach(r => {
+      if (r.amount <= 0) return;
+      const m = SaccoFarmStore.getMembers().find(x => x.memberId === r.memberId);
+      if (!m) return;
+      SaccoFarmStore.updateMember(m.id, { [month]: (Number(m[month]) || 0) + r.amount } as Partial<SaccoMember>);
+      SaccoFarmStore.queueSms('dividend_paid', r.memberId, `Diaspora Connect: your ${d.year} dividend of UGX ${r.amount.toLocaleString()} has been credited to your savings.`);
+    });
+    SaccoFarmStore.addTransaction({ date: todayISO(), type: 'Journal', source: 'Bank', debitAccount: '2200 — Dividends Payable', creditAccount: '3010 — Member Savings', category: `Dividend paid ${d.year}`, amount: d.rows.reduce((s, r) => s + r.amount, 0), description: `${d.year} dividend credited to ${d.rows.filter(r => r.amount > 0).length} members' savings`, reference: `${d.id}-PAY`, isBanked: true });
+    d.status = 'PAID';
+    d.paidAt = new Date().toISOString();
+    d.paidBy = currentActor.name;
+    setStored(STORAGE_KEYS.DIVIDENDS, list);
+    return { success: true, msg: `${d.year} dividend credited to members' savings.` };
+  },
+
+  // ── SMS alerts (queued here; the cloud sync sends them through the SMS gateway) ──
+  getSmsSettings: (): SmsSettings => ({ ...DEFAULT_SMS_SETTINGS, ...getStored<SmsSettings>(STORAGE_KEYS.SMS_SETTINGS, DEFAULT_SMS_SETTINGS) }),
+  saveSmsSettings: (s: SmsSettings) => setStored(STORAGE_KEYS.SMS_SETTINGS, s),
+  getSmsLog: (): SmsMessage[] => getStored<SmsMessage[]>(STORAGE_KEYS.SMS_LOG, []),
+
+  queueSms: (event: SmsEvent, memberIdOrPhone: string, message: string): SmsMessage | null => {
+    const settings = SaccoFarmStore.getSmsSettings();
+    if (!settings.enabled || !settings.events[event]) return null;
+    const member = SaccoFarmStore.getMembers().find(m => m.memberId === memberIdOrPhone || m.id === memberIdOrPhone);
+    const to = normalizeUgPhone(member ? member.phone : memberIdOrPhone);
+    if (!to) return null;
+    const sms: SmsMessage = { id: `SMS-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, event, to, memberId: member?.memberId, message: message.slice(0, 459), createdAt: new Date().toISOString(), status: 'QUEUED' };
+    const log = SaccoFarmStore.getSmsLog();
+    log.unshift(sms);
+    setStored(STORAGE_KEYS.SMS_LOG, log.slice(0, 2000));
+    window.dispatchEvent(new CustomEvent('dc_sms_queued', { detail: sms }));
+    return sms;
+  },
+
+  updateSms: (id: string, patch: Partial<SmsMessage>) => {
+    const log = SaccoFarmStore.getSmsLog();
+    const s = log.find(x => x.id === id);
+    if (!s) return;
+    Object.assign(s, patch);
+    setStored(STORAGE_KEYS.SMS_LOG, log);
   },
 
   // Investors (Money Maker)
@@ -1413,9 +2291,14 @@ export const SaccoFarmStore = {
 
   addTransaction: (tx: Omit<PettyCashTransaction, 'id'>): PettyCashTransaction => {
     const list = SaccoFarmStore.getTransactions();
+    // A closed month is frozen: late entries are posted as adjustments in the current (open) month
+    let entry = { ...tx, recordedBy: tx.recordedBy || currentActor.name };
+    if (tx.date && SaccoFarmStore.isPeriodClosed(tx.date)) {
+      entry = { ...entry, date: todayISO(), description: `[Adjustment for closed period ${tx.date.slice(0, 7)}, originally dated ${tx.date}] ${tx.description}` };
+    }
     const newTx: PettyCashTransaction = {
-      ...tx,
-      id: `TX-${Date.now().toString().slice(-6)}`
+      ...entry,
+      id: `TX-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
     };
     list.unshift(newTx);
     SaccoFarmStore.saveTransactions(list);
@@ -1668,15 +2551,70 @@ export const SaccoFarmStore = {
     };
     list.unshift(newRecord);
     SaccoFarmStore.saveCowMilkRecords(list);
+    SaccoFarmStore.syncCowMilkIntoDailyLog(newRecord, 1);
     return newRecord;
   },
 
   deleteCowMilkRecord: (id: string): boolean => {
     const list = SaccoFarmStore.getCowMilkRecords();
+    const target = list.find(r => r.id === id);
     const filtered = list.filter(r => r.id !== id);
-    if (filtered.length === list.length) return false;
+    if (!target) return false;
     SaccoFarmStore.saveCowMilkRecords(filtered);
+    SaccoFarmStore.syncCowMilkIntoDailyLog(target, -1);
     return true;
+  },
+
+  /**
+   * Keeps the herd-level daily milk log and the milk-sales income in the ledger in step with
+   * per-cow milking records (sign = +1 when a record is added, -1 when it is deleted).
+   */
+  syncCowMilkIntoDailyLog: (rec: CowMilkRecord, sign: 1 | -1) => {
+    const litres = (Number(rec.litres) || 0) * sign;
+    if (!litres) return;
+    const field = rec.session === 'Morning' ? 'morning' : rec.session === 'Afternoon' ? 'afternoon' : 'evening';
+    const logs = SaccoFarmStore.getMilkLogs();
+    let log = logs.find(l => l.date === rec.date);
+    if (!log) {
+      if (sign < 0) return;
+      log = {
+        id: `ML-${Date.now().toString().slice(-5)}`,
+        date: rec.date, morning: 0, afternoon: 0, evening: 0, calvesConsumption: 0,
+        netSold: 0, offtakerPrice: rec.offtakerPrice || 1650, revenue: 0,
+        recorder: rec.recorder, notes: 'Built from per-cow milking records',
+      };
+      logs.unshift(log);
+    }
+    const before = log.revenue;
+    log[field] = Math.max(0, Math.round(((Number(log[field]) || 0) + litres) * 10) / 10);
+    log.netSold = Math.max(0, Math.round((log.morning + log.afternoon + log.evening - (log.calvesConsumption || 0)) * 10) / 10);
+    log.revenue = Math.round(log.netSold * (log.offtakerPrice || 1650));
+    logs.sort((a, b) => b.date.localeCompare(a.date));
+    SaccoFarmStore.saveMilkLogs(logs);
+
+    // Post only the change in revenue so seed / manually-entered daily totals are never double counted
+    const delta = log.revenue - before;
+    if (!delta) return;
+    const ref = `MLK-COW-${rec.date.replace(/-/g, '')}`;
+    const txs = SaccoFarmStore.getTransactions();
+    const tx = txs.find(t => t.reference === ref);
+    if (tx) {
+      tx.amount = Math.max(0, tx.amount + delta);
+      tx.description = `Milk sales from per-cow milking records on ${rec.date} @ UGX ${(log.offtakerPrice || 1650).toLocaleString()}/L`;
+      SaccoFarmStore.saveTransactions(tx.amount > 0 ? txs : txs.filter(t => t !== tx));
+    } else if (delta > 0) {
+      SaccoFarmStore.addTransaction({
+        date: rec.date,
+        type: 'Income',
+        source: 'Bank',
+        category: 'Milk Sales (Farm)',
+        amount: delta,
+        description: `Milk sales from per-cow milking records on ${rec.date} @ UGX ${(log.offtakerPrice || 1650).toLocaleString()}/L`,
+        reference: ref,
+        isBanked: true,
+        bankedDate: rec.date,
+      });
+    }
   },
 
 
@@ -1722,24 +2660,62 @@ export const SaccoFarmStore = {
     return item;
   },
 
-  recordLoanRepayment: (id: string, amount: number, paymentMethod = 'Bank Wire / Mobile Money', reference = '', notes = ''): SaccoLoan | null => {
+  /**
+   * Interest split for a flat-rate SACCO loan:
+   *   total interest = principal × rate × (months / 12), accrued evenly per month from disbursement.
+   * Each payment clears interest accrued-but-unpaid first, then principal (standard SACCO allocation).
+   */
+  getLoanBreakdown: (loan: SaccoLoan, asOf: string = new Date().toISOString().split('T')[0]) => {
+    const totalInterest = Math.max(0, loan.totalPayable - loan.principal);
+    const history = loan.repaymentHistory || [];
+    const interestPaid = loan.interestPaid ?? history.reduce((s, h) => s + (h.interestPortion || 0), 0);
+    const principalPaid = loan.principalPaid ?? Math.max(0, loan.amountPaid - interestPaid);
+    const start = new Date(loan.disbursementDate || loan.applicationDate);
+    const now = new Date(asOf);
+    const monthsElapsed = Math.max(1, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1);
+    const monthlyInterest = loan.durationMonths > 0 ? totalInterest / loan.durationMonths : totalInterest;
+    const accruedInterest = Math.min(totalInterest, Math.round(monthlyInterest * monthsElapsed));
+    return {
+      totalInterest,
+      interestPaid,
+      principalPaid,
+      principalOutstanding: Math.max(0, loan.principal - principalPaid),
+      interestOutstanding: Math.max(0, totalInterest - interestPaid),
+      accruedInterest,
+      interestDueNow: Math.max(0, accruedInterest - interestPaid),
+    };
+  },
+
+  recordLoanRepayment: (id: string, amount: number, paymentMethod = 'Bank Wire / Mobile Money', reference = '', notes = '', date?: string): SaccoLoan | null => {
     const list = SaccoFarmStore.getLoans();
     const item = list.find(l => l.id === id || l.loanNumber === id);
     if (!item) return null;
-    const paid = Number(amount) || 0;
+    const paid = Math.min(Number(amount) || 0, item.outstandingBalance || Number(amount) || 0);
+    if (paid <= 0) return null;
+    const payDate = date || new Date().toISOString().split('T')[0];
+    const b = SaccoFarmStore.getLoanBreakdown(item, payDate);
+
+    // interest due first, then principal; anything left over (early payoff) clears the remaining interest
+    let interestPortion = Math.min(paid, b.interestDueNow);
+    let principalPortion = Math.min(paid - interestPortion, b.principalOutstanding);
+    const leftover = paid - interestPortion - principalPortion;
+    if (leftover > 0) interestPortion += Math.min(leftover, b.interestOutstanding - interestPortion);
+
+    item.interestPaid = b.interestPaid + interestPortion;
+    item.principalPaid = b.principalPaid + principalPortion;
     item.amountPaid += paid;
     item.outstandingBalance = Math.max(0, item.totalPayable - item.amountPaid);
-    if (item.outstandingBalance === 0) {
-      item.status = 'CLEARED';
-    }
+    if (item.outstandingBalance === 0) item.status = 'CLEARED';
+
+    const ref = reference || `LN-PAY-${Date.now().toString().slice(-6)}`;
     const historyEntry: LoanRepaymentEntry = {
       id: `RPM-${Date.now().toString().slice(-6)}`,
-      date: new Date().toISOString().split('T')[0],
+      date: payDate,
       amount: paid,
-      principalPortion: Math.round(paid * 0.9),
-      interestPortion: Math.round(paid * 0.1),
+      principalPortion,
+      interestPortion,
       remainingBalance: item.outstandingBalance,
-      reference: reference || `LN-PAY-${Date.now().toString().slice(-4)}`,
+      reference: ref,
       paymentMethod,
       notes: notes || 'Monthly Loan Installment'
     };
@@ -1747,17 +2723,38 @@ export const SaccoFarmStore = {
     item.repaymentHistory.unshift(historyEntry);
     SaccoFarmStore.saveLoans(list);
 
-    // Auto-record in double-entry transactions
-    SaccoFarmStore.addTransaction({
-      date: historyEntry.date,
-      type: 'Income',
-      source: paymentMethod.includes('Bank') ? 'Bank' : 'Petty Cash',
-      category: `Loan Repayment: ${item.memberName} (${item.loanNumber})`,
-      amount: paid,
-      description: `Loan repayment for ${item.loanNumber} via ${paymentMethod}. Ref: ${historyEntry.reference}`,
-      reference: historyEntry.reference,
-      isBanked: paymentMethod.includes('Bank')
-    });
+    // Two postings so the ledger shows principal recovered vs interest earned:
+    //   Dr Cash / Cr 1200 Loans Receivable  (principal)
+    //   Dr Cash / Cr 4020 Loan Interest Income  (interest)
+    const isBank = /bank/i.test(paymentMethod);
+    if (principalPortion > 0) {
+      SaccoFarmStore.addTransaction({
+        date: payDate,
+        type: 'Income',
+        source: isBank ? 'Bank' : 'Petty Cash',
+        memberId: item.memberId,
+        category: `Loan Repayment (Principal): ${item.memberName} (${item.loanNumber})`,
+        amount: principalPortion,
+        description: `Principal repaid on ${item.loanNumber} via ${paymentMethod}. Ref: ${ref}`,
+        reference: ref,
+        isBanked: isBank
+      });
+    }
+    if (interestPortion > 0) {
+      SaccoFarmStore.addTransaction({
+        date: payDate,
+        type: 'Income',
+        source: isBank ? 'Bank' : 'Petty Cash',
+        memberId: item.memberId,
+        category: `Loan Interest Income: ${item.memberName} (${item.loanNumber})`,
+        amount: interestPortion,
+        description: `Interest earned on ${item.loanNumber} via ${paymentMethod}. Ref: ${ref}`,
+        reference: `${ref}-INT`,
+        isBanked: isBank
+      });
+    }
+    SaccoFarmStore.queueSms('loan_repayment', item.memberId,
+      `Diaspora Connect: loan ${item.loanNumber} payment of UGX ${paid.toLocaleString()} received (principal ${principalPortion.toLocaleString()}, interest ${interestPortion.toLocaleString()}). Balance UGX ${item.outstandingBalance.toLocaleString()}.`);
 
     return item;
   },
@@ -1969,155 +2966,18 @@ export const SaccoFarmStore = {
 
   // Share Par Value
   getShareParValue: (): number => {
-    const val = localStorage.getItem('dc_share_par_value');
+    const val = localStorage.getItem(STORAGE_KEYS.SHARE_PAR);
     return val ? Number(val) : 250000;
   },
 
   setShareParValue: (newVal: number): void => {
-    localStorage.setItem('dc_share_par_value', String(newVal));
+    setStored(STORAGE_KEYS.SHARE_PAR, newVal);
     const members = SaccoFarmStore.getMembers();
     members.forEach(m => {
       m.sharesValue = (Number(m.shares) || 0) * newVal;
     });
     SaccoFarmStore.saveMembers(members);
     window.dispatchEvent(new Event('dc_storage_update'));
-  },
-
-  // Custom Navigation Modules
-  getCustomModules: (): CustomModule[] => getStored<CustomModule[]>(STORAGE_KEYS.CUSTOM_MODULES, DEFAULT_CUSTOM_MODULES),
-  saveCustomModules: (modules: CustomModule[]) => setStored(STORAGE_KEYS.CUSTOM_MODULES, modules),
-
-  addCustomModule: (mod: Omit<CustomModule, 'id' | 'createdAt'>): CustomModule => {
-    const modules = SaccoFarmStore.getCustomModules();
-    const newMod: CustomModule = {
-      ...mod,
-      id: `MOD-${Date.now().toString().slice(-4)}`,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    modules.push(newMod);
-    SaccoFarmStore.saveCustomModules(modules);
-    return newMod;
-  },
-
-  deleteCustomModule: (id: string): boolean => {
-    const modules = SaccoFarmStore.getCustomModules();
-    const filtered = modules.filter(m => m.id !== id);
-    if (filtered.length === modules.length) return false;
-    SaccoFarmStore.saveCustomModules(filtered);
-    return true;
-  },
-
-
-
-  // Coffee System Batches
-  getCoffeeBatches: (): CoffeePurchaseBatch[] => getStored<CoffeePurchaseBatch[]>(STORAGE_KEYS.COFFEE, DEFAULT_COFFEE),
-  saveCoffeeBatches: (batches: CoffeePurchaseBatch[]) => setStored(STORAGE_KEYS.COFFEE, batches),
-
-  addCoffeeBatch: (batch: Omit<CoffeePurchaseBatch, 'id' | 'totalPayout'>): CoffeePurchaseBatch => {
-    const batches = SaccoFarmStore.getCoffeeBatches();
-    const netKg = Number(batch.netWeightKg) || 0;
-    const priceKg = Number(batch.pricePerKg) || 0;
-    const totalPayout = netKg * priceKg;
-
-    const newBatch: CoffeePurchaseBatch = {
-      ...batch,
-      id: `CF-${Date.now().toString().slice(-5)}`,
-      totalPayout
-    };
-    batches.unshift(newBatch);
-    SaccoFarmStore.saveCoffeeBatches(batches);
-
-    // Auto-record payout as expense
-    SaccoFarmStore.addTransaction({
-      date: newBatch.date,
-      type: 'Expense',
-      source: 'Bank',
-      category: 'Coffee Outgrower Payout',
-      amount: totalPayout,
-      description: `Bought ${batch.bags} bags (${netKg}kg) ${batch.variety} from ${batch.farmerName} (${batch.district})`,
-      reference: batch.batchCode || `COF-LOT-${newBatch.id}`,
-      isBanked: true
-    });
-
-    return newBatch;
-  },
-
-  updateCoffeeBatchStatus: (id: string, status: CoffeePurchaseBatch['status']): boolean => {
-    const batches = SaccoFarmStore.getCoffeeBatches();
-    const b = batches.find(item => item.id === id);
-    if (!b) return false;
-    b.status = status;
-    SaccoFarmStore.saveCoffeeBatches(batches);
-    return true;
-  },
-
-
-  // Coffee Sales & Exports
-  getCoffeeSales: (): CoffeeSaleRecord[] => getStored<CoffeeSaleRecord[]>(STORAGE_KEYS.COFFEE_SALES, DEFAULT_COFFEE_SALES),
-  saveCoffeeSales: (sales: CoffeeSaleRecord[]) => setStored(STORAGE_KEYS.COFFEE_SALES, sales),
-
-  addCoffeeSale: (sale: Omit<CoffeeSaleRecord, 'id' | 'totalRevenue'>): CoffeeSaleRecord => {
-    const sales = SaccoFarmStore.getCoffeeSales();
-    const netKg = Number(sale.netWeightKg) || 0;
-    const priceKg = Number(sale.sellingPricePerKg) || 0;
-    const totalRevenue = netKg * priceKg;
-
-    const newSale: CoffeeSaleRecord = {
-      ...sale,
-      id: `CS-${Date.now().toString().slice(-5)}`,
-      totalRevenue
-    };
-    sales.unshift(newSale);
-    SaccoFarmStore.saveCoffeeSales(sales);
-
-    // Auto-record sale as Income transaction in SACCO core ledger
-    SaccoFarmStore.addTransaction({
-      date: newSale.date,
-      type: 'Income',
-      source: 'Bank',
-      category: 'Coffee Export & Trading Revenue',
-      amount: totalRevenue,
-      description: `Sold ${sale.bags} bags (${netKg}kg) ${sale.variety} to ${sale.buyerName} (${sale.destination})`,
-      reference: sale.contractRef || `CS-REV-${newSale.id}`,
-      isBanked: true
-    });
-
-    // Auto-decrement matching inventory
-    const inventory = SaccoFarmStore.getCoffeeInventory();
-    const invItem = inventory.find(i => i.variety === sale.variety);
-    if (invItem && invItem.totalKg >= netKg) {
-      invItem.totalKg -= netKg;
-      invItem.totalBags = Math.max(0, invItem.totalBags - Number(sale.bags));
-      invItem.lastInspectionDate = new Date().toISOString().split('T')[0];
-      SaccoFarmStore.saveCoffeeInventory(inventory);
-    }
-
-    return newSale;
-  },
-
-  // Coffee Inventory Management
-  getCoffeeInventory: (): CoffeeInventoryItem[] => getStored<CoffeeInventoryItem[]>(STORAGE_KEYS.COFFEE_INVENTORY, DEFAULT_COFFEE_INVENTORY),
-  saveCoffeeInventory: (inv: CoffeeInventoryItem[]) => setStored(STORAGE_KEYS.COFFEE_INVENTORY, inv),
-
-  updateCoffeeInventoryItem: (id: string, updates: Partial<CoffeeInventoryItem>): boolean => {
-    const inv = SaccoFarmStore.getCoffeeInventory();
-    const idx = inv.findIndex(i => i.id === id);
-    if (idx === -1) return false;
-    inv[idx] = { ...inv[idx], ...updates, lastInspectionDate: new Date().toISOString().split('T')[0] };
-    SaccoFarmStore.saveCoffeeInventory(inv);
-    return true;
-  },
-
-
-  adjustCoffeeStock: (id: string, deltaKg: number, deltaBags: number, reason: string): boolean => {
-    const inv = SaccoFarmStore.getCoffeeInventory();
-    const item = inv.find(i => i.id === id);
-    if (!item) return false;
-    item.totalKg = Math.max(0, item.totalKg + deltaKg);
-    item.totalBags = Math.max(0, item.totalBags + deltaBags);
-    item.lastInspectionDate = new Date().toISOString().split('T')[0];
-    SaccoFarmStore.saveCoffeeInventory(inv);
-    return true;
   },
 
 
@@ -2155,7 +3015,7 @@ export const SaccoFarmStore = {
     });
 
     const totalShares = members.reduce((sum, m) => sum + (Number(m.shares) || 0), 0);
-    const totalSharesValue = totalShares * 250000;
+    const totalSharesValue = totalShares * SaccoFarmStore.getShareParValue();
     const totalSavings = members.reduce((sum, m) => sum + (Number(m.savings) || 0), 0);
     const totalMemberDeposits = members.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
     const netBalance = moneyInBank + pettyCash;
@@ -2201,7 +3061,6 @@ export const SaccoFarmStore = {
     localStorage.setItem(STORAGE_KEYS.HEALTH, JSON.stringify(DEFAULT_HEALTH));
     localStorage.setItem(STORAGE_KEYS.BREEDING, JSON.stringify(DEFAULT_BREEDING));
     localStorage.setItem(STORAGE_KEYS.FEEDS, JSON.stringify(DEFAULT_FEEDS));
-    localStorage.setItem(STORAGE_KEYS.COFFEE, JSON.stringify(DEFAULT_COFFEE));
     window.dispatchEvent(new Event('dc_storage_update'));
   },
 
@@ -2315,3 +3174,87 @@ export const SaccoFarmStore = {
   }
 };
 
+
+// ── Audit every state-changing operation ─────────────────────────────────────
+// Wraps the store's mutating methods. Only the outermost call is logged, so an approval that
+// internally updates a member and posts a transaction appears once, as the approval.
+type Describer = (args: any[], result: any) => string;
+const ugxT = (n: any) => `UGX ${Number(n || 0).toLocaleString()}`;
+const AUDITED: Record<string, { entity: string; id?: (a: any[], r: any) => string | undefined; describe: Describer }> = {
+  addMember: { entity: 'Member', id: (_a, r) => r?.memberId, describe: (a) => `Registered member ${a[0]?.name}` },
+  updateMember: { entity: 'Member', id: (a) => a[0], describe: (a) => `Updated member ${a[0]}: ${Object.keys(a[1] || {}).join(', ')}` },
+  deleteMember: { entity: 'Member', id: (a) => a[0], describe: (a) => `Deleted member ${a[0]}` },
+  updateMonthlyContribution: { entity: 'Member', id: (a) => a[0], describe: (a) => `Set ${String(a[1]).toUpperCase()} contribution of ${a[0]} to ${ugxT(a[2])}` },
+  addShareConversionRequest: { entity: 'ShareConversion', id: (_a, r) => r?.request?.id, describe: (a) => `${a[0]?.memberName} requested conversion of savings into ${a[0]?.shareCount} share(s)` },
+  approveShareConversionRequest: { entity: 'ShareConversion', id: (a) => a[0], describe: (a, r) => `${a[1]} approval of share conversion ${a[0]}${r?.fullyApproved ? ' — shares credited' : ''}` },
+  rejectShareConversionRequest: { entity: 'ShareConversion', id: (a) => a[0], describe: (a) => `Rejected share conversion ${a[0]}: ${a[1] || ''}` },
+  applyMemberDeposit: { entity: 'Member', id: (a) => a[0]?.memberId, describe: (a) => `Posted ${a[0]?.purpose} deposit of ${ugxT(a[0]?.amount)} for ${a[0]?.memberId}` },
+  applyMemberWithdrawal: { entity: 'Member', id: (a) => a[0]?.memberId, describe: (a) => `Paid withdrawal of ${ugxT(a[0]?.amount)} to ${a[0]?.memberId}` },
+  submitPaymentRequest: { entity: 'PaymentRequest', id: (_a, r) => r?.request?.id, describe: (a) => `${a[0]?.memberId} submitted ${String(a[0]?.kind).toLowerCase()} (${a[0]?.purpose}) of ${ugxT(a[0]?.amount)}` },
+  verifyPaymentRequest: { entity: 'PaymentRequest', id: (a) => a[0], describe: (a) => `Verified payment request ${a[0]}` },
+  approvePaymentRequest: { entity: 'PaymentRequest', id: (a) => a[0], describe: (a) => `Approved payment request ${a[0]} and posted it` },
+  rejectPaymentRequest: { entity: 'PaymentRequest', id: (a) => a[0], describe: (a) => `Rejected payment request ${a[0]}: ${a[1] || ''}` },
+  activateApplication: { entity: 'Member', id: (a) => a[0]?.id, describe: (a) => `Membership application ${a[0]?.id} for ${a[0]?.fullName} approved — member created` },
+  submitKyc: { entity: 'KYC', id: (a) => a[0]?.memberId, describe: (a) => `${a[0]?.memberName} submitted KYC (${a[0]?.idType})` },
+  reviewKyc: { entity: 'KYC', id: (a) => a[0], describe: (a) => `KYC ${a[0]} marked ${a[1]}${a[3] ? `: ${a[3]}` : ''}` },
+  addInvestor: { entity: 'Investor', id: (_a, r) => r?.id, describe: (a) => `Added Money Maker investor ${a[0]?.name}` },
+  recordInvestorPayment: { entity: 'Investor', id: (a) => a[0], describe: (a) => `Investor ${a[0]} paid ${ugxT(a[1])}` },
+  addTransaction: { entity: 'Transaction', id: (_a, r) => r?.id, describe: (a) => `${a[0]?.type} ${ugxT(a[0]?.amount)} — ${a[0]?.category}` },
+  deleteTransaction: { entity: 'Transaction', id: (a) => a[0], describe: (a) => `Deleted transaction ${a[0]}` },
+  toggleBankedStatus: { entity: 'Transaction', id: (a) => a[0], describe: (a) => `Toggled banked status of ${a[0]}` },
+  bankAllAirtelTransactions: { entity: 'Transaction', describe: (_a, r) => `Marked ${r} unbanked income item(s) as banked` },
+  addCattle: { entity: 'Cow', id: (_a, r) => r?.tagNumber, describe: (a, r) => `Added ${a[0]?.name} (${r?.tagNumber}) to herd` },
+  updateCattle: { entity: 'Cow', id: (a) => a[0], describe: (a) => `Updated cow ${a[0]}: ${Object.keys(a[1] || {}).join(', ')}` },
+  deleteCattle: { entity: 'Cow', id: (a) => a[0], describe: (a) => `Removed cow ${a[0]} from herd` },
+  markCowSick: { entity: 'Cow', id: (a) => a[0], describe: (a) => `Marked cow ${a[0]} sick: ${a[1]?.illness}` },
+  markCowHealthy: { entity: 'Cow', id: (a) => a[0], describe: (a) => `Marked cow ${a[0]} healthy` },
+  addMilkLog: { entity: 'MilkLog', id: (_a, r) => r?.id, describe: (a) => `Daily milk log for ${a[0]?.date}` },
+  deleteMilkLog: { entity: 'MilkLog', id: (a) => a[0], describe: (a) => `Deleted milk log ${a[0]}` },
+  addCowMilkRecord: { entity: 'MilkRecord', id: (_a, r) => r?.id, describe: (a) => `${a[0]?.litres} L from ${a[0]?.cowName} (${a[0]?.cowTag}), ${a[0]?.session} ${a[0]?.date}` },
+  deleteCowMilkRecord: { entity: 'MilkRecord', id: (a) => a[0], describe: (a) => `Deleted milk record ${a[0]}` },
+  addLoan: { entity: 'Loan', id: (_a, r) => r?.loanNumber, describe: (a, r) => `Created loan ${r?.loanNumber} of ${ugxT(a[0]?.principal)} for ${a[0]?.memberName}` },
+  approveLoan: { entity: 'Loan', id: (a) => a[0], describe: (a) => `Approved loan ${a[0]}` },
+  recordLoanRepayment: { entity: 'Loan', id: (a) => a[0], describe: (a, r) => `Repayment ${ugxT(a[1])} on ${a[0]} (principal ${ugxT(r?.repaymentHistory?.[0]?.principalPortion)}, interest ${ugxT(r?.repaymentHistory?.[0]?.interestPortion)})` },
+  addHealthRecord: { entity: 'HealthRecord', id: (_a, r) => r?.id, describe: (a) => `${a[0]?.type} for ${a[0]?.animalName || a[0]?.tagNumber}: ${a[0]?.diagnosis}` },
+  deleteHealthRecord: { entity: 'HealthRecord', id: (a) => a[0], describe: (a) => `Deleted health record ${a[0]}` },
+  addBreedingRecord: { entity: 'Breeding', id: (_a, r) => r?.id, describe: (a) => `${a[0]?.type} for ${a[0]?.animalName}` },
+  deleteBreedingRecord: { entity: 'Breeding', id: (a) => a[0], describe: (a) => `Deleted breeding record ${a[0]}` },
+  logFeedConsumption: { entity: 'Feed', id: (a) => a[0], describe: (a) => `Used ${a[1]} of feed ${a[0]}` },
+  purchaseFeed: { entity: 'Feed', id: (a) => a[0], describe: (a) => `Bought ${a[1]} of feed ${a[0]} for ${ugxT(a[2])}` },
+  addFeedItem: { entity: 'Feed', id: (_a, r) => r?.id, describe: (a) => `Added feed ${a[0]?.feedType}` },
+  deleteFeedItem: { entity: 'Feed', id: (a) => a[0], describe: (a) => `Deleted feed ${a[0]}` },
+  recordFeedUsage: { entity: 'Feed', id: (a) => a[0], describe: (a) => `Used ${a[1]} of feed ${a[0]}` },
+  setShareParValue: { entity: 'Settings', describe: (a) => `Share par value set to ${ugxT(a[0])}` },
+  saveStaffUser: { entity: 'Staff', id: (_a, r) => r?.email, describe: (a) => `Saved staff ${a[0]?.name} (${a[0]?.role})` },
+  saveTaskAssignment: { entity: 'Task', id: (a) => a[0], describe: (a) => `Assigned task ${a[0]} to ${(a[1] || []).join(', ') || 'nobody'}` },
+  recordManualIncome: { entity: 'Transaction', id: (a) => a[0]?.memberId, describe: (a) => `Manual income (${a[0]?.type}) ${ugxT(a[0]?.amount)}${a[0]?.memberId ? ` for ${a[0].memberId}` : ''} dated ${a[0]?.date}` },
+  closePeriod: { entity: 'Period', id: (a) => a[0], describe: (a) => `Closed month ${a[0]}` },
+  reopenPeriod: { entity: 'Period', id: (a) => a[0], describe: (a) => `Reopened month ${a[0]}: ${a[1]}` },
+  declareDividend: { entity: 'Dividend', id: (a) => String(a[0]?.year), describe: (a) => `Declared ${a[0]?.year} dividend (reserve ${a[0]?.reservePct}%, payout ${a[0]?.payoutPct}%)` },
+  payDividend: { entity: 'Dividend', id: (a) => a[0], describe: (a) => `Paid dividend ${a[0]} into member savings` },
+  saveSmsSettings: { entity: 'Settings', describe: () => 'Updated SMS alert settings' },
+  resetAll: { entity: 'System', describe: () => 'Reset all data to demo defaults' },
+};
+
+let auditDepth = 0;
+const isFailure = (r: any) => r === null || r === false || (r && typeof r === 'object' && r.success === false);
+Object.entries(AUDITED).forEach(([name, meta]) => {
+  const store = SaccoFarmStore as any;
+  const original = store[name];
+  if (typeof original !== 'function') return;
+  store[name] = (...args: any[]) => {
+    auditDepth++;
+    let result: any;
+    try {
+      result = original(...args);
+    } finally {
+      auditDepth--;
+    }
+    if (auditDepth === 0 && !isFailure(result)) {
+      try {
+        SaccoFarmStore.audit(name, meta.entity, meta.id?.(args, result), meta.describe(args, result), args);
+      } catch {}
+    }
+    return result;
+  };
+});

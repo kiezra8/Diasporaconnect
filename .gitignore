@@ -4,3 +4,9 @@ dist-ssr
 *.local
 .DS_Store
 
+
+# secrets — never commit
+.env
+.env.production
+.env.*.local
+backend/.env

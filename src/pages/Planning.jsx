@@ -217,11 +217,6 @@ export default function Planning() {
     };
   });
 
-  const radius = 68;
-  const strokeWidth = 24;
-  const circumference = 2 * Math.PI * radius;
-  let cumulativePct = 0;
-
   // Expenses Calculations
   const todayStr = new Date().toISOString().split('T')[0];
   const now = new Date();
@@ -362,82 +357,24 @@ export default function Planning() {
               </div>
             </div>
 
-            {/* Donut Circle Representation & Action Bar */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center relative">
-              <div className="w-full flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                    Goals Allocation Circle
-                  </span>
-                  <span className="text-xs font-mono font-bold text-emerald-600">({totalAllocatedPct}%)</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAddGoal(!showAddGoal)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Goal</span>
-                </button>
+            {/* Goal Action Bar */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block">
+                  Saving Goals ({goals.length})
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Plan your savings targets and track progress towards your financial milestones
+                </span>
               </div>
-
-              {/* Donut Circle */}
-              <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center my-2">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 180 180">
-                  <circle
-                    cx="90"
-                    cy="90"
-                    r={radius}
-                    fill="transparent"
-                    stroke="currentColor"
-                    strokeWidth={strokeWidth}
-                    className="text-slate-100 dark:text-slate-800"
-                  />
-                  {normalizedGoals.map((g) => {
-                    const strokeDasharray = `${(g.effectivePct / 100) * circumference} ${circumference}`;
-                    const strokeDashoffset = -((cumulativePct / 100) * circumference);
-                    cumulativePct += g.effectivePct;
-                    return (
-                      <circle
-                        key={g.id}
-                        cx="90"
-                        cy="90"
-                        r={radius}
-                        fill="transparent"
-                        stroke={g.color}
-                        strokeWidth={strokeWidth}
-                        strokeDasharray={strokeDasharray}
-                        strokeDashoffset={strokeDashoffset}
-                        className="transition-all duration-300"
-                      />
-                    );
-                  })}
-                </svg>
-
-                {/* Donut Center */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    {allocationMode === 'deposit' ? 'Monthly' : 'Balance'}
-                  </span>
-                  <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-mono leading-tight">
-                    UGX {(activeBaseCapital / 1000).toLocaleString()}k
-                  </span>
-                  <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">
-                    Distributed
-                  </span>
-                </div>
-              </div>
-
-              {/* Color legend pills */}
-              <div className="flex flex-wrap items-center justify-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 w-full text-xs">
-                {normalizedGoals.map((g) => (
-                  <div key={g.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[11px] font-bold">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
-                    <span className="text-slate-800 dark:text-slate-200">{g.title}</span>
-                    <span className="text-slate-400 font-mono font-semibold">{g.allocatedPct}%</span>
-                  </div>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddGoal(!showAddGoal)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Goal</span>
+              </button>
             </div>
 
             {/* Add Goal Form (Conditional) */}

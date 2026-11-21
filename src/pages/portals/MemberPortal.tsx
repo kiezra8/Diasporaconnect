@@ -8,8 +8,13 @@ import {
   SaccoFarmStore,
   SaccoMember,
   PettyCashTransaction,
+  ShareConversionRequest,
+  MemberPaymentRequest,
+  MonthKey,
   getMemberPhoto
 } from '../../services/saccoFarmStore';
+import MemberKycPanel from '../../components/kyc/MemberKycPanel';
+import { database } from '../../services/database';
 import {
   LayoutDashboard,
   Search,
@@ -27,6 +32,7 @@ import {
   Menu,
   X,
   Coins,
+  Repeat,
   Printer,
   ChevronRight,
   Award,
@@ -65,11 +71,12 @@ export default function MemberPortal() {
   };
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'overview' | 'shares' | 'statement' | 'deposit' | 'withdraw' | 'planning' | 'chat' | 'settings'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'shares' | 'statement' | 'deposit' | 'withdraw' | 'kyc' | 'planning' | 'chat' | 'settings'>(() => {
     try {
       const p = new URLSearchParams(window.location.search).get('tab');
       if (p === 'planning') return 'planning';
       if (p === 'settings') return 'settings';
+      if (p === 'kyc') return 'kyc';
     } catch {}
     return 'overview';
   });
@@ -82,6 +89,12 @@ export default function MemberPortal() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showBuySharesChoiceModal, setShowBuySharesChoiceModal] = useState(false);
+  const [showConvertSavingsModal, setShowConvertSavingsModal] = useState(false);
+  const [convertShareCount, setConvertShareCount] = useState(1);
+  const [shareConversionRequests, setShareConversionRequests] = useState<ShareConversionRequest[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<MemberPaymentRequest[]>([]);
+  const [kycStatus, setKycStatus] = useState<string>('NOT_SUBMITTED');
 
   // Edit Profile Form State
   const [editName, setEditName] = useState('');
@@ -109,8 +122,12 @@ export default function MemberPortal() {
 
   // Deposit Form
   const [depositAmount, setDepositAmount] = useState('1000000');
-  const [depositMethod, setDepositMethod] = useState<'MTN Mobile Money' | 'Airtel Money' | 'Stanbic Bank Wire' | 'ABSA Bank Wire'>('MTN Mobile Money');
+  const [depositMethod, setDepositMethod] = useState<'MTN Mobile Money' | 'Airtel Money' | 'Bank Wire'>('MTN Mobile Money');
   const [depositRef, setDepositRef] = useState('');
+  // Mobile money "pay now" (MTN MoMo / Airtel Money prompt on the member's phone)
+  const [momoPhone, setMomoPhone] = useState('');
+  const [momoState, setMomoState] = useState<'idle' | 'pending' | 'success' | 'failed'>('idle');
+  const [momoMsg, setMomoMsg] = useState('');
   const [depositNotes, setDepositNotes] = useState('');
   const [depositPurpose, setDepositPurpose] = useState<'savings' | 'shares' | 'welfare' | 'project' | 'other'>('savings');
   const [depositMonthTarget, setDepositMonthTarget] = useState<string>('nov');
@@ -144,6 +161,8 @@ export default function MemberPortal() {
     const mems = SaccoFarmStore.getMembers();
     setMembers(mems);
     setTransactions(SaccoFarmStore.getTransactions());
+    setShareConversionRequests(SaccoFarmStore.getShareConversionRequests());
+    setPaymentRequests(SaccoFarmStore.getPaymentRequests());
   };
 
   useEffect(() => {
@@ -210,6 +229,10 @@ export default function MemberPortal() {
     } catch {}
     return '';
   };
+
+  useEffect(() => {
+    setKycStatus(SaccoFarmStore.getKycStatus(currentMember.memberId));
+  }, [currentMember.memberId, members, transactions, paymentRequests]);
 
   const memberPhoto = (session as any)?.photoUrl || getRegisteredPhoto() || currentMember.avatar || getMemberPhoto(currentMember.name);
 
@@ -329,100 +352,63 @@ export default function MemberPortal() {
     }
   };
 
-  // Submit Deposit Request (With Explicit Deposit Purpose)
+  // Pay now: the SACCO server sends a payment prompt to the phone; once the member enters their PIN the
+  // provider confirms the money and the request goes straight to the Admin (no manual reference needed)
+  const handlePayNow = async () => {
+    const amt = Number(depositAmount);
+    if (!amt || amt < 500) { setMomoState('failed'); setMomoMsg('Enter the amount first (minimum UGX 500).'); return; }
+    const phone = momoPhone || currentMember.phone;
+    setMomoState('pending');
+    setMomoMsg('Sending the payment prompt to your phone…');
+    try {
+      const started = await database.startMobileMoney({
+        provider: depositMethod === 'Airtel Money' ? 'AIRTEL' : 'MTN',
+        phone, amount: amt, memberId: currentMember.memberId, purpose: depositPurpose,
+        month: depositPurpose === 'savings' ? depositMonthTarget : undefined,
+        otherLabel: depositPurpose === 'other' ? depositOtherPurpose : undefined,
+      });
+      setMomoMsg(started.message || 'Check your phone and enter your Mobile Money PIN to approve.');
+      for (let i = 0; i < 30; i++) {
+        await new Promise(res => setTimeout(res, 5000));
+        const s = await database.checkMobileMoney(started.id);
+        if (s.status === 'SUCCESSFUL') {
+          setMomoState('success');
+          setMomoMsg(`Payment received. Request ${s.requestId || ''} is with the Admin for approval — you will get an SMS.`);
+          reloadData();
+          return;
+        }
+        if (s.status === 'FAILED') { setMomoState('failed'); setMomoMsg(s.reason || 'The payment was declined or cancelled.'); return; }
+      }
+      setMomoState('failed');
+      setMomoMsg('No confirmation yet. If money left your account, it will appear once the provider confirms it.');
+    } catch (err: any) {
+      setMomoState('failed');
+      setMomoMsg(err.message || 'Mobile money is unavailable right now.');
+    }
+  };
+
+  // Submit Deposit Request — recorded as PENDING; savings / shares change only after
+  // the Accountant verifies and the Admin approves (same shared store as every portal)
   const handleDepositSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = Number(depositAmount);
     if (!amt || amt <= 0) return;
-
-    if (depositPurpose === 'shares') {
-      const sharesPurchased = Math.max(1, Math.floor(amt / 250000));
-      const currentShares = Number(currentMember.shares) || 0;
-      const newShares = currentShares + sharesPurchased;
-      
-      SaccoFarmStore.updateMember(currentMember.id, {
-        shares: newShares,
-        sharesValue: newShares * 250000,
-        total: (Number(currentMember.total) || 0) + amt
-      });
-
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Income',
-        source: depositMethod.includes('Bank') ? 'Bank' : 'Petty Cash',
-        category: `Share Capital Purchase: ${currentMember.name} (${currentMember.memberId})`,
-        amount: amt,
-        description: `Purchased ${sharesPurchased} Class A Shares (@ UGX 250k each) via ${depositMethod}. Ref: ${depositRef || 'Pending Ref'}. ${depositNotes}`,
-        reference: depositRef || `SHR-${Date.now().toString().slice(-6)}`,
-        isBanked: depositMethod.includes('Bank')
-      });
-      notify(`Deposit for ${sharesPurchased} Share(s) (UGX ${amt.toLocaleString()}) submitted successfully.`);
-    } else if (depositPurpose === 'savings') {
-      const targetMonthKey = (depositMonthTarget || 'nov') as keyof SaccoMember;
-      const monthFullName = MONTH_FULL_NAMES[depositMonthTarget] || 'November';
-      const currentVal = Number(currentMember[targetMonthKey]) || 0;
-      SaccoFarmStore.updateMonthlyContribution(currentMember.id, targetMonthKey, currentVal + amt);
-
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Income',
-        source: depositMethod.includes('Bank') ? 'Bank' : 'Petty Cash',
-        category: `Member Savings: ${currentMember.name} (${currentMember.memberId})`,
-        amount: amt,
-        description: `Monthly savings for ${monthFullName} via ${depositMethod}. Ref: ${depositRef || 'Pending Ref'}. ${depositNotes}`,
-        reference: depositRef || `MOM-${Date.now().toString().slice(-6)}`,
-        isBanked: depositMethod.includes('Bank')
-      });
-      notify(`Deposit of UGX ${amt.toLocaleString()} recorded for ${monthFullName} Savings.`);
-    } else if (depositPurpose === 'welfare') {
-      SaccoFarmStore.updateMember(currentMember.id, {
-        total: (Number(currentMember.total) || 0) + amt
-      });
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Income',
-        source: depositMethod.includes('Bank') ? 'Bank' : 'Petty Cash',
-        category: `Welfare & Emergency Fund: ${currentMember.name} (${currentMember.memberId})`,
-        amount: amt,
-        description: `Welfare fund contribution via ${depositMethod}. Ref: ${depositRef || 'Pending Ref'}. ${depositNotes}`,
-        reference: depositRef || `WLF-${Date.now().toString().slice(-6)}`,
-        isBanked: depositMethod.includes('Bank')
-      });
-      notify(`Deposit of UGX ${amt.toLocaleString()} recorded for Welfare & Emergency Fund.`);
-    } else if (depositPurpose === 'project') {
-      SaccoFarmStore.updateMember(currentMember.id, {
-        total: (Number(currentMember.total) || 0) + amt
-      });
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Income',
-        source: depositMethod.includes('Bank') ? 'Bank' : 'Petty Cash',
-        category: `Special Farm Project: ${currentMember.name} (${currentMember.memberId})`,
-        amount: amt,
-        description: `Farm development contribution via ${depositMethod}. Ref: ${depositRef || 'Pending Ref'}. ${depositNotes}`,
-        reference: depositRef || `PRJ-${Date.now().toString().slice(-6)}`,
-        isBanked: depositMethod.includes('Bank')
-      });
-      notify(`Deposit of UGX ${amt.toLocaleString()} recorded for Special Farm Development.`);
-    } else {
-      const customPurpose = depositOtherPurpose || 'Other Special Deposit';
-      SaccoFarmStore.updateMember(currentMember.id, {
-        total: (Number(currentMember.total) || 0) + amt,
-        savings: (Number(currentMember.savings) || 0) + amt
-      });
-      SaccoFarmStore.addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Income',
-        source: depositMethod.includes('Bank') ? 'Bank' : 'Petty Cash',
-        category: `${customPurpose}: ${currentMember.name} (${currentMember.memberId})`,
-        amount: amt,
-        description: `Deposit for ${customPurpose} via ${depositMethod}. Ref: ${depositRef || 'Pending Ref'}. ${depositNotes}`,
-        reference: depositRef || `OTH-${Date.now().toString().slice(-6)}`,
-        isBanked: depositMethod.includes('Bank')
-      });
-      notify(`Deposit of UGX ${amt.toLocaleString()} recorded for "${customPurpose}".`);
+    const res = SaccoFarmStore.submitPaymentRequest({
+      memberId: currentMember.memberId,
+      kind: 'DEPOSIT',
+      purpose: depositPurpose,
+      amount: amt,
+      method: depositMethod,
+      reference: depositRef || undefined,
+      month: depositPurpose === 'savings' ? (depositMonthTarget as MonthKey) : undefined,
+      otherLabel: depositPurpose === 'other' ? (depositOtherPurpose || 'Other Special Deposit') : undefined,
+      notes: depositNotes || undefined,
+    });
+    if (!res.success) {
+      notify(res.msg);
+      return;
     }
-
+    notify(res.msg);
     setShowDepositModal(false);
     setDepositRef('');
     setDepositNotes('');
@@ -564,7 +550,7 @@ export default function MemberPortal() {
     setTimeout(() => w.print(), 300);
   };
 
-  // Submit Withdrawal Request
+  // Submit Withdrawal Request — goes to the Accountant / Admin queue; savings are deducted on approval
   const handleWithdrawSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = Number(withdrawAmount);
@@ -572,37 +558,33 @@ export default function MemberPortal() {
       alert('Please enter a valid withdrawal amount.');
       return;
     }
-    if (amt > currentMember.withdrawable) {
-      alert(`Withdrawal amount exceeds your available withdrawable balance of UGX ${currentMember.withdrawable.toLocaleString()}.`);
+    if (SaccoFarmStore.getKycStatus(currentMember.memberId) !== 'VERIFIED') {
+      alert('Please complete "Verify My Identity (KYC)" before requesting a withdrawal.');
+      setShowWithdrawModal(false);
+      setActiveTab('kyc');
       return;
     }
-
-    SaccoFarmStore.addTransaction({
-      date: new Date().toISOString().split('T')[0],
-      type: 'Expense',
-      source: 'Petty Cash',
-      category: `Member Withdrawal: ${currentMember.name} (${currentMember.memberId})`,
+    const res = SaccoFarmStore.submitPaymentRequest({
+      memberId: currentMember.memberId,
+      kind: 'WITHDRAWAL',
+      purpose: 'savings',
       amount: amt,
-      description: `Withdrawal request for ${currentMember.name} to ${withdrawDestination}. Reason: ${withdrawReason}.`,
-      reference: `WTH-${Date.now().toString().slice(-6)}`,
-      isBanked: false
+      method: withdrawDestination,
+      destination: withdrawDestination,
+      notes: `Reason: ${withdrawReason}`,
     });
-
+    if (!res.success) {
+      alert(res.msg);
+      return;
+    }
     setShowWithdrawModal(false);
-    notify(`Withdrawal request of UGX ${amt.toLocaleString()} submitted.`);
+    notify(res.msg);
+    reloadData();
   };
 
-  // Convert Savings to Shares
+  // Buy Shares Choice Handler
   const handleConvertShares = () => {
-    const sharesToBuy = 2; // UGX 500,000
-    if (currentMember.savings < sharesToBuy * 250000) {
-      alert('Insufficient savings balance to purchase additional cooperative shares.');
-      return;
-    }
-    if (confirm(`Confirm purchase of ${sharesToBuy} shares @ UGX 250,000 each (Total: UGX ${(sharesToBuy * 250000).toLocaleString()})?`)) {
-      SaccoFarmStore.convertSavingsToShares(currentMember.id, sharesToBuy);
-      notify(`Successfully purchased ${sharesToBuy} cooperative shares.`);
-    }
+    setShowBuySharesChoiceModal(true);
   };
 
   // Support AI Assistant
@@ -630,7 +612,7 @@ export default function MemberPortal() {
           ...prev,
           {
             sender: 'assistant',
-            text: `Under SACCO bylaws, each ordinary share carries a nominal value of UGX 250,000. Deposits via MTN MoMo, Airtel Money, or Stanbic bank wires are credited upon verification. For assistance, contact the secretariat at +256 772 100 200.`,
+            text: `Under SACCO bylaws, each ordinary share carries a nominal value of UGX 250,000. Deposits via MTN MoMo, Airtel Money, or Bank wire are credited upon verification. For assistance, contact the secretariat at +256 772 100 200.`,
             source: 'SACCO Bylaws Article 14'
           }
         ]);
@@ -779,6 +761,23 @@ export default function MemberPortal() {
             >
               <ArrowUpRight className="w-4 h-4 shrink-0 text-rose-600" />
               <span>Withdrawal Request</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('kyc'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'kyc'
+                  ? 'bg-emerald-600 text-white shadow-md font-bold'
+                  : isDark ? 'text-slate-300 hover:text-white hover:bg-slate-800/60' : 'text-slate-900 font-bold hover:text-emerald-700 hover:bg-slate-100'
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-500" />
+                <span>Verify Identity (KYC)</span>
+              </span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${kycStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : kycStatus === 'PENDING' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300' : 'bg-rose-500/20 text-rose-600 dark:text-rose-300'}`}>
+                {kycStatus === 'VERIFIED' ? 'VERIFIED' : kycStatus === 'PENDING' ? 'REVIEW' : kycStatus === 'REJECTED' ? 'REDO' : 'TO DO'}
+              </span>
             </button>
 
             <button
@@ -1064,36 +1063,6 @@ export default function MemberPortal() {
                   })}
                 </div>
               </div>
-
-              {/* Quick Actions & Policy Highlights */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-xs">
-                    <Award className="w-4 h-4" /> Share Capital Rights
-                  </div>
-                  <p className="text-xs text-slate-800 dark:text-slate-300 font-semibold leading-relaxed">
-                    Each share is nominal UGX 250,000. Members holding 10+ shares participate in AGM voting and receive annual dividend surpluses.
-                  </p>
-                  <button
-                    onClick={handleConvertShares}
-                    className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-bold flex items-center gap-1 pt-1"
-                  >
-                    Convert Savings to Shares &rarr;
-                  </button>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-xs">
-                    <ShieldCheck className="w-4 h-4" /> Dual-Control Protection
-                  </div>
-                  <p className="text-xs text-slate-800 dark:text-slate-300 font-semibold leading-relaxed">
-                    All deposits and payouts require verified payment evidence by the Accountant and final authorization by the Administrator.
-                  </p>
-                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono font-bold">
-                    Audited and Verified
-                  </span>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1127,7 +1096,7 @@ export default function MemberPortal() {
                   <div className="text-3xl font-black text-slate-900 dark:text-white font-mono mt-1">
                     {currentMember.shares} <span className="text-sm font-normal text-slate-700 dark:text-slate-300 font-bold">Shares</span>
                   </div>
-                  <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-1">Class A Voting Equity</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold mt-1">Ordinary Shares</p>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 rounded-2xl p-5 shadow-sm">
@@ -1147,38 +1116,135 @@ export default function MemberPortal() {
                 </div>
               </div>
 
-              {/* Share Breakdown Table */}
+              {/* Share Purchase Requests Tracker */}
+              {shareConversionRequests.filter(r => r.memberId === currentMember.memberId).length > 0 && (
+                <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 rounded-2xl p-5 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                        <Repeat className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Share Purchase Requests
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Status of your requests to convert savings into shares
+                      </p>
+                    </div>
+                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">
+                      {shareConversionRequests.filter(r => r.memberId === currentMember.memberId && r.status === 'PENDING').length} Pending
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
+                        <tr><th className="p-3 w-10">#</th>
+                          <th className="p-3">Ref ID</th>
+                          <th className="p-3">Date</th>
+                          <th className="p-3">Shares</th>
+                          <th className="p-3 text-right">Amount (UGX)</th>
+                          <th className="p-3 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+                        {shareConversionRequests.filter(r => r.memberId === currentMember.memberId).map((req, __n) => (
+                          <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
+                            <td className="p-3 font-bold text-emerald-700 dark:text-emerald-400">{req.id}</td>
+                            <td className="p-3 font-sans text-slate-600 dark:text-slate-400">{req.date}</td>
+                            <td className="p-3 font-bold text-slate-900 dark:text-white font-sans">{req.shareCount} Shares</td>
+                            <td className="p-3 text-right font-extrabold text-slate-900 dark:text-white">{req.amount.toLocaleString()}</td>
+                            <td className="p-3 text-center font-sans">
+                              {req.status === 'APPROVED' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                                  <Check className="w-3 h-3" /> Approved
+                                </span>
+                              ) : req.status === 'REJECTED' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 text-[10px] font-bold">
+                                  Rejected
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                                  Pending Approval
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Share Statement Down on Shares Page */}
               <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 rounded-2xl p-5 shadow-sm space-y-4">
-                <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">Share Allotment Schedule</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">Share Purchases & Statement</h4>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Total: {currentMember.shares} Shares (UGX {(currentMember.shares * 250000).toLocaleString()})</span>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                      <tr>
+                      <tr><th className="p-3 w-10">#</th>
                         <th className="p-3">Reference</th>
                         <th className="p-3">Date</th>
-                        <th className="p-3">Class</th>
-                        <th className="p-3 text-right">Units</th>
-                        <th className="p-3 text-right">Par Value</th>
-                        <th className="p-3 text-right">Total</th>
+                        <th className="p-3">Description</th>
+                        <th className="p-3 text-right">Shares</th>
+                        <th className="p-3 text-right">Price</th>
+                        <th className="p-3 text-right">Total (UGX)</th>
                         <th className="p-3 text-center">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                      <tr>
-                        <td className="p-3 font-mono text-purple-700 dark:text-purple-300 font-bold">ALLOT-2024-001</td>
-                        <td className="p-3 text-slate-900 dark:text-slate-200 font-bold">{currentMember.joinDate}</td>
-                        <td className="p-3 text-slate-800 dark:text-slate-200 font-semibold">Class A Voting Equity</td>
-                        <td className="p-3 text-right font-mono font-black text-slate-900 dark:text-white">{currentMember.shares}</td>
-                        <td className="p-3 text-right font-mono text-slate-800 dark:text-slate-300 font-bold">UGX 250,000</td>
-                        <td className="p-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400">
-                          UGX {(currentMember.shares * 250000).toLocaleString()}
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
+                      <tr><td />
+                        <td className="p-3 text-emerald-700 dark:text-emerald-400 font-bold">ALLOT-2024-001</td>
+                        <td className="p-3 text-slate-900 dark:text-slate-200 font-sans font-bold">{currentMember.joinDate}</td>
+                        <td className="p-3 text-slate-800 dark:text-slate-200 font-sans font-semibold">Initial Share Allotment</td>
+                        <td className="p-3 text-right font-black text-slate-900 dark:text-white">
+                          {Math.max(1, currentMember.shares - shareConversionRequests.filter(r => r.memberId === currentMember.memberId && r.status === 'APPROVED').reduce((s, r) => s + r.shareCount, 0))}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX 250,000</td>
+                        <td className="p-3 text-right font-black text-emerald-700 dark:text-emerald-400">
+                          UGX {(Math.max(1, currentMember.shares - shareConversionRequests.filter(r => r.memberId === currentMember.memberId && r.status === 'APPROVED').reduce((s, r) => s + r.shareCount, 0)) * 250000).toLocaleString()}
+                        </td>
+                        <td className="p-3 text-center font-sans">
                           <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 text-[10px] font-bold">
                             Active
                           </span>
                         </td>
                       </tr>
+                      {shareConversionRequests.filter(r => r.memberId === currentMember.memberId && r.status === 'APPROVED').map((req, __n) => (
+                        <tr key={req.id}><td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
+                          <td className="p-3 text-emerald-700 dark:text-emerald-400 font-bold">{req.id}</td>
+                          <td className="p-3 text-slate-900 dark:text-slate-200 font-sans font-bold">{req.date}</td>
+                          <td className="p-3 text-slate-800 dark:text-slate-200 font-sans font-semibold">Savings Conversion ({req.shareCount} Shares)</td>
+                          <td className="p-3 text-right font-black text-slate-900 dark:text-white">{req.shareCount}</td>
+                          <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX 250,000</td>
+                          <td className="p-3 text-right font-black text-emerald-700 dark:text-emerald-400">
+                            UGX {req.amount.toLocaleString()}
+                          </td>
+                          <td className="p-3 text-center font-sans">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 text-[10px] font-bold">
+                              Approved
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {transactions.filter(tx => tx.category?.includes('Share Capital Purchase') && (tx.category?.includes(currentMember.name) || tx.description?.includes(currentMember.memberId))).map(tx => (
+                        <tr key={tx.id}><td />
+                          <td className="p-3 text-emerald-700 dark:text-emerald-400 font-bold">{tx.reference || tx.id}</td>
+                          <td className="p-3 text-slate-900 dark:text-slate-200 font-sans font-bold">{tx.date}</td>
+                          <td className="p-3 text-slate-800 dark:text-slate-200 font-sans font-semibold">Direct Deposit Purchase</td>
+                          <td className="p-3 text-right font-black text-slate-900 dark:text-white">{Math.floor(tx.amount / 250000)}</td>
+                          <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX 250,000</td>
+                          <td className="p-3 text-right font-black text-emerald-700 dark:text-emerald-400">
+                            UGX {tx.amount.toLocaleString()}
+                          </td>
+                          <td className="p-3 text-center font-sans">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 text-[10px] font-bold">
+                              Completed
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1227,7 +1293,7 @@ export default function MemberPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                      <tr>
+                      <tr><th className="p-2.5 w-10">#</th>
                         <th className="p-2.5">Month</th>
                         <th className="p-2.5 text-right">Contributed</th>
                         <th className="p-2.5 text-right">Admin Deduction</th>
@@ -1249,7 +1315,7 @@ export default function MemberPortal() {
                         { m: 'October', key: 'oct' as const, val: currentMember.oct, fee: 0, idx: 9 },
                         { m: 'November', key: 'nov' as const, val: currentMember.nov, fee: 0, idx: 10 },
                         { m: 'December', key: 'dec' as const, val: currentMember.dec, fee: 0, idx: 11 },
-                      ].map((row) => (
+                      ].map((row, __n) => (
                         <tr
                           key={row.key}
                           onClick={() => setSelectedMonthStatement({
@@ -1261,7 +1327,7 @@ export default function MemberPortal() {
                           })}
                           className="hover:bg-emerald-50/60 dark:hover:bg-slate-800/50 cursor-pointer transition"
                           title="Click to view detailed month statement"
-                        >
+                        ><td className="p-2.5 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                           <td className="p-2.5 font-sans font-bold text-slate-900 dark:text-slate-200 flex items-center justify-between">
                             <span>{row.m}</span>
                             <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold underline">View Statement &rarr;</span>
@@ -1286,8 +1352,13 @@ export default function MemberPortal() {
                 <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">Recent Transactions</h4>
                 <div className="space-y-2">
                   {transactions
-                    .filter(tx => tx.category.includes(currentMember.name) || tx.description.includes(currentMember.name) || tx.type === 'Income')
-                    .slice(0, 5)
+                    .filter(tx =>
+                      tx.category?.includes(currentMember.name) ||
+                      tx.description?.includes(currentMember.name) ||
+                      tx.category?.includes(currentMember.memberId) ||
+                      tx.description?.includes(currentMember.memberId)
+                    )
+                    .slice(0, 20)
                     .map(tx => (
                       <div key={tx.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
                         <div>
@@ -1325,7 +1396,7 @@ export default function MemberPortal() {
                   <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-900 dark:text-slate-200 font-bold">
                     <li><strong className="text-emerald-800 dark:text-emerald-300">MTN Merchant MoMoPay:</strong> 784102 (Diaspora Connect SACCO Ltd)</li>
                     <li><strong className="text-emerald-800 dark:text-emerald-300">Airtel Money Pay:</strong> 6100234 (Diaspora Connect Farmers)</li>
-                    <li><strong className="text-emerald-800 dark:text-emerald-300">Stanbic Bank Uganda:</strong> Account #9030018492019</li>
+                    <li><strong className="text-emerald-800 dark:text-emerald-300">Bank Wire / Transfer:</strong> Account #9030018492019</li>
                   </ul>
                 </div>
 
@@ -1356,7 +1427,7 @@ export default function MemberPortal() {
                         type="button"
                         onClick={() => {
                           setDepositPurpose('shares');
-                          if (Number(depositAmount) < 250000) setDepositAmount('500000');
+                          if (Number(depositAmount) < 250000) setDepositAmount('250000');
                         }}
                         className={`p-3 rounded-xl border-2 text-left transition flex items-start gap-2.5 ${
                           depositPurpose === 'shares'
@@ -1366,8 +1437,8 @@ export default function MemberPortal() {
                       >
                         <ShieldCheck className={`w-4 h-4 shrink-0 mt-0.5 ${depositPurpose === 'shares' ? 'text-purple-600' : 'text-slate-500'}`} />
                         <div>
-                          <p className="text-xs font-bold leading-tight">Buying Shares / Share Capital</p>
-                          <p className="text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">UGX 250,000 / share (Voting Equity)</p>
+                          <p className="text-xs font-bold leading-tight">Buy Shares</p>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">UGX 250,000 per share</p>
                         </div>
                       </button>
 
@@ -1405,63 +1476,82 @@ export default function MemberPortal() {
                     </div>
                   </div>
 
-                  {/* Dynamic Assistance based on Deposit Purpose */}
-                  {depositPurpose === 'shares' && (
-                    <div className="p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-purple-900 dark:text-purple-300">Share Capital Calculation:</span>
-                        <span className="font-mono font-black text-purple-700 dark:text-purple-400">
-                          {Math.floor(Number(depositAmount || 0) / 250000)} Shares @ UGX 250,000 each
+                  {depositPurpose === 'shares' ? (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-slate-900 dark:text-slate-200 mb-1">Number of Shares to Buy *</label>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000));
+                            if (cur > 1) setDepositAmount(String((cur - 1) * 250000));
+                          }}
+                          className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg flex items-center justify-center transition cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <div className="flex-1 relative">
+                          <input
+                            type="number"
+                            min={1}
+                            value={Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000))}
+                            onChange={(e) => {
+                              const count = Math.max(1, parseInt(e.target.value) || 1);
+                              setDepositAmount(String(count * 250000));
+                            }}
+                            className="w-full text-center px-4 py-2.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono font-extrabold text-lg focus:outline-none focus:border-emerald-500"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Shares</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000));
+                            setDepositAmount(String((cur + 1) * 250000));
+                          }}
+                          className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg flex items-center justify-center transition cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-700 dark:text-slate-300">Total Cost (UGX 250,000 / share):</span>
+                        <span className="font-mono font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
+                          UGX {(Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000)) * 250000).toLocaleString()}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          { label: '1 Share (250k)', val: '250000' },
-                          { label: '2 Shares (500k)', val: '500000' },
-                          { label: '4 Shares (1.0M)', val: '1000000' },
-                          { label: '8 Shares (2.0M)', val: '2000000' },
-                          { label: '12 Shares (3.0M)', val: '3000000' },
-                        ].map(preset => (
-                          <button
-                            key={preset.val}
-                            type="button"
-                            onClick={() => setDepositAmount(preset.val)}
-                            className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 text-[11px] font-bold text-purple-800 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition"
+                    </div>
+                  ) : (
+                    <>
+                      {depositPurpose === 'savings' && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-900 dark:text-slate-200 mb-1">Target Savings Month *</label>
+                          <select
+                            value={depositMonthTarget}
+                            onChange={(e) => setDepositMonthTarget(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:border-emerald-500"
                           >
-                            {preset.label}
-                          </button>
-                        ))}
+                            {MONTH_KEYS.map(k => (
+                              <option key={k} value={k}>{MONTH_FULL_NAMES[k]} 2026</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-900 dark:text-slate-200 mb-1">Deposit Amount (UGX) *</label>
+                        <input
+                          type="number"
+                          required
+                          min="10000"
+                          step="10000"
+                          value={depositAmount}
+                          onChange={(e) => setDepositAmount(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-base font-bold focus:outline-none focus:border-emerald-500"
+                        />
                       </div>
-                    </div>
+                    </>
                   )}
-
-                  {depositPurpose === 'savings' && (
-                    <div>
-                      <label className="block text-xs font-bold text-slate-900 dark:text-slate-200 mb-1">Target Savings Month *</label>
-                      <select
-                        value={depositMonthTarget}
-                        onChange={(e) => setDepositMonthTarget(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:border-emerald-500"
-                      >
-                        {MONTH_KEYS.map(k => (
-                          <option key={k} value={k}>{MONTH_FULL_NAMES[k]} 2026</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-900 dark:text-slate-200 mb-1">Deposit Amount (UGX) *</label>
-                    <input
-                      type="number"
-                      required
-                      min="10000"
-                      step="10000"
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-base font-bold focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-900 dark:text-slate-200 mb-1">Payment Channel *</label>
@@ -1472,10 +1562,29 @@ export default function MemberPortal() {
                     >
                       <option value="MTN Mobile Money">MTN Mobile Money (MoMoPay 784102)</option>
                       <option value="Airtel Money">Airtel Money Pay (Merchant 6100234)</option>
-                      <option value="Stanbic Bank Wire">Stanbic Bank Wire</option>
-                      <option value="ABSA Bank Wire">ABSA Bank Diaspora Account</option>
+                      <option value="Bank Wire">Bank Wire</option>
                     </select>
                   </div>
+
+                  {depositMethod !== 'Bank Wire' && (
+                    <div className="p-3 rounded-2xl border-2 border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 space-y-2">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">Pay now from your phone</p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="tel"
+                          value={momoPhone || currentMember.phone}
+                          onChange={(e) => setMomoPhone(e.target.value)}
+                          className="flex-1 bg-white dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-xs font-mono font-bold"
+                          aria-label="Mobile money number"
+                        />
+                        <button type="button" onClick={handlePayNow} disabled={momoState === 'pending'} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-black text-xs">
+                          {momoState === 'pending' ? 'WAITING FOR PIN…' : `PAY UGX ${(Number(depositAmount) || 0).toLocaleString()} WITH ${depositMethod === 'Airtel Money' ? 'AIRTEL' : 'MTN'}`}
+                        </button>
+                      </div>
+                      {momoMsg && <p className={`text-[11px] font-bold ${momoState === 'failed' ? 'text-rose-600' : momoState === 'success' ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>{momoMsg}</p>}
+                      <p className="text-[10px] text-slate-500">Already paid another way? Enter the reference below and submit instead.</p>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-bold text-slate-900 dark:text-slate-200 mb-1">Payment Reference *</label>
@@ -1587,6 +1696,49 @@ export default function MemberPortal() {
                     <span>SUBMIT WITHDRAWAL REQUEST</span>
                   </button>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: KYC SELF-VERIFICATION */}
+          {activeTab === 'kyc' && (
+            <MemberKycPanel member={currentMember} onNotify={notify} />
+          )}
+
+          {/* My deposit / withdrawal requests and where they are in the approval chain */}
+          {(activeTab === 'deposit' || activeTab === 'withdraw') && (
+            <div className="max-w-4xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-3">
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">My Requests</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Your balance and shares update as soon as the Admin approves a request.</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 uppercase text-[10px]"><th className="p-2.5 w-10">#</th>
+                      <th className="p-2.5">Ref</th><th className="p-2.5">Date</th><th className="p-2.5">Request</th><th className="p-2.5 text-right">Amount</th><th className="p-2.5">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {paymentRequests.filter(r => r.memberId === currentMember.memberId).map((r, __n) => (
+                      <tr key={r.id}><td className="p-2.5 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
+                        <td className="p-2.5 font-mono font-bold text-blue-700 dark:text-blue-400">{r.id}</td>
+                        <td className="p-2.5 font-mono text-slate-500">{r.submittedAt}</td>
+                        <td className="p-2.5 text-slate-800 dark:text-slate-200">{r.kind === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} — {r.purposeLabel}{r.shareCount ? ` (${r.shareCount} share${r.shareCount > 1 ? 's' : ''})` : ''}</td>
+                        <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">UGX {r.amount.toLocaleString()}</td>
+                        <td className="p-2.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : r.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'}`}>
+                            {r.status === 'PENDING_VERIFICATION' ? 'With Accountant' : r.status === 'VERIFIED_AWAITING_ADMIN' ? 'With Admin' : r.status === 'APPROVED' ? 'Approved' : 'Rejected'}
+                          </span>
+                          {r.rejectionReason && <span className="block text-[10px] text-rose-500 mt-0.5">{r.rejectionReason}</span>}
+                        </td>
+                      </tr>
+                    ))}
+                    {paymentRequests.filter(r => r.memberId === currentMember.memberId).length === 0 && (
+                      <tr><td colSpan={6} className="p-4 text-center text-slate-500">No requests yet.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -1897,56 +2049,82 @@ export default function MemberPortal() {
                 </div>
               </div>
 
-              {depositPurpose === 'shares' && (
-                <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-purple-900 dark:text-purple-300">Equity Shares:</span>
-                    <span className="font-mono font-black text-purple-700 dark:text-purple-400">
-                      {Math.floor(Number(depositAmount || 0) / 250000)} Shares
+              {depositPurpose === 'shares' ? (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-900 dark:text-slate-200 mb-1">Number of Shares to Buy *</label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000));
+                        if (cur > 1) setDepositAmount(String((cur - 1) * 250000));
+                      }}
+                      className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg flex items-center justify-center transition cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <div className="flex-1 relative">
+                      <input
+                        type="number"
+                        min={1}
+                        value={Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000))}
+                        onChange={(e) => {
+                          const count = Math.max(1, parseInt(e.target.value) || 1);
+                          setDepositAmount(String(count * 250000));
+                        }}
+                        className="w-full text-center px-4 py-2 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono font-extrabold text-lg focus:outline-none focus:border-emerald-500"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Shares</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000));
+                        setDepositAmount(String((cur + 1) * 250000));
+                      }}
+                      className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg flex items-center justify-center transition cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-700 dark:text-slate-300">Total Cost (UGX 250,000 / share):</span>
+                    <span className="font-mono font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
+                      UGX {(Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000)) * 250000).toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex gap-1.5 mt-2">
-                    {['250000', '500000', '1000000', '2000000'].map(val => (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => setDepositAmount(val)}
-                        className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 text-[10px] font-bold text-purple-800 dark:text-purple-300"
+                </div>
+              ) : (
+                <>
+                  {depositPurpose === 'savings' && (
+                    <div>
+                      <label className="block font-bold text-slate-900 dark:text-slate-200 mb-1">Target Savings Month *</label>
+                      <select
+                        value={depositMonthTarget}
+                        onChange={(e) => setDepositMonthTarget(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
                       >
-                        {Number(val)/250000} sh
-                      </button>
-                    ))}
+                        {MONTH_KEYS.map(k => (
+                          <option key={k} value={k}>{MONTH_FULL_NAMES[k]} 2026</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block font-bold text-slate-900 dark:text-slate-200 mb-1">Amount (UGX) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="10000"
+                      step="10000"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono text-base font-bold focus:outline-none focus:border-emerald-500"
+                    />
                   </div>
-                </div>
+                </>
               )}
-
-              {depositPurpose === 'savings' && (
-                <div>
-                  <label className="block font-bold text-slate-900 dark:text-slate-200 mb-1">Target Savings Month *</label>
-                  <select
-                    value={depositMonthTarget}
-                    onChange={(e) => setDepositMonthTarget(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
-                  >
-                    {MONTH_KEYS.map(k => (
-                      <option key={k} value={k}>{MONTH_FULL_NAMES[k]} 2026</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block font-bold text-slate-900 dark:text-slate-200 mb-1">Amount (UGX) *</label>
-                <input
-                  type="number"
-                  required
-                  min="10000"
-                  step="10000"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono text-base font-bold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
 
               <div>
                 <label className="block font-bold text-slate-900 dark:text-slate-200 mb-1">Payment Method</label>
@@ -1957,7 +2135,7 @@ export default function MemberPortal() {
                 >
                   <option value="MTN Mobile Money">MTN MoMoPay (784102 - Diaspora Connect)</option>
                   <option value="Airtel Money">Airtel Money Merchant (6100234)</option>
-                  <option value="Stanbic Bank Wire">Stanbic Bank Wire</option>
+                  <option value="Bank Wire">Bank Wire</option>
                 </select>
               </div>
 
@@ -2154,7 +2332,7 @@ export default function MemberPortal() {
                 <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden text-xs">
                   <table className="w-full text-left">
                     <thead className="bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
-                      <tr>
+                      <tr><th className="p-2.5 w-10">#</th>
                         <th className="p-2.5">Date / Ref</th>
                         <th className="p-2.5">Particulars & Purpose</th>
                         <th className="p-2.5 text-right">Amount</th>
@@ -2163,8 +2341,8 @@ export default function MemberPortal() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
                       {monthTxList.length > 0 ? (
-                        monthTxList.map((tx) => (
-                          <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        monthTxList.map((tx, __n) => (
+                          <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td className="p-2.5 text-slate-400 dark:text-slate-500 font-mono text-[11px]">{__n + 1}</td>
                             <td className="p-2.5">
                               <span className="font-sans font-bold text-slate-900 dark:text-white block">{tx.date}</span>
                               <span className="text-[10px] text-slate-500">{tx.reference || 'REF-N/A'}</span>
@@ -2184,7 +2362,7 @@ export default function MemberPortal() {
                           </tr>
                         ))
                       ) : (
-                        <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30"><td />
                           <td className="p-2.5">
                             <span className="font-sans font-bold text-slate-900 dark:text-white block">2026-{(idx + 1).toString().padStart(2, '0')}-05</span>
                             <span className="text-[10px] text-slate-500">MOM-{selectedMonthStatement.key.toUpperCase()}-001</span>
@@ -2313,6 +2491,277 @@ export default function MemberPortal() {
           </div>
         </div>
       )}
+
+      {/* MODAL: BUY SHARES CHOICE */}
+      {showBuySharesChoiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-6 md:p-7 max-w-md w-full space-y-5 shadow-2xl animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Buy Cooperative Shares</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Select your preferred funding option</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBuySharesChoiceModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Cooperative shares cost <strong className="text-emerald-600 dark:text-emerald-400">UGX 250,000 per share</strong>. Choose how you would like to purchase:
+            </p>
+
+            <div className="space-y-3">
+              {/* Option 1: Convert Savings to Shares */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBuySharesChoiceModal(false);
+                  setConvertShareCount(1);
+                  setShowConvertSavingsModal(true);
+                }}
+                className="w-full p-4 rounded-2xl border-2 border-emerald-500/40 hover:border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 text-left transition hover:shadow-md group flex items-start gap-3.5"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition">
+                  <Repeat className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                      Convert Savings to Shares
+                    </h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">
+                      Savings Balance
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-snug">
+                    Use your existing savings balance. Requires approval before shares are credited.
+                  </p>
+                  <p className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-400 mt-1.5">
+                    Current Savings: UGX {currentMember.savings.toLocaleString()}
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Deposit New Money */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBuySharesChoiceModal(false);
+                  setDepositPurpose('shares');
+                  if (Number(depositAmount) < 250000) setDepositAmount('250000');
+                  setShowDepositModal(true);
+                }}
+                className="w-full p-4 rounded-2xl border-2 border-purple-500/40 hover:border-purple-500 bg-purple-50/40 dark:bg-purple-950/20 text-left transition hover:shadow-md group flex items-start gap-3.5"
+              >
+                <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition">
+                  <ArrowDownLeft className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
+                      Deposit New Money
+                    </h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300">
+                      Mobile / Bank
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-snug">
+                    Deposit new funds via Mobile Money or Bank Wire.
+                  </p>
+                  <p className="text-[11px] font-mono font-bold text-purple-700 dark:text-purple-400 mt-1.5">
+                    Channels: MTN MoMo &bull; Airtel &bull; Bank Wire
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="pt-2 text-right">
+              <button
+                type="button"
+                onClick={() => setShowBuySharesChoiceModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONVERT SAVINGS TO SHARES */}
+      {showConvertSavingsModal && (() => {
+        const sharePrice = 250000;
+        const maxShares = Math.floor(currentMember.savings / sharePrice);
+        const cost = convertShareCount * sharePrice;
+        const remainingSavings = currentMember.savings - cost;
+        const isAffordable = currentMember.savings >= cost && convertShareCount >= 1;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-6 md:p-7 max-w-lg w-full space-y-5 shadow-2xl animate-scale-up">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <Repeat className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Convert Savings to Shares</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Buy shares using your savings balance</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowConvertSavingsModal(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Current Balances Header */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Current Savings</span>
+                  <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                    UGX {currentMember.savings.toLocaleString()}
+                  </p>
+                  <span className="text-[10px] text-slate-500">Voluntary Savings</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Current Shares</span>
+                  <p className="text-base font-extrabold text-purple-600 dark:text-purple-400 font-mono mt-0.5">
+                    {currentMember.shares} Shares
+                  </p>
+                  <span className="text-[10px] text-slate-500">UGX {(currentMember.shares * sharePrice).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Number of Shares to Convert */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                  <span>Number of Shares to Purchase</span>
+                  <span className="text-[11px] text-slate-500 font-normal">
+                    Max: {maxShares} {maxShares === 1 ? 'share' : 'shares'}
+                  </span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setConvertShareCount(Math.max(1, convertShareCount - 1))}
+                    disabled={convertShareCount <= 1}
+                    className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg disabled:opacity-40 transition flex items-center justify-center"
+                  >
+                    -
+                  </button>
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      min={1}
+                      max={Math.max(1, maxShares)}
+                      value={convertShareCount}
+                      onChange={e => {
+                        const val = parseInt(e.target.value) || 1;
+                        setConvertShareCount(Math.max(1, Math.min(val, Math.max(1, maxShares))));
+                      }}
+                      className="w-full text-center px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono font-extrabold text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Shares</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConvertShareCount(Math.min(maxShares, convertShareCount + 1))}
+                    disabled={convertShareCount >= maxShares}
+                    className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg disabled:opacity-40 transition flex items-center justify-center"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Conversion Calculation Summary */}
+              <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/30 space-y-2 text-xs">
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>Price per Share:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">UGX 250,000</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>Total Cost:</span>
+                  <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                    UGX {cost.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 pt-1 border-t border-emerald-500/20">
+                  <span>Remaining Savings after Approval:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    UGX {Math.max(0, remainingSavings).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>New Total Shares:</span>
+                  <span className="font-mono font-extrabold text-purple-600 dark:text-purple-400">
+                    {currentMember.shares + convertShareCount} Shares (UGX {((currentMember.shares + convertShareCount) * sharePrice).toLocaleString()})
+                  </span>
+                </div>
+              </div>
+
+              {/* Approval Notice */}
+              <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-300 dark:border-blue-800 flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200">
+                <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  Once approved, your savings will automatically be reduced by UGX {cost.toLocaleString()} and {convertShareCount} {convertShareCount === 1 ? 'share' : 'shares'} will be added to your account.
+                </p>
+              </div>
+
+              {maxShares < 1 && (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                  <span>You need at least UGX 250,000 in savings to purchase 1 share. Please deposit new money instead.</span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConvertSavingsModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!isAffordable}
+                  onClick={() => {
+                    const res = SaccoFarmStore.addShareConversionRequest({
+                      memberId: currentMember.memberId,
+                      memberName: currentMember.name,
+                      shareCount: convertShareCount
+                    });
+                    if (res.success) {
+                      notify(`Share conversion request for ${convertShareCount} shares (UGX ${cost.toLocaleString()}) submitted for approval.`);
+                      setShowConvertSavingsModal(false);
+                      reloadData();
+                    } else {
+                      alert(res.msg);
+                    }
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-extrabold text-xs shadow-md transition flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Submit Request</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
           {/* Mobile Bottom Navigation Bar (Home, Dashboard, Chat, Settings) */}
       <PortalBottomNav
         currentTab={activeTab === 'overview' ? 'dashboard' : activeTab === 'planning' ? 'planning' : activeTab === 'chat' ? 'chat' : activeTab}
