@@ -527,7 +527,7 @@ export default function AccountantPortal() {
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-1">
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Total Shares Issued</p>
                   <p className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">{totalShares}</p>
-                  <p className="text-[10px] text-slate-500">@ UGX 250,000 per share</p>
+                  <p className="text-[10px] text-slate-500">@ UGX {SaccoFarmStore.getShareParValue().toLocaleString()} per share</p>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-1">
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Total Share Capital</p>
@@ -1089,7 +1089,7 @@ export default function AccountantPortal() {
               <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
                 <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Share Capital</span>
                 <p className="text-lg font-black font-mono text-blue-600 dark:text-blue-400 mt-0.5">{selectedMember.shares || 0} Shares</p>
-                <span className="text-[10px] text-slate-500">UGX {((selectedMember.shares || 0) * 250000).toLocaleString()}</span>
+                <span className="text-[10px] text-slate-500">UGX {((selectedMember.shares || 0) * SaccoFarmStore.getShareParValue()).toLocaleString()}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
                 <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Phone & Email</span>

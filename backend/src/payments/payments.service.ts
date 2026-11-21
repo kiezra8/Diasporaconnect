@@ -96,7 +96,7 @@ export class PaymentsService {
   private async onPaid(p: any) {
     const amount = Number(p.amount);
     const member = await this.supabase.findMember(p.member_id);
-    const par = Number(await this.supabase.setting<any>('share_par_value', 250000)) || 250000;
+    const par = Number(await this.supabase.setting<any>('share_par_value', 0)) || 0;   // set by the Admin
     const requestId = `PRQ-MM${String(Date.now()).slice(-6)}`;
     const providerLabel = p.provider === 'MTN' ? 'MTN Mobile Money' : 'Airtel Money';
     const purposeLabel = p.purpose === 'savings' ? `Monthly Savings${p.month ? ` (${String(p.month).toUpperCase()})` : ''}`
@@ -123,7 +123,7 @@ export class PaymentsService {
       verifiedAt: now,
     };
     if (p.purpose === 'savings' && p.month) request.month = p.month;
-    if (p.purpose === 'shares') request.shareCount = Math.floor(amount / par);
+    if (p.purpose === 'shares') request.shareCount = par > 0 ? Math.floor(amount / par) : 0;
 
     const db = this.supabase.db;
     const { error } = await db.from('payment_requests').insert({ id: requestId, data: request });

@@ -323,8 +323,8 @@ export default function AdminPortal() {
   };
 
   // ── Share Par Value ────────────────────────────────────────────────────────
-  const [shareParValue, setShareParValue] = useState<number>(() => SaccoFarmStore.getShareParValue ? SaccoFarmStore.getShareParValue() : 250000);
-  const [shareParInput, setShareParInput] = useState<string>('250000');
+  const [shareParValue, setShareParValue] = useState<number>(() => SaccoFarmStore.getShareParValue());
+  const [shareParInput, setShareParInput] = useState<string>(() => SaccoFarmStore.getShareParValue() ? String(SaccoFarmStore.getShareParValue()) : '');
   const handleUpdateShareParValue = () => {
     const val = parseInt(shareParInput.replace(/,/g, ''), 10);
     if (!val || val < 10000) { alert('Share par value must be at least UGX 10,000'); return; }
@@ -447,6 +447,7 @@ export default function AdminPortal() {
   };
 
   const reloadData = () => {
+    setShareParValue(SaccoFarmStore.getShareParValue());
     setMembers(SaccoFarmStore.getMembers());
     setLoans(SaccoFarmStore.getLoans());
     setTransactions(SaccoFarmStore.getTransactions());
@@ -490,7 +491,7 @@ export default function AdminPortal() {
   // ── Computed stats ──────────────────────────────────────────────────────────
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const totalShares = members.reduce((s, m) => s + m.shares, 0);
-  const totalSharesValue = members.reduce((s, m) => s + m.shares * 250000, 0);
+  const totalSharesValue = members.reduce((s, m) => s + m.shares * shareParValue, 0);
   const activeMembers = members.filter(m => m.status === 'ACTIVE').length;
   const activeLoans = loans.filter(l => l.status === 'ACTIVE');
   const totalLoanBook = activeLoans.reduce((s, l) => s + l.outstandingBalance, 0);
@@ -738,7 +739,7 @@ export default function AdminPortal() {
 
       const totalSav = members.reduce((s, m) => s + m.savings, 0);
       const totalShr = members.reduce((s, m) => s + m.shares, 0);
-      const totalShrVal = totalShr * 250000;
+      const totalShrVal = totalShr * shareParValue;
 
       kpiHtml = `
         <div class="kpi-card"><span class="kpi-label">TOTAL MEMBERS</span><div class="kpi-val">${members.length} Registered</div></div>
@@ -769,7 +770,7 @@ export default function AdminPortal() {
                 <td>${m.phone} &middot; ${m.nin}</td>
                 <td><span style="font-weight: bold; color: ${m.status === 'ACTIVE' ? '#047857' : '#e11d48'};">${m.status}</span></td>
                 <td style="text-align: right;">${m.shares}</td>
-                <td style="text-align: right;">UGX ${(m.shares * 250000).toLocaleString()}</td>
+                <td style="text-align: right;">UGX ${(m.shares * shareParValue).toLocaleString()}</td>
                 <td style="text-align: right; font-weight: bold; color: #047857;">UGX ${m.savings.toLocaleString()}</td>
               </tr>
             `).join('')}
@@ -1301,7 +1302,7 @@ export default function AdminPortal() {
 
   // ── Savings Deposit Form State & Handler ────────────────────────────────────
   const [savingsDepositMemberId, setSavingsDepositMemberId] = useState('');
-  const [savingsDepositAmount, setSavingsDepositAmount] = useState('250000');
+  const [savingsDepositAmount, setSavingsDepositAmount] = useState('');
   const [savingsDepositMonth, setSavingsDepositMonth] = useState<'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun' | 'jul' | 'aug' | 'sep' | 'oct' | 'nov' | 'dec'>('nov');
   const [savingsDepositRef, setSavingsDepositRef] = useState('');
   const [savingsDepositPurpose, setSavingsDepositPurpose] = useState<'savings' | 'shares' | 'welfare' | 'project' | 'other'>('savings');
@@ -1322,7 +1323,7 @@ export default function AdminPortal() {
     });
     notify(res.success ? `Recorded ${savingsDepositPurpose} deposit of UGX ${amount.toLocaleString()} for ${target.name}.` : res.msg);
 
-    setSavingsDepositAmount('250000');
+    setSavingsDepositAmount('');
     setSavingsDepositRef('');
     reloadData();
   };
@@ -1969,14 +1970,14 @@ export default function AdminPortal() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Share Capital Registry</h3>
-                <p className="text-xs text-slate-400">Cooperative share ownership at UGX 250,000 per Class A voting share</p>
+                <p className="text-xs text-slate-400">Cooperative share ownership at {shareParValue ? `UGX ${shareParValue.toLocaleString()}` : 'a price not set yet'} per Class A voting share</p>
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   { label: 'Total Shares Issued', value: `${totalShares} shares`, color: 'text-blue-500 dark:text-blue-400' },
                   { label: 'Share Capital Value', value: `UGX ${fmtK(totalSharesValue)}`, color: 'text-slate-900 dark:text-white' },
-                  { label: 'Par Value Per Share', value: 'UGX 250,000', color: 'text-emerald-600 dark:text-emerald-400' },
+                  { label: 'Par Value Per Share', value: shareParValue ? `UGX ${shareParValue.toLocaleString()}` : 'Not set', color: 'text-emerald-600 dark:text-emerald-400' },
                   { label: 'Shareholders', value: `${members.filter(m => m.shares > 0).length} members`, color: 'text-slate-700 dark:text-slate-200' },
                 ].map((k, i) => (
                   <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xl">
@@ -2008,7 +2009,7 @@ export default function AdminPortal() {
                           </td>
                           <td className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-mono">{m.memberId}</td>
                           <td className="py-3 px-4 text-blue-700 dark:text-blue-400 font-mono font-bold">{m.shares}</td>
-                          <td className="py-3 px-4 text-slate-900 dark:text-white font-mono font-bold">{(m.shares * 250000).toLocaleString()}</td>
+                          <td className="py-3 px-4 text-slate-900 dark:text-white font-mono font-bold">{(m.shares * shareParValue).toLocaleString()}</td>
                           <td className="py-3 px-4 text-slate-400 font-mono">CERT-DC-{m.memberId.replace('DC-', '')}</td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -2059,7 +2060,7 @@ export default function AdminPortal() {
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-emerald-500 font-bold"
                     >
                       <option value="savings">Monthly Savings</option>
-                      <option value="shares">Buying Shares (UGX 250k/sh)</option>
+                      <option value="shares">Buying Shares (UGX {shareParValue.toLocaleString()}/sh)</option>
                       <option value="welfare">Welfare / Emergency Fund</option>
                       <option value="project">Farm Expansion Project</option>
                       <option value="other">Other Special Deposit</option>
@@ -3239,7 +3240,7 @@ export default function AdminPortal() {
                                 UGX {req.amount.toLocaleString()}
                               </span>
                               <span className="text-xs font-bold text-purple-600 dark:text-purple-400 font-mono">
-                                &rarr; {req.shareCount} Class A Shares (@ UGX 250,000)
+                                &rarr; {req.shareCount} Class A Shares (@ UGX {Math.round(req.amount / (req.shareCount || 1)).toLocaleString()})
                               </span>
                             </div>
 
@@ -3365,7 +3366,7 @@ export default function AdminPortal() {
                       onChange={e => setShareParInput(e.target.value)}
                       min="10000"
                       step="1000"
-                      placeholder="e.g. 250000"
+                      placeholder="Price per share"
                       className="w-48 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -3374,7 +3375,7 @@ export default function AdminPortal() {
                     className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
                   >UPDATE SHARE VALUE</button>
                   <div className="text-xs text-slate-500 dark:text-slate-400">
-                    Current: <span className="font-bold font-mono text-slate-900 dark:text-white">UGX {shareParValue.toLocaleString()}</span>
+                    Current: <span className="font-bold font-mono text-slate-900 dark:text-white">{shareParValue ? `UGX ${shareParValue.toLocaleString()}` : 'Not set — members cannot buy shares yet'}</span>
                   </div>
                 </div>
               </div>
@@ -4017,7 +4018,7 @@ export default function AdminPortal() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Savings Balance', value: fmt(selectedMember.savings), color: 'text-emerald-500' },
-                  { label: 'Share Capital', value: fmt(selectedMember.shares * 250000), color: 'text-blue-500' },
+                  { label: 'Share Capital', value: fmt(selectedMember.shares * shareParValue), color: 'text-blue-500' },
                   { label: 'Withdrawable', value: fmt(selectedMember.withdrawable), color: 'text-slate-900 dark:text-white' },
                   { label: 'Total Contributions', value: fmt(selectedMember.total), color: 'text-slate-900 dark:text-white' },
                 ].map((s, i) => (

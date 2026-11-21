@@ -28,7 +28,7 @@ export interface SaccoMember {
   total: number;
   adminFee: number;
   savings: number;
-  shares: number; // nominal 250,000 UGX each
+  shares: number; // value = shares × the share price set by the Admin
   sharesValue: number;
   withdrawable: number;
 }
@@ -792,6 +792,7 @@ export const SaccoFarmStore = {
     const members = SaccoFarmStore.getMembers();
     const m = members.find(item => item.id === memberId || item.memberId === memberId);
     if (!m) return { success: false, msg: 'Member not found' };
+    if (!(sharePrice > 0)) return { success: false, msg: 'The share price has not been set yet. The Admin sets it in Settings.' };
     const cost = shareCount * sharePrice;
     if (m.savings < cost) {
       return { success: false, msg: `Insufficient savings balance (${m.savings.toLocaleString()} UGX) for ${shareCount} shares (${cost.toLocaleString()} UGX)` };
@@ -835,6 +836,7 @@ export const SaccoFarmStore = {
   },
 
   addShareConversionRequest: (req: { memberId: string; memberName: string; shareCount: number }): { success: boolean; request?: ShareConversionRequest; msg: string } => {
+    if (!(SaccoFarmStore.getShareParValue() > 0)) return { success: false, msg: 'The share price has not been set yet. The Admin sets it in Settings.' };
     const cost = req.shareCount * SaccoFarmStore.getShareParValue();
     const members = SaccoFarmStore.getMembers();
     const m = members.find(item => item.id === req.memberId || item.memberId === req.memberId);
@@ -956,6 +958,7 @@ export const SaccoFarmStore = {
     let category: string;
     let description: string;
 
+    if (args.purpose === 'shares' && !(par > 0)) return { success: false, msg: 'The share price has not been set yet. The Admin sets it in Settings.' };
     if (args.purpose === 'shares') {
       const count = args.shareCount && args.shareCount > 0 ? args.shareCount : Math.floor(amount / par);
       if (count < 1) return { success: false, msg: `Amount is below the price of one share (UGX ${par.toLocaleString()})` };
@@ -1044,6 +1047,7 @@ export const SaccoFarmStore = {
     const par = SaccoFarmStore.getShareParValue();
     let shareCount: number | undefined;
     if (req.kind === 'DEPOSIT' && req.purpose === 'shares') {
+      if (!(par > 0)) return { success: false, msg: 'The share price has not been set yet. The Admin sets it in Settings.' };
       shareCount = Math.floor(amount / par);
       if (shareCount < 1) return { success: false, msg: `Minimum share purchase is UGX ${par.toLocaleString()} (1 share)` };
     }
@@ -2175,8 +2179,9 @@ export const SaccoFarmStore = {
 
   // Share Par Value
   getShareParValue: (): number => {
-    const val = localStorage.getItem(STORAGE_KEYS.SHARE_PAR);
-    return val ? Number(val) : 250000;
+    // Set only by the Admin (Settings → Share Par Value). 0 = not set yet.
+    const val = Number(localStorage.getItem(STORAGE_KEYS.SHARE_PAR));
+    return Number.isFinite(val) && val > 0 ? val : 0;
   },
 
   setShareParValue: (newVal: number): void => {

@@ -51,6 +51,8 @@ import {
 } from 'lucide-react';
 
 export default function MemberPortal() {
+  // Share price: set only by the Admin in Settings (0 = not set yet)
+  const sharePar = SaccoFarmStore.getShareParValue();
   const navigate = useNavigate();
   const session = getSession();
 
@@ -614,7 +616,7 @@ export default function MemberPortal() {
           ...prev,
           {
             sender: 'assistant',
-            text: `Under SACCO bylaws, each ordinary share carries a nominal value of UGX 250,000. Deposits via MTN MoMo, Airtel Money, or Bank wire are credited upon verification. For assistance, contact the secretariat at +256 772 100 200.`,
+            text: `Under SACCO bylaws, each ordinary share carries a nominal value of ${SaccoFarmStore.getShareParValue() ? `UGX ${SaccoFarmStore.getShareParValue().toLocaleString()}` : 'the price set by the Admin'}. Deposits via MTN MoMo, Airtel Money, or Bank wire are credited upon verification. For assistance, contact the secretariat at +256 772 100 200.`,
             source: 'SACCO Bylaws Article 14'
           }
         ]);
@@ -985,7 +987,7 @@ export default function MemberPortal() {
                       {currentMember.shares} Shares
                     </div>
                     <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">
-                      Valuation: <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">UGX {(currentMember.shares * 250000).toLocaleString()}</span>
+                      Valuation: <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">UGX {(currentMember.shares * sharePar).toLocaleString()}</span>
                     </p>
                   </div>
                 </button>
@@ -1104,9 +1106,9 @@ export default function MemberPortal() {
                 <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 rounded-2xl p-5 shadow-sm">
                   <span className="text-xs text-slate-800 dark:text-slate-300 font-bold">Nominal Valuation</span>
                   <div className="text-3xl font-black text-emerald-700 dark:text-emerald-400 font-mono mt-1">
-                    UGX {(currentMember.shares * 250000).toLocaleString()}
+                    UGX {(currentMember.shares * sharePar).toLocaleString()}
                   </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">UGX 250,000 / Share Par Value</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-bold mt-1">UGX {sharePar.toLocaleString()} / Share Par Value</p>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 rounded-2xl p-5 shadow-sm">
@@ -1180,7 +1182,7 @@ export default function MemberPortal() {
               <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-600/40 rounded-2xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">Share Purchases & Statement</h4>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Total: {currentMember.shares} Shares (UGX {(currentMember.shares * 250000).toLocaleString()})</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Total: {currentMember.shares} Shares (UGX {(currentMember.shares * sharePar).toLocaleString()})</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
@@ -1203,9 +1205,9 @@ export default function MemberPortal() {
                         <td className="p-3 text-right font-black text-slate-900 dark:text-white">
                           {Math.max(1, currentMember.shares - shareConversionRequests.filter(r => r.memberId === currentMember.memberId && r.status === 'APPROVED').reduce((s, r) => s + r.shareCount, 0))}
                         </td>
-                        <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX 250,000</td>
+                        <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX {sharePar.toLocaleString()}</td>
                         <td className="p-3 text-right font-black text-emerald-700 dark:text-emerald-400">
-                          UGX {(Math.max(1, currentMember.shares - shareConversionRequests.filter(r => r.memberId === currentMember.memberId && r.status === 'APPROVED').reduce((s, r) => s + r.shareCount, 0)) * 250000).toLocaleString()}
+                          UGX {(Math.max(1, currentMember.shares - shareConversionRequests.filter(r => r.memberId === currentMember.memberId && r.status === 'APPROVED').reduce((s, r) => s + r.shareCount, 0)) * sharePar).toLocaleString()}
                         </td>
                         <td className="p-3 text-center font-sans">
                           <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 text-[10px] font-bold">
@@ -1219,7 +1221,7 @@ export default function MemberPortal() {
                           <td className="p-3 text-slate-900 dark:text-slate-200 font-sans font-bold">{req.date}</td>
                           <td className="p-3 text-slate-800 dark:text-slate-200 font-sans font-semibold">Savings Conversion ({req.shareCount} Shares)</td>
                           <td className="p-3 text-right font-black text-slate-900 dark:text-white">{req.shareCount}</td>
-                          <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX 250,000</td>
+                          <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX {sharePar.toLocaleString()}</td>
                           <td className="p-3 text-right font-black text-emerald-700 dark:text-emerald-400">
                             UGX {req.amount.toLocaleString()}
                           </td>
@@ -1235,8 +1237,8 @@ export default function MemberPortal() {
                           <td className="p-3 text-emerald-700 dark:text-emerald-400 font-bold">{tx.reference || tx.id}</td>
                           <td className="p-3 text-slate-900 dark:text-slate-200 font-sans font-bold">{tx.date}</td>
                           <td className="p-3 text-slate-800 dark:text-slate-200 font-sans font-semibold">Direct Deposit Purchase</td>
-                          <td className="p-3 text-right font-black text-slate-900 dark:text-white">{Math.floor(tx.amount / 250000)}</td>
-                          <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX 250,000</td>
+                          <td className="p-3 text-right font-black text-slate-900 dark:text-white">{Math.floor(tx.amount / (sharePar || 1))}</td>
+                          <td className="p-3 text-right text-slate-800 dark:text-slate-300 font-bold">UGX {sharePar.toLocaleString()}</td>
                           <td className="p-3 text-right font-black text-emerald-700 dark:text-emerald-400">
                             UGX {tx.amount.toLocaleString()}
                           </td>
@@ -1429,7 +1431,7 @@ export default function MemberPortal() {
                         type="button"
                         onClick={() => {
                           setDepositPurpose('shares');
-                          if (Number(depositAmount) < 250000) setDepositAmount('250000');
+                          if (Number(depositAmount) < sharePar) setDepositAmount(String(sharePar));
                         }}
                         className={`p-3 rounded-xl border-2 text-left transition flex items-start gap-2.5 ${
                           depositPurpose === 'shares'
@@ -1440,7 +1442,7 @@ export default function MemberPortal() {
                         <ShieldCheck className={`w-4 h-4 shrink-0 mt-0.5 ${depositPurpose === 'shares' ? 'text-purple-600' : 'text-slate-500'}`} />
                         <div>
                           <p className="text-xs font-bold leading-tight">Buy Shares</p>
-                          <p className="text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">UGX 250,000 per share</p>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">UGX {sharePar.toLocaleString()} per share</p>
                         </div>
                       </button>
 
@@ -1485,8 +1487,8 @@ export default function MemberPortal() {
                         <button
                           type="button"
                           onClick={() => {
-                            const cur = Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000));
-                            if (cur > 1) setDepositAmount(String((cur - 1) * 250000));
+                            const cur = Math.max(1, Math.floor(Number(depositAmount || sharePar) / (sharePar || 1)));
+                            if (cur > 1) setDepositAmount(String((cur - 1) * sharePar));
                           }}
                           className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg flex items-center justify-center transition cursor-pointer"
                         >
@@ -1496,10 +1498,10 @@ export default function MemberPortal() {
                           <input
                             type="number"
                             min={1}
-                            value={Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000))}
+                            value={Math.max(1, Math.floor(Number(depositAmount || sharePar) / (sharePar || 1)))}
                             onChange={(e) => {
                               const count = Math.max(1, parseInt(e.target.value) || 1);
-                              setDepositAmount(String(count * 250000));
+                              setDepositAmount(String(count * sharePar));
                             }}
                             className="w-full text-center px-4 py-2.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono font-extrabold text-lg focus:outline-none focus:border-emerald-500"
                           />
@@ -1508,8 +1510,8 @@ export default function MemberPortal() {
                         <button
                           type="button"
                           onClick={() => {
-                            const cur = Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000));
-                            setDepositAmount(String((cur + 1) * 250000));
+                            const cur = Math.max(1, Math.floor(Number(depositAmount || sharePar) / (sharePar || 1)));
+                            setDepositAmount(String((cur + 1) * sharePar));
                           }}
                           className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg flex items-center justify-center transition cursor-pointer"
                         >
@@ -1517,9 +1519,9 @@ export default function MemberPortal() {
                         </button>
                       </div>
                       <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 flex justify-between items-center text-xs">
-                        <span className="font-bold text-slate-700 dark:text-slate-300">Total Cost (UGX 250,000 / share):</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">Total Cost (UGX {sharePar.toLocaleString()} / share):</span>
                         <span className="font-mono font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
-                          UGX {(Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000)) * 250000).toLocaleString()}
+                          UGX {(Math.max(1, Math.floor(Number(depositAmount || sharePar) / (sharePar || 1))) * sharePar).toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -2007,7 +2009,7 @@ export default function MemberPortal() {
                     type="button"
                     onClick={() => {
                       setDepositPurpose('shares');
-                      if (Number(depositAmount) < 250000) setDepositAmount('500000');
+                      if (Number(depositAmount) < sharePar) setDepositAmount(String(sharePar));
                     }}
                     className={`p-2.5 rounded-xl border-2 text-left transition flex items-start gap-2 ${
                       depositPurpose === 'shares'
@@ -2018,7 +2020,7 @@ export default function MemberPortal() {
                     <ShieldCheck className={`w-4 h-4 shrink-0 mt-0.5 ${depositPurpose === 'shares' ? 'text-purple-600' : 'text-slate-500'}`} />
                     <div>
                       <p className="font-bold text-[11px] leading-tight">Buying Shares</p>
-                      <p className="text-[9px] text-slate-500">UGX 250k / share</p>
+                      <p className="text-[9px] text-slate-500">UGX {sharePar.toLocaleString()} / share</p>
                     </div>
                   </button>
 
@@ -2063,8 +2065,8 @@ export default function MemberPortal() {
                     <button
                       type="button"
                       onClick={() => {
-                        const cur = Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000));
-                        if (cur > 1) setDepositAmount(String((cur - 1) * 250000));
+                        const cur = Math.max(1, Math.floor(Number(depositAmount || sharePar) / (sharePar || 1)));
+                        if (cur > 1) setDepositAmount(String((cur - 1) * sharePar));
                       }}
                       className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg flex items-center justify-center transition cursor-pointer"
                     >
@@ -2074,10 +2076,10 @@ export default function MemberPortal() {
                       <input
                         type="number"
                         min={1}
-                        value={Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000))}
+                        value={Math.max(1, Math.floor(Number(depositAmount || sharePar) / (sharePar || 1)))}
                         onChange={(e) => {
                           const count = Math.max(1, parseInt(e.target.value) || 1);
-                          setDepositAmount(String(count * 250000));
+                          setDepositAmount(String(count * sharePar));
                         }}
                         className="w-full text-center px-4 py-2 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono font-extrabold text-lg focus:outline-none focus:border-emerald-500"
                       />
@@ -2086,8 +2088,8 @@ export default function MemberPortal() {
                     <button
                       type="button"
                       onClick={() => {
-                        const cur = Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000));
-                        setDepositAmount(String((cur + 1) * 250000));
+                        const cur = Math.max(1, Math.floor(Number(depositAmount || sharePar) / (sharePar || 1)));
+                        setDepositAmount(String((cur + 1) * sharePar));
                       }}
                       className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-lg flex items-center justify-center transition cursor-pointer"
                     >
@@ -2095,9 +2097,9 @@ export default function MemberPortal() {
                     </button>
                   </div>
                   <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 flex justify-between items-center text-xs">
-                    <span className="font-bold text-slate-700 dark:text-slate-300">Total Cost (UGX 250,000 / share):</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">Total Cost (UGX {sharePar.toLocaleString()} / share):</span>
                     <span className="font-mono font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
-                      UGX {(Math.max(1, Math.floor(Number(depositAmount || 250000) / 250000)) * 250000).toLocaleString()}
+                      UGX {(Math.max(1, Math.floor(Number(depositAmount || sharePar) / (sharePar || 1))) * sharePar).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -2469,7 +2471,7 @@ export default function MemberPortal() {
                 Member ID: {currentMember.memberId}
               </p>
               <p className="text-slate-800 dark:text-slate-200 font-semibold leading-relaxed max-w-lg mx-auto">
-                Is the duly registered proprietor of <strong className="text-purple-700 dark:text-purple-300">{currentMember.shares} Fully-Paid Class A Voting Shares</strong> with a nominal par value of <strong>UGX 250,000 each</strong> (Total Capital: <strong className="text-emerald-700 dark:text-emerald-400">UGX {(currentMember.shares * 250000).toLocaleString()}</strong>).
+                Is the duly registered proprietor of <strong className="text-purple-700 dark:text-purple-300">{currentMember.shares} Fully-Paid Class A Voting Shares</strong> with a nominal par value of <strong>UGX {sharePar.toLocaleString()} each</strong> (Total Capital: <strong className="text-emerald-700 dark:text-emerald-400">UGX {(currentMember.shares * sharePar).toLocaleString()}</strong>).
               </p>
             </div>
 
@@ -2522,7 +2524,7 @@ export default function MemberPortal() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              Cooperative shares cost <strong className="text-emerald-600 dark:text-emerald-400">UGX 250,000 per share</strong>. Choose how you would like to purchase:
+              Cooperative shares cost <strong className="text-emerald-600 dark:text-emerald-400">UGX {sharePar.toLocaleString()} per share</strong>. Choose how you would like to purchase:
             </p>
 
             <div className="space-y-3">
@@ -2563,7 +2565,7 @@ export default function MemberPortal() {
                 onClick={() => {
                   setShowBuySharesChoiceModal(false);
                   setDepositPurpose('shares');
-                  if (Number(depositAmount) < 250000) setDepositAmount('250000');
+                  if (Number(depositAmount) < sharePar) setDepositAmount(String(sharePar));
                   setShowDepositModal(true);
                 }}
                 className="w-full p-4 rounded-2xl border-2 border-purple-500/40 hover:border-purple-500 bg-purple-50/40 dark:bg-purple-950/20 text-left transition hover:shadow-md group flex items-start gap-3.5"
@@ -2605,11 +2607,11 @@ export default function MemberPortal() {
 
       {/* MODAL: CONVERT SAVINGS TO SHARES */}
       {showConvertSavingsModal && (() => {
-        const sharePrice = 250000;
-        const maxShares = Math.floor(currentMember.savings / sharePrice);
+        const sharePrice = sharePar;
+        const maxShares = sharePrice > 0 ? Math.floor(currentMember.savings / sharePrice) : 0;
         const cost = convertShareCount * sharePrice;
         const remainingSavings = currentMember.savings - cost;
-        const isAffordable = currentMember.savings >= cost && convertShareCount >= 1;
+        const isAffordable = sharePrice > 0 && currentMember.savings >= cost && convertShareCount >= 1;
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
@@ -2696,7 +2698,7 @@ export default function MemberPortal() {
               <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/30 space-y-2 text-xs">
                 <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                   <span>Price per Share:</span>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">UGX 250,000</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">UGX {sharePar.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                   <span>Total Cost:</span>
@@ -2729,7 +2731,7 @@ export default function MemberPortal() {
               {maxShares < 1 && (
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
-                  <span>You need at least UGX 250,000 in savings to purchase 1 share. Please deposit new money instead.</span>
+                  <span>You need at least UGX {sharePar.toLocaleString()} in savings to purchase 1 share. Please deposit new money instead.</span>
                 </div>
               )}
 

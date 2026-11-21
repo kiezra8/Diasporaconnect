@@ -292,7 +292,7 @@ export const api = {
     if (q.includes('share') || q.includes('price')) {
       return {
         isGrounded: true,
-        answer: 'Ordinary shares in Diaspora Connect have a nominal price of UGX 250,000 per share. Members receive annual dividend payouts based on net surplus from commercial dairy milk sales and loan interest.',
+        answer: `Ordinary shares in Diaspora Connect cost ${(Number(localStorage.getItem('dc_share_par_value')) || 0) ? `UGX ${(Number(localStorage.getItem('dc_share_par_value')) || 0).toLocaleString()}` : 'the price set by the Admin'} per share. Members receive annual dividend payouts based on net surplus from commercial dairy milk sales and loan interest.`,
         sourceArticle: 'Share Capital Policy (Sec. 4.2)',
       };
     }
